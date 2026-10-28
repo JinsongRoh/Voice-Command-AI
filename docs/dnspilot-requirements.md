@@ -1,81 +1,167 @@
 # DNS Pilot Integration Requirements
 
-> **Status:** Draft v0.2. This document will be split into "already supported" and "to be built" once the DNS Pilot feature specification is available.
+> **Status:** Draft v0.3. Based on the DNS Pilot feature guide (console 1.24.2, 2026-10-28). Pricing and plan limits on the DNS Pilot side are not final.
 
-This document defines what Voice Command AI (VCA) needs from DNS Pilot, its default remote-connectivity provider. It is written so that it can be handed directly to the DNS Pilot team (or to an AI coding agent working on DNS Pilot) as a requirements brief.
+DNS Pilot is VCA's default connectivity provider. This document covers four things:
+
+1. what DNS Pilot already offers;
+2. how VCA will use it;
+3. the gaps that must be closed;
+4. a requirements brief for the DNS Pilot team.
 
 ---
 
-## Brief
+## 1. Relevant DNS Pilot capabilities
 
-You are working on DNS Pilot, a DDNS and private-tunnel service. The open-source project **Voice Command AI** (VCA) will use DNS Pilot as its default way to reach a user's machine from the internet. VCA works like this:
+| Capability | Summary | Relevance to VCA |
+|---|---|---|
+| **DNS Pilot Agent** | Resident app for Windows 10/11 (x64, arm64; preview) and Linux (amd64, arm64, armv7; production). macOS is built but not yet released. Android exists as a reference viewer only. Signed auto-update. | Runs next to VCA Server on the developer machine. |
+| **Device activation** | Browser-based device-code flow (8-character code) with the account's 2FA or passkey. No password is stored in the app. Devices can be blocked instantly, including from an e-mail link. | Matches VCA's setup-wizard needs. |
+| **Tunnel (DPT/1)** | Outbound connection from the Agent to a relay. Exposes `https://name.domain` with no port forwarding. TLS is terminated **on the Agent** (the relay only sees SNI and byte counts). Certificates are issued automatically. Port 443 or 9443. Paid plans only. | Primary remote path for VCA Mobile. |
+| **Tunnel access modes** | Password, organization login (2FA, with an `X-DNSPilot-User` header passed to the local service) and fully public (reviewed per organization). | Edge access control, but designed for browsers (see gap G1). |
+| **P2P (DPT/2)** | Agent-to-Agent direct QUIC connection with NAT traversal. Falls back automatically to an encrypted relay (about 80–90 Mbps measured). Destinations are restricted to services registered in the console. | Ideal path for VCA Mobile, provided the phone can act as a P2P peer (see gap G2). |
+| **DDNS** | Agent-driven updates (60 s TTL), token API and DNSEver-compatible API. Free `<name>.yoitne.kr` hostnames. | Fallback for users who prefer port forwarding. |
+| **Console API** | Scoped API tokens (scopes, IP restriction, expiry), webhooks and an audit log. | Programmatic tunnel setup from VCA. |
+| **Agent modules** | Console-managed extensions with settings and secrets. | Possible optional distribution channel for VCA. |
+| **Account security** | TOTP, passkeys, IP allow-lists, login rate limiting, re-authentication for sensitive actions. | Strong baseline for the account that owns the tunnel. |
 
-- A long-running Rust server (VCA Server) runs on the user's development machine.
-- A mobile app (VCA Mobile) connects to that server from anywhere.
-- Through that connection, the user controls AI coding agent sessions such as Claude Code, Codex and Gemini CLI.
+## 2. Integration design
 
-Review the requirements below. Classify each item as **supported**, **needs development** or **not feasible**, and propose an API or SDK design for each.
+### 2.1 Phase A: Tunnel (available today, needs G1)
 
-### 1. Private tunnel
+```
+VCA Mobile ──HTTPS/WSS (SNI=vca-<machine>.<domain>)──► relay ══► DNS Pilot Agent ──► 127.0.0.1:47800 (VCA Server)
+     └───────────────────── Noise E2E channel (VCA pairing keys) ─────────────────────────────┘
+```
 
-- Expose a local service (for example `127.0.0.1:47800`) to the internet **without port forwarding**. It must work behind CGNAT, corporate firewalls and double NAT.
-- Protocols:
-  - Required: HTTPS and WebSocket, with long-lived bidirectional streaming.
-  - Optional: raw TCP and QUIC.
-- Latency target: at most 50 ms of added round-trip time within the same region. Voice-command responsiveness and terminal streaming depend on it.
-- Resilience:
-  - Automatic reconnection, with session continuity across reconnects.
-  - Heartbeats and connection-state events.
-- A stable hostname per machine (for example `<machine>.<user>.<dnspilot-domain>`). TLS certificates are issued and renewed automatically.
+- TLS terminates at the Agent on the user's own machine, so neither the relay nor any third party can read traffic. VCA adds its own Noise end-to-end layer on top, so security does not depend on the tunnel configuration.
+- The VCA setup wizard performs these steps:
+  1. Detect the Agent.
+  2. Start device activation if needed.
+  3. Create the tunnel through the API.
+  4. Embed the resulting hostname in the pairing QR code.
 
-### 2. Local control API and SDK (VCA Server → DNS Pilot Agent)
+### 2.2 Phase B: Embedded P2P (target, needs G2)
 
-- A local API that lets VCA drive the DNS Pilot Agent programmatically. It listens on localhost only and is authenticated with a local token. It covers:
-  - Create, list, pause and delete tunnels.
-  - Query the public URL and tunnel status.
-  - Subscribe to events: connected, disconnected, inbound connection attempt.
-- Provide a Rust crate or an OpenAPI specification.
-- Provide a CLI, for example `dnspilot tunnel open --port 47800 --name vca`.
-- Provide a way to detect whether the Agent is installed and which version it is. Also provide a sign-in and linking flow (such as device-code login) for VCA's setup wizard.
+```
+VCA Mobile (embedded DPT/2 client) ◄──QUIC direct / relay fallback──► DNS Pilot Agent ──► 127.0.0.1:47800
+```
 
-### 3. Tunnel-level security
+- Lower latency and no relay bandwidth cost when a direct path exists.
+- The service never gets a public hostname, which shrinks the attack surface.
+- This path could be offered on lower-priced plans, which lowers the barrier for open-source users.
 
-Access control at the tunnel edge, as a layer independent from VCA's own authentication:
+### 2.3 Fallbacks
 
-- Allow-list of paired devices (device certificates or mTLS, or device tokens).
-- Optional IP and country allow/deny rules.
-- Rate limiting and brute-force protection.
-- **Kill-switch API:** immediately close the tunnel and drop all active connections. It must also be triggerable from the web console and from mobile.
-- **Access audit log:** timestamp, source IP, device identifier and outcome, with a query API.
-- **New-device and new-location alerts**, delivered via webhook or push.
-- State clearly whether end-to-end encryption that the tunnel operator cannot read is supported, and how (for example TLS passthrough).
+Tailscale, Cloudflare Tunnel and direct LAN stay available through VCA's provider abstraction, for users without a DNS Pilot plan or in regions far from a relay.
 
-### 4. Push notification relay
+## 3. Gap analysis
 
-A user's machine cannot send push notifications through APNs or FCM directly, so DNS Pilot relays them.
+| # | Gap | Impact | Priority |
+|---|---|---|---|
+| **G1** | **No access mode for native apps.** Password and organization-login modes are interactive browser pages, which a native app or WebSocket client cannot pass. Fully public mode requires per-organization review and removes edge protection. | Blocks Phase A without weakening security. | **Critical** |
+| **G2** | **No embeddable P2P client.** DPT/2 requires a full Agent on both sides. There is no iOS client, and Android is a reference viewer only. | Blocks Phase B. | High |
+| G3 | WebSocket and long-lived connection support through tunnels is not documented (upgrade handling, idle timeouts, maximum connection duration). | Live streaming and notifications rely on it. | High |
+| G4 | No **push notification relay** (APNs/FCM). Webhooks go to chat tools only. | Background notifications on mobile. | High |
+| G5 | Only one relay region (Seoul). | High latency for users in the Americas, Europe and elsewhere in Asia. | High (global launch) |
+| G6 | The macOS Agent is not released, and the Windows Agent is in preview. | macOS is a primary VCA platform. | High |
+| G7 | There is no documented **local Agent API** (localhost) for detecting the Agent and toggling tunnels, and no programmatic kill switch. | Setup wizard automation and VCA kill switch. | Medium |
+| G8 | No per-request **tunnel access log** or new-location alerts for tunnel visitors (only demo-link visits are logged). | VCA security alerts (SEC-08). | Medium |
+| G9 | Tunnels require a paid plan, and free hostnames use a country-specific domain. | Adoption barrier for a global open-source audience. | Medium |
+| G10 | The English landing page is built but not deployed. | VCA documentation links to DNS Pilot. | Low (but needed before launch) |
 
-- An API for the mobile app to register its push token against a DNS Pilot account and machine.
-- An API for VCA Server to request a push:
-  - Inputs: target device, title, body and data.
-  - Options: priority and sound.
-- Payloads are **end-to-end encrypted by VCA**. The relay never sees plaintext, and the app decrypts on receipt.
-- Per-account delivery quotas and a retry policy for failed deliveries.
-- Support for both iOS and Android, including the procedure for registering the VCA app's bundle IDs and credentials.
+## 4. Requirements brief for the DNS Pilot team
 
-### 5. Multiple machines
+> Hand this section to the DNS Pilot team (or to a coding agent working on DNS Pilot) as-is.
 
-- One account can register several machines. Provide an API that returns each machine's tunnel status and online state.
-- The mobile app must be able to fetch the machines registered to the account and connect to any of them.
+You are working on DNS Pilot. The open-source project **Voice Command AI** (VCA) will use DNS Pilot as its default remote-connectivity provider. VCA works like this:
 
-### 6. Commercial and open-source policy
+- A Rust server listens on `127.0.0.1:47800` on the developer's machine.
+- A native mobile app connects to that server over HTTPS and WebSocket.
+- Through that connection, the user controls AI coding agents.
 
-- Define a free tier for VCA users and where paid plans begin (traffic, number of machines, push volume, and so on).
-- Provide a public client ID and API terms that may be embedded in open-source code.
-- Define behavior during a service outage. For example, provide a status API so that VCA can fail over to an alternative provider (Tailscale, Cloudflare Tunnel).
+VCA already has its own device pairing and end-to-end encryption. From DNS Pilot it needs reachability, edge protection and push relay. Implement or specify the following, and for each item return the API design and an effort estimate.
+
+### R1. App access mode for tunnels (closes G1, critical)
+
+Add a fourth access mode, **"App token"**, for non-browser clients:
+
+- The tunnel accepts requests carrying a valid credential and rejects everything else at the relay or Agent, before the request reaches the local service. The credential is either:
+  - `Authorization: Bearer <tunnel-client-token>`, or
+  - an mTLS client certificate.
+- Client tokens are issued per device, scoped to one tunnel, revocable, and optionally expiring. They are created through the console API so that VCA can mint one during pairing.
+- The mode must work for WebSocket upgrades.
+- Optional: allow this mode to be combined with organization login, so that browsers use login and apps use tokens on the same tunnel.
+
+### R2. Embeddable P2P client SDK (closes G2)
+
+- Provide a DPT/2 client library (ideally a Rust crate with iOS and Android bindings) that a third-party mobile app can embed to connect to a registered P2P service on an Agent, without installing the Agent on the phone.
+- Authentication: a scoped client credential issued through the console API, as in R1.
+- Behavior: direct QUIC first, then relay fallback, then automatic reconnection on network change (Wi-Fi ↔ cellular).
+- Must respect iOS and Android background and network restrictions.
+
+### R3. WebSocket and long-lived connections (closes G3)
+
+Document and guarantee the following:
+
+- WebSocket upgrade through tunnels.
+- Idle timeout of at least 10 minutes, or no idle timeout when keep-alive pings are present.
+- No forced maximum connection duration, or one of at least 24 hours.
+- Streaming responses without buffering.
+
+### R4. Push notification relay (closes G4)
+
+- An API to register a mobile push token (APNs/FCM) against an account and machine.
+- An API for the local service to send a push:
+  - Inputs: target device(s), opaque **end-to-end encrypted** payload, priority, collapse key.
+  - The relay never sees plaintext; the app decrypts on receipt.
+- Delivery quotas per plan, retries and delivery status.
+- A registration process for third-party app credentials (VCA's iOS bundle ID and Android package).
+
+### R5. Additional relay regions (closes G5)
+
+At least North America, Europe and one more Asia-Pacific region. The Agent selects a region automatically by latency.
+
+### R6. Platform coverage (closes G6)
+
+General availability of the macOS Agent (arm64 and amd64) and of the Windows Agent.
+
+### R7. Local Agent API (closes G7)
+
+A localhost-only API (or CLI) authenticated with a local token. It provides:
+
+- Agent presence, version and sign-in state.
+- Start device activation.
+- List, enable and disable tunnels and P2P services owned by this device.
+- **Kill switch:** close all tunnels and P2P sessions of this device immediately.
+- An event stream: tunnel up and down, inbound connection, client token rejected.
+
+### R8. Tunnel access log and alerts (closes G8)
+
+- A per-request (or per-connection) log with timestamp, source IP, country, client token ID and result.
+- A query API for these logs.
+- Alerts for a new client token or new country, and for bursts of rejected requests.
+
+### R9. Plans and naming for open-source users (closes G9)
+
+- Consider a free or low-cost tier that covers one machine with P2P (R2) or one app-token tunnel with modest transfer limits.
+- Consider a globally neutral free-hostname domain alongside the existing country-specific one.
+
+### R10. Public developer documentation (closes G10)
+
+- Deploy the English landing page.
+- Expose API documentation pages without login, so that VCA's documentation can link to them.
 
 ### Requested deliverables
 
-1. Status of each item (supported / needs development / not feasible) with effort estimates.
-2. Draft API specifications (OpenAPI) for the local API, the SDK and the push relay.
-3. Security model: encryption boundaries, key management and threat model.
-4. Sequence diagram of the integration flow used by the VCA setup wizard.
+1. Status and effort estimate for R1–R10.
+2. OpenAPI specifications for R1, R4, R7 and R8, and the SDK interface for R2.
+3. Security model notes covering credential lifecycles and what the relay can observe.
+4. Sequence diagram of the VCA setup-wizard integration (activation → tunnel or P2P service → client credential → pairing).
+
+## 5. Open questions for DNS Pilot
+
+1. Does the tunnel forward raw TLS streams (TCP after TLS termination), or does it parse HTTP? This determines WebSocket and HTTP/2 behavior.
+2. Can tunnels and P2P services be created entirely through the console API today, including device selection?
+3. Could VCA optionally be distributed as an Agent module, while staying an independent installable application?
+4. What is the target date for the macOS Agent and the English landing page?

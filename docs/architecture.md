@@ -178,4 +178,4 @@ mic (device) ─► VAD ─► audio chunks ─► STT engine ─► vocabulary 
 | Agents without hooks or native channels | Generic adapter using output heuristics. Contribute hook support upstream where possible. |
 | Pausing an agent mid-request causes API timeouts | Pause child processes only by default. Pause whole sessions only on explicit request. |
 | Tauri 2 mobile audio and background limits | Prototype microphone capture and VAD in M0. Fall back to a native plugin if needed. |
-| DNS Pilot feature gaps | Use the provider abstraction. Tailscale and Cloudflare Tunnel act as fallbacks. |
+| DNS Pilot gaps (app-token access, P2P SDK, push relay, relay regions) | Track them in dnspilot-requirements.md. Use the provider abstraction. Tailscale and Cloudflare Tunnel act as fallbacks until the gaps are closed. |
