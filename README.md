@@ -55,6 +55,7 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 
 - [Product requirements](docs/requirements.md)
 - [Architecture](docs/architecture.md)
+- [Development plan](docs/development-plan.md)
 - [DNS Pilot integration requirements](docs/dnspilot-requirements.md)
 
 ## Supporting the project
