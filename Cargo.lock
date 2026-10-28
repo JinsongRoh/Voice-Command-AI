@@ -3373,7 +3373,16 @@ dependencies = [
 name = "vca-cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "clap",
+ "crossterm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "vca-adapters",
  "vca-core",
+ "vca-pty",
+ "vca-server",
 ]
 
 [[package]]
