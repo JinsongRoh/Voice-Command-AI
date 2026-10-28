@@ -56,7 +56,7 @@ DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tail
   - The macOS Agent is built but not released.
 - **Device activation:** always requires browser approval with re-authentication. Unattended activation is not possible, by design.
 - **Payments:** currently in one local currency only. International payment support is required for a global audience.
-- **Status:** a public, machine-readable status API exists, but it has no relay or P2P fields yet.
+- **Status:** a public, machine-readable status API exists. Relay and P2P fields have been added (not yet deployed).
 
 ## 2. Design consequences for VCA
 
