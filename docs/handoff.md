@@ -24,8 +24,8 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | `vca-cloud` | Done | 38 | Cloud adapters. Copilot, Claude Managed Agents, Claude Code routines and Codex cloud were checked against official sources. **Jules, Cursor and Devin field names are unverified** (docs were blocked in the cloud session). |
 | `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNS Pilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNS Pilot JSON fields are placeholders in `dnspilot/contract.rs`. |
 | `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Tauri shells not created yet. |
-| `vca-server` (`vcad`) | **Not started** beyond drafts | — | `config.rs`, `events.rs`, `workspace.rs`, `util.rs` are drafts that are **not yet in the module tree**. `main.rs` is still a stub. |
-| `vca-cli` (`vca`) | **Not started** | — | Stub. |
+| `vca-server` (`vcad`) | Done for §6 (local transports only) | 22 | Session manager, API, local control channel, hooks with admission, discovery, dev WebSocket. Remote transport, cloud, providers and speech are not wired yet (§4 steps 3–4). |
+| `vca-cli` (`vca`) | Done | 28 | All §6 commands. Hooks fail open (checked against a missing vcad). |
 
 ## 3. Known issues
 
@@ -33,13 +33,39 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 
 ConPTY writes a cursor position query (`ESC[6n`) at startup and waits for an answer; portable-pty 0.9 hard-codes the inherit-cursor flag, so the query cannot be turned off without forking it. `vca-pty` now answers every `ESC[6n` itself (also when split across chunks) from the vt100 cursor at the point of the query, or `1;1` with screen tracking off (`SpawnOptions::answer_cursor_queries`, on by default). `attach_stdio` counts the queries it writes to the local terminal and drops that terminal's replies (`CprReplyFilter`, with a 2 s expiry so Ctrl+F3 is not swallowed later).
 
-Found on the way, also fixed: portable-pty's Windows killer inverts `TerminateProcess`'s result (`PtySession::kill` ignores it on Windows); ConPTY drops bare line feeds inside bracketed paste (newlines are now sent as ``, as real terminals do); removing a paste marker could join its neighbors into a new marker (now stripped to a fixed point).
+Found on the way, also fixed: portable-pty's Windows killer inverts `TerminateProcess`'s result (`PtySession::kill` ignores it on Windows); ConPTY drops bare line feeds inside bracketed paste (newlines are now sent as `
+`, as real terminals do); removing a paste marker could join its neighbors into a new marker (now stripped to a fixed point).
 
-### 3.2 Other items
+### 3.2 Process containment on Windows reached unrelated processes (fixed)
+
+Windows keeps a process's parent pid after the parent exits and reuses pids, and `vca-broker` built process trees from parent pids alone. While the end-to-end tests ran on a workstation, stopping a session called `terminate_session(ChildrenOnly)`, and the call terminated unrelated agent sessions on that machine. Fixed in `a78246f`:
+- On Windows, parent links are verified with creation times; links that cannot be verified are dropped.
+- `Stop` kills only the PTY child VCA started.
+- Observed sessions are neither stoppable nor registered with the broker.
+- Tests use fake process controls.
+
+**Rule:** tests that terminate or suspend real processes run only with `VCA_PROCESS_CONTROL_TESTS=1`, which is set in CI (disposable VMs). Never set it on a workstation. Follow-up: put managed sessions in a Job Object so that containment can only reach processes VCA started, then restore tree termination for `Stop`.
+
+### 3.3 Other items
 - `vca-adapters`: WezTerm, kitty, iTerm2 and Windows console injection are unverified on real machines.
 - `vca-cloud`: confirm Jules, Cursor and Devin request/response shapes against their official docs (PoC-7).
 - `vca-providers`: align `dnspilot/contract.rs` with the DNS Pilot VCA contract (`VCA-contract.md` in the DNS Pilot repository).
 - macOS and Windows behavior of every crate has only been compile-checked or CI-tested; run the M0 PoCs on real machines.
+
+### 3.4 Verified on a real Windows 11 machine (task 2)
+
+- `vca run` in Windows Terminal, with `vca-fake-agent` and with Claude Code 2.1.312:
+  - output renders cleanly, with no stray cursor-report characters;
+  - `vca send` delivers input without window focus (Claude Code answered);
+  - decisions are detected and answered;
+  - the exit code reaches the terminal (`/exit 5` showed code 5).
+- `ping`, `ls`, `resources` and `stop` against a live vcad.
+
+Not verified yet:
+- Claude Code hooks installed through `vca hooks install` (user-scope installation was avoided on the shared machine).
+- `vca run -- codex`.
+- iTerm2 and other terminals.
+- Linux and macOS (CI only).
 
 ## 4. Next steps (in order)
 
