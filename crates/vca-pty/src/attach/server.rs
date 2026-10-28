@@ -41,6 +41,7 @@ impl AttachServer {
     pub fn bind(endpoint: impl Into<PathBuf>, session: PtySession) -> io::Result<Self> {
         let endpoint = endpoint.into();
         let listener = listener_options(&endpoint)?.create_tokio()?;
+        restrict_socket_file(&endpoint)?;
         let task = tokio::spawn(async move {
             // Dropping the JoinSet (when this task is aborted) aborts clients.
             let mut clients = JoinSet::new();
@@ -78,6 +79,7 @@ impl Drop for AttachServer {
 
 #[cfg(unix)]
 fn listener_options(endpoint: &Path) -> io::Result<ListenerOptions<'_>> {
+    #[cfg(target_os = "linux")]
     use interprocess::os::unix::local_socket::ListenerOptionsExt;
     use std::os::unix::fs::DirBuilderExt;
 
@@ -95,9 +97,26 @@ fn listener_options(endpoint: &Path) -> io::Result<ListenerOptions<'_>> {
     {
         let _ = std::fs::remove_file(endpoint);
     }
-    Ok(ListenerOptions::new()
-        .name(endpoint_name(endpoint)?)
-        .mode(0o600))
+    let options = ListenerOptions::new().name(endpoint_name(endpoint)?);
+    // Setting the mode before bind is only supported on Linux; other Unix
+    // systems get it from `restrict_socket_file` right after binding.
+    #[cfg(target_os = "linux")]
+    let options = options.mode(0o600);
+    Ok(options)
+}
+
+/// Makes the socket file owner-only on Unix systems where the mode cannot be
+/// set before binding. The parent directory is 0700, so the short window
+/// between bind and chmod is not reachable by other users.
+#[cfg(all(unix, not(target_os = "linux")))]
+fn restrict_socket_file(endpoint: &Path) -> io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(endpoint, std::fs::Permissions::from_mode(0o600))
+}
+
+#[cfg(not(all(unix, not(target_os = "linux"))))]
+fn restrict_socket_file(_endpoint: &Path) -> io::Result<()> {
+    Ok(())
 }
 
 #[cfg(windows)]

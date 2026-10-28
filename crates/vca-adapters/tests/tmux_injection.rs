@@ -74,13 +74,20 @@ async fn detects_pane_and_injects_text_without_focus() {
     let pane = panes[0].clone();
     assert_eq!(pane.session_name, "vca-test");
 
-    // Detection from the process environment (TMUX / TMUX_PANE).
-    let procs = tokio::task::spawn_blocking(ProcessTable::snapshot)
-        .await
-        .unwrap();
-    let detected = terminal::detect(pane.pane_pid, &procs)
-        .await
-        .expect("pane detected");
+    // Detection from the process environment (TMUX / TMUX_PANE). Until the
+    // pane's child has exec'd, /proc/<pid>/environ still shows the tmux
+    // server's environment, so retry briefly on slow machines.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let detected = loop {
+        let procs = tokio::task::spawn_blocking(ProcessTable::snapshot)
+            .await
+            .unwrap();
+        if let Some(target) = terminal::detect(pane.pane_pid, &procs).await {
+            break target;
+        }
+        assert!(Instant::now() < deadline, "pane not detected");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
     assert_eq!(
         detected,
         TerminalTarget::Tmux {

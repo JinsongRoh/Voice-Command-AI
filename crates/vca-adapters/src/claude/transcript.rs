@@ -326,7 +326,8 @@ fn search(dir: &Path, rest: &str, depth: usize) -> Option<PathBuf> {
     .ok()?;
     let mut candidates: Vec<(String, PathBuf)> = entries
         .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        // `Path::is_dir` follows symlinks (macOS `/var` -> `/private/var`).
+        .filter(|e| e.path().is_dir())
         .map(|e| (encode_project_dir(Path::new(&e.file_name())), e.path()))
         .filter(|(enc, _)| {
             rest == enc || (rest.starts_with(enc.as_str()) && rest[enc.len()..].starts_with('-'))
