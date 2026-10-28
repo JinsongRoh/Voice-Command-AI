@@ -168,7 +168,21 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 | SEC-09 | Kill switch: drop all remote connections and close the tunnel instantly, from desktop, mobile or the DNS Pilot console. | M |
 | SEC-10 | Revoke a device and list active connections. | M |
 
-### 3.10 Account profiles (ACC)
+### 3.10 Cloud agent sessions (CLD)
+
+Cloud-hosted coding agents run on the provider's infrastructure instead of the user's machine. VCA shows them as session cards alongside local sessions and supports them **only through official, documented provider APIs**. Undocumented or reverse-engineered endpoints are never used.
+
+| ID | Requirement | Pri |
+|---|---|---|
+| CLD-01 | Cloud adapters for every provider with an official API (see the provider matrix in [architecture §5.1](architecture.md#51-cloud-agent-adapters)). | M |
+| CLD-02 | Cloud sessions appear as cards marked "Cloud", with the same states, notifications and voice flow as local sessions. | M |
+| CLD-03 | Start a new cloud session (choose provider, repository and prompt) where the provider API allows it. | M |
+| CLD-04 | Send follow-up messages and read progress (chat-style view) where the provider API allows it. Where it does not, show the latest status and an "Open in provider app" link. | M |
+| CLD-05 | Credentials are stored in the OS keychain on the server, or, for direct mode, in secure storage on the phone. Every credential is scoped to the minimum the provider allows. | M |
+| CLD-06 | **Direct mode:** the mobile app can reach cloud providers without going through the user's machine, so cloud sessions stay manageable while the machine is offline. Direct mode can be turned off. | S |
+| CLD-07 | Capability flags per provider (create, list, follow-up, progress, stop, approve plan) drive the UI, so missing capabilities are hidden instead of failing. | M |
+
+### 3.11 Account profiles (ACC)
 
 | ID | Requirement | Pri |
 |---|---|---|
@@ -180,14 +194,14 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 
 > Automatic rotation across accounts to evade provider usage limits is explicitly out of scope, because it would violate provider terms.
 
-### 3.11 Multiple machines (DEV)
+### 3.12 Multiple machines (DEV)
 
 | ID | Requirement | Pri |
 |---|---|---|
 | DEV-01 | Pair several machines with one mobile app and switch between them. | S |
 | DEV-02 | Aggregated view: alerts from all machines in one place. | S |
 
-### 3.12 Desktop app (DSK)
+### 3.13 Desktop app (DSK)
 
 | ID | Requirement | Pri |
 |---|---|---|
@@ -196,7 +210,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 | DSK-03 | Setup wizard covering agent detection, shell integration, connectivity provider, STT engine and pairing. | M |
 | DSK-04 | An unobtrusive "Support the project" link in the About and Settings screens (desktop and mobile). No nag screens, pop-ups or feature gating. | S |
 
-### 3.13 Internationalization (I18N)
+### 3.14 Internationalization (I18N)
 
 | ID | Requirement | Pri |
 |---|---|---|

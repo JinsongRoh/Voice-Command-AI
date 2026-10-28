@@ -118,6 +118,39 @@ pub trait AgentAdapter: Send + Sync {
 | Grok (xAI) | To be validated in M0 | To be validated in M0 | To be validated in M0 | To be validated in M0 |
 | Generic | Process name match | Output-pattern heuristics | None (tiers 1 and 3 only) | None |
 
+### 5.1 Cloud agent adapters
+
+Cloud agents have no local process, PTY or resource footprint, so they implement a separate trait:
+
+```rust
+#[async_trait]
+pub trait CloudAgentAdapter: Send + Sync {
+    fn provider(&self) -> CloudProvider;
+    fn capabilities(&self) -> CloudCapabilities; // create, list, follow_up, progress, stop, approve_plan
+    async fn list_sessions(&self, cred: &Credential) -> Result<Vec<CloudSession>>;
+    async fn create_session(&self, cred: &Credential, req: &CloudLaunch) -> Result<CloudSession>;
+    async fn send_message(&self, cred: &Credential, id: &CloudSessionId, text: &str) -> Result<()>;
+    async fn activity(&self, cred: &Credential, id: &CloudSessionId, since: Option<Cursor>) -> Result<ActivityPage>;
+    async fn stop(&self, cred: &Credential, id: &CloudSessionId) -> Result<()>;
+}
+```
+
+- **Polling and webhooks:** progress is polled with backoff (or received through webhooks where offered) and normalized into the same event model as local sessions.
+- **Where it runs:** by default, adapters run inside `vcad`. In direct mode (CLD-06), the same Rust code runs inside the mobile app.
+
+Provider matrix (official APIs only; status as researched on 2026-10-29, re-verified in M0):
+
+| Provider | Official API | Create | List | Follow-up | Progress | Notes |
+|---|---|---|---|---|---|---|
+| Google Jules | Jules REST API (v1alpha) | Yes | Yes | Yes (`sendMessage`) | Yes (activities) | Alpha; plan approval supported. |
+| Cursor Cloud Agents | Cloud Agents API (v0; v1 in beta) | Yes | Yes | Yes (`followup`) | Yes (conversation) | Dedicated API key. |
+| Devin | Devin API (v3) | Yes | Yes | Yes (messages) | Yes | Service-user key. |
+| GitHub Copilot cloud agent | Agent tasks REST API (public preview) | Yes | Yes | To be verified | Yes (progress tracking) | PAT or OAuth token. |
+| Claude Managed Agents | Claude API `/v1/sessions` (beta) | Yes | Yes | Yes (events) | Yes (events) | Billed to a Claude API key, not to a claude.ai subscription. Separate from Claude Code on the web. |
+| Claude Code on the web | Routine fire endpoint (experimental) | Start a saved routine only | No | No | No | Per-routine token. VCA can start a run and link to it; listing, follow-ups and progress have no public API yet. |
+| OpenAI Codex cloud | `codex cloud` CLI (no REST API) | Yes (`exec`) | Yes (`list --json`) | No | Status and diff | Driven through the CLI on the user's machine, so not available in direct mode. |
+| Antigravity, Grok | None found | — | — | — | — | Watched; added when an official API appears. |
+
 ## 6. Resource broker
 
 ```

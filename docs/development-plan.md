@@ -30,7 +30,7 @@
 | Workstream | Crates and apps | Covers |
 |---|---|---|
 | **W1 Core and sessions** | `vca-core`, `vca-server`, `vca-pty`, `vca-cli` | Daemon, session model, managed PTY, shell integration, command delivery tiers |
-| **W2 Agent adapters** | `vca-adapters` | Claude Code, Codex, Gemini CLI, Antigravity, Grok, Cursor CLI, Copilot CLI, Aider, opencode, Qwen Code, generic |
+| **W2 Agent adapters** | `vca-adapters` | Local: Claude Code, Codex, Gemini CLI, Antigravity, Grok, Cursor CLI, Copilot CLI, Aider, opencode, Qwen Code, generic. Cloud: Jules, Cursor Cloud Agents, Devin, Copilot cloud agent, Claude Managed Agents, Claude Code routines, Codex cloud |
 | **W3 Resource broker** | `vca-broker` | Metrics, admission control, policies, containment |
 | **W4 Speech** | `vca-speech`, `lexicon/` | STT engines, vocabulary engine, intent routing, TTS |
 | **W5 Network and security** | `vca-net` | Providers, Noise channel, pairing, TOTP, tokens, audit, kill switch, push |
@@ -50,6 +50,7 @@ Goal: retire the highest technical risks before building the product.
 | PoC-3 Agent signals | Can completion, waiting-for-input and permission requests be detected reliably? | Claude Code hooks and Codex `notify` produce events into the PoC daemon. The integration paths for Gemini CLI, Antigravity and Grok are documented. |
 | PoC-4 Admission control | Can a PreToolUse hook hold a heavy command until the broker grants a slot? | Two agents running `cargo build` concurrently are serialized by the broker with a 2-slot policy. |
 | PoC-5 Connectivity | Does a WebSocket stream (HTTP/1.1, 30 s heartbeat, resumable) survive each provider, including relay restarts? | 2-hour stream with p95 latency and reconnection time measured over Tailscale, Cloudflare Tunnel and LAN. Also measured over DNS Pilot P2P, via its existing Android binding, and over a DNS Pilot tunnel once `app` mode is available. |
+| PoC-7 Cloud APIs | Do the official cloud agent APIs behave as documented? | For each provider in the architecture matrix: create, list, follow-up and progress verified with a real account, with the capability flags confirmed. |
 | PoC-6 Mobile audio | Can a Tauri 2 mobile app capture audio with VAD and stream it? | Android and iOS builds capture and transcribe one utterance (local Whisper on the server and one cloud engine), including mixed-language speech. |
 
 **Deliverable:** an M0 report that updates the architecture document and confirms or revises the estimates.
@@ -60,7 +61,9 @@ Goal: retire the highest technical risks before building the product.
   - Production daemon with persistent session registry.
   - Shell integration installer (bash, zsh, fish, PowerShell).
   - Delivery tiers 1–3, with delivery acknowledgements.
-- **W2:** Claude Code and Codex adapters (discovery, events, launch, hooks).
+- **W2:**
+  - Claude Code and Codex local adapters (discovery, events, launch, hooks).
+  - Cloud adapter trait, plus the Jules, Cursor Cloud Agents and Devin adapters (full capability APIs).
 - **W4:** STT engine trait with local Whisper and one cloud engine, editable transcript, base lexicon for English plus 3 additional languages.
 - **W5:**
   - LAN, Tailscale and Cloudflare Tunnel providers.
@@ -93,6 +96,8 @@ Goal: retire the highest technical risks before building the product.
 
 - **W2:**
   - Gemini CLI, Antigravity and Grok adapters, plus the generic adapter.
+  - Cloud adapters for the Copilot cloud agent, Claude Managed Agents, Claude Code routines and Codex cloud (CLI).
+  - Direct mode (cloud adapters running in the mobile app).
   - Adapter SDK documentation for community contributions.
 - **W4:**
   - Project and personal lexicon layers, learning from transcript corrections, conflict handling.
