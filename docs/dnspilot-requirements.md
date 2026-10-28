@@ -1,6 +1,6 @@
 # DNS Pilot Integration
 
-> **Status:** Draft v0.6 (gap status updated 2026-10-29). Based on the DNS Pilot feature guide and the DNS Pilot team's answers to VCA's technical questionnaire (console 1.24.3, Agent 0.5.4 for Windows and 0.5.0 for Linux, 2026-10-29). Items marked *in progress* are being built by the DNS Pilot team and are not yet in production.
+> **Status:** Draft v0.7 (gap status updated 2026-10-29 from the DNS Pilot `vca-integration` development report; not yet deployed to production). Based on the DNS Pilot feature guide and the DNS Pilot team's answers to VCA's technical questionnaire (console 1.24.3, Agent 0.5.4 for Windows and 0.5.0 for Linux, 2026-10-29). Items marked *in progress* are being built by the DNS Pilot team and are not yet in production.
 
 DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tailscale, Cloudflare Tunnel, direct LAN and custom providers. This document covers four things:
 
@@ -71,6 +71,8 @@ These apply to VCA's own code regardless of DNS Pilot's roadmap.
 | C5 | **Resumable streams and fast reconnection are required.** Relay restarts and failovers drop connections. Sequence-numbered streams resume from the last offset (already in the architecture). | protocol |
 | C6 | **Use non-identifying tunnel hostnames.** Certificate Transparency logs publish every hostname. VCA generates random labels (for example `vca-k3x9q2.<domain>`) and never includes user names, machine names or project names. | setup wizard |
 | C7 | **Trust only `X-Forwarded-For`** for the client IP shown in the audit log. Ignore `X-Real-IP`. Treat the forwarded IP as informational, since VCA authenticates by device key. | `vca-server` audit |
+| C9 | **Treat `X-DNSPilot-Client-Id` and `X-DNSPilot-Client-Key` as informational.** Any local process can reach the loopback port and set these headers. VCA authenticates every device itself, through pairing keys and the Noise channel, and uses the headers only to cross-check audit records. | `vca-server` audit |
+| C10 | **Handle Agent restarts in the event stream.** The Agent's local event IDs restart from 1 when the Agent restarts. VCA detects the reset (an ID lower than the last one seen) and resynchronizes its tunnel state from `/v1/status` and `/v1/tunnels`. | `vca-net` DNS Pilot provider |
 | C8 | **The DNS Pilot P2P client is an optional, separately licensed component.** The default open-source build of VCA Mobile must compile and work without it. Release builds may include it through a feature flag, subject to a redistribution license from DNS Pilot. | `apps/mobile`, build system |
 
 ## 3. Integration plan
@@ -113,19 +115,19 @@ Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on e
 
 | # | Gap | Status at DNS Pilot | Needed by VCA |
 |---|---|---|---|
-| G1 | `app` access mode (mTLS public-key pinning, optional bearer token) | In progress | M2 |
+| G1 | `app` access mode (mTLS public-key pinning, optional bearer token) | **Done** (not yet deployed) | M2 |
 | G2a | Phone-side P2P client (gomobile binding for Android and iOS, redistributable) | Binding exists. Stability policy (semver, 30-day notice) in progress. iOS build needs a macOS build host. Redistribution license pending signature. | M2 |
 | G2b | Delegated P2P grants (phone without a DNS Pilot account) | Planned (second phase) | M3 |
-| G3 | 24-hour front-proxy timeout, always-flush streaming, graceful relay drain | In progress | M2 |
-| G4 | Push notification relay (APNs/FCM, end-to-end encrypted payloads) | In progress | M2 |
+| G3 | 24-hour front-proxy timeout, always-flush streaming, graceful relay drain | **Done** (not yet deployed) | M2 |
+| G4 | Push notification relay (APNs/FCM, end-to-end encrypted payloads) | Server done (not yet deployed). Needs APNs and FCM credentials and real-device tests. | M2 |
 | G5 | Relay regions in North America and Europe, latency-based selection, latency measurements | Not started | M4 (global launch) |
 | G6 | Code-signed Windows Agent, released and notarized macOS Agent | Build scripts ready. Signing certificates pending. | M4 |
-| G7 | Per-user local REST API, kill switch and event stream | In progress | M2 |
-| G8 | Per-connection access log and anomaly events | In progress | M2 |
+| G7 | Per-user local REST API, kill switch and event stream | **Done** (not yet deployed) | M2 |
+| G8 | Per-connection access log and anomaly events | **Done** (not yet deployed) | M2 |
 | G9 | Plans for open-source users and international payments | Paddle proposed as merchant of record. Contract and plan decision pending. | M4 |
 | G10 | Public English landing page and public API documentation (currently 404 and login-only, respectively) | Public help pages and a public OpenAPI subset (OAuth, tunnels, P2P, push) in progress. Landing page waits on pricing. | M4 |
-| G11 | OAuth device flow with `tunnels:*` and `p2p:*` scopes, so that `app`-mode tunnels can be created without interactive re-authentication | In progress | M2 |
-| G12 | API usage policy and brand guidelines for third-party open-source clients | Drafts in progress, legal review pending | Before DNS Pilot provider ships |
-| G13 | Strip client-supplied `X-Real-IP` | In progress (next Agent release) | — (VCA ignores it, see C7) |
+| G11 | OAuth device flow with `tunnels:*` and `p2p:*` scopes, so that `app`-mode tunnels can be created without interactive re-authentication | **Done** (not yet deployed) | M2 |
+| G12 | API usage policy and brand guidelines for third-party open-source clients | Drafts written, legal review pending | Before DNS Pilot provider ships |
+| G13 | Strip client-supplied `X-Real-IP` | **Done** (not yet deployed) | — (VCA ignores it, see C7) |
 | G14 | Agent-generated certificate keys (CSR on the Agent), so the console never holds tunnel private keys | Planned (after the first batch) | Nice to have (VCA relies on Noise, see C1) |
 | G15 | Relay and P2P fields in the public status API | **Done** (not yet deployed) | M2 (provider failover) |
