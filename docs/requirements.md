@@ -147,7 +147,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 
 | ID | Requirement | Pri |
 |---|---|---|
-| CON-01 | DNS Pilot provider: tunnel and DDNS through the DNS Pilot Agent (default). | M |
+| CON-01 | DNS Pilot provider (default): tunnel with app-token access first, then embedded P2P. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
 | CON-02 | Alternative providers: Tailscale, Cloudflare Tunnel and direct LAN. | S |
 | CON-03 | Connectivity diagnostics in the setup wizard (NAT type, reachability, recommended provider). | M |
 | CON-04 | Automatic reconnection, with the stream resuming without data loss. | M |
@@ -228,7 +228,7 @@ All features above ship in **v1.0**. Internal milestones:
 
 ## 6. Open questions
 
-1. DNS Pilot capabilities and API (pending the DNS Pilot specification).
+1. DNS Pilot gaps G1–G10, especially app-token tunnel access (G1) and the embeddable P2P SDK (G2). See [dnspilot-requirements.md](dnspilot-requirements.md).
 2. Exact native channels per agent (Codex app-server, Gemini CLI, Antigravity, Grok CLI). To be confirmed during M0.
 3. Feasibility of focus-free input into existing Windows Terminal sessions. To be confirmed during M0.
 4. Which usage data each agent exposes for account profiles.
