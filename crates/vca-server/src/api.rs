@@ -4,15 +4,17 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
 use vca_core::error::ErrorCode;
 use vca_core::{
-    ClientMsg, DeliveryStatus, Envelope, Error, PROTOCOL_VERSION, ServerMsg, SessionId,
+    ClientMsg, DeliveryStatus, Envelope, Error, PROTOCOL_VERSION, PairedDevice, ServerMsg,
+    SessionId,
 };
+use vca_net::Scope;
 
 use crate::events::{EventStream, StreamItem};
 use crate::sessions::{SessionManager, Update};
@@ -22,10 +24,30 @@ use crate::util::{error_text, lock};
 /// slows down its own event forwarding; other clients are unaffected.
 const OUTBOUND_CAPACITY: usize = 1024;
 
+/// A paired device behind a remote connection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeviceIdentity {
+    pub device_id: String,
+    pub scope: Scope,
+}
+
+/// Device administration, provided by the remote transport.
+pub trait DeviceAdmin: Send + Sync {
+    /// Paired devices; `current` marks the asking device.
+    fn list_devices(&self, current: Option<&str>) -> Result<Vec<PairedDevice>, Error>;
+    /// Returns `false` when the device was unknown or already revoked.
+    fn revoke_device(&self, device_id: &str) -> Result<bool, Error>;
+    /// Drops every remote connection and refuses new ones (SEC-09).
+    fn trip_kill_switch(&self, by: &str) -> Result<(), Error>;
+}
+
 /// One connected client.
 pub struct Client {
     pub id: u64,
     pub transport: &'static str,
+    /// Set for remote devices; local clients (the owner's CLI) have none
+    /// and are not restricted.
+    pub device: Option<DeviceIdentity>,
     out: mpsc::Sender<Envelope<ServerMsg>>,
     subs: Mutex<HashMap<SessionId, JoinHandle<()>>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -54,6 +76,7 @@ struct Inner {
     server_name: String,
     resources_interval: Duration,
     next_client: AtomicU64,
+    devices: OnceLock<Arc<dyn DeviceAdmin>>,
 }
 
 /// The API core shared by all transports. Cheap to clone.
@@ -67,6 +90,10 @@ fn error_msg(err: &Error) -> ServerMsg {
         code: err.code(),
         message: error_text(err),
     }
+}
+
+fn remote_off() -> ServerMsg {
+    error(ErrorCode::Unsupported, "the remote transport is off")
 }
 
 fn error(code: ErrorCode, message: impl Into<String>) -> ServerMsg {
@@ -84,8 +111,15 @@ impl Api {
                 server_name,
                 resources_interval,
                 next_client: AtomicU64::new(1),
+                devices: OnceLock::new(),
             }),
         }
+    }
+
+    /// Connects device administration (the remote transport). Without it,
+    /// device messages answer `Unsupported`.
+    pub fn set_device_admin(&self, admin: Arc<dyn DeviceAdmin>) {
+        let _ = self.inner.devices.set(admin);
     }
 
     pub fn sessions(&self) -> &SessionManager {
@@ -103,10 +137,21 @@ impl Api {
         &self,
         transport: &'static str,
     ) -> (Arc<Client>, mpsc::Receiver<Envelope<ServerMsg>>) {
+        self.connect_as(transport, None)
+    }
+
+    /// Registers a client for a paired device, whose requests are limited
+    /// to its scope.
+    pub fn connect_as(
+        &self,
+        transport: &'static str,
+        device: Option<DeviceIdentity>,
+    ) -> (Arc<Client>, mpsc::Receiver<Envelope<ServerMsg>>) {
         let (out, rx) = mpsc::channel(OUTBOUND_CAPACITY);
         let client = Arc::new(Client {
             id: self.inner.next_client.fetch_add(1, Ordering::Relaxed),
             transport,
+            device,
             out: out.clone(),
             subs: Mutex::new(HashMap::new()),
             tasks: Mutex::new(Vec::new()),
@@ -163,6 +208,19 @@ impl Api {
     pub async fn handle(&self, client: &Arc<Client>, env: Envelope<ClientMsg>) {
         let id = env.id;
         let mgr = &self.inner.mgr;
+        if let Some(device) = &client.device {
+            if !device.scope.permits(&env.body) {
+                let reply = error(
+                    ErrorCode::Forbidden,
+                    "this device is not allowed to do that; pair it with a wider scope",
+                );
+                client.send(id, reply).await;
+                return;
+            }
+        }
+        let current = client.device.as_ref().map(|d| d.device_id.as_str());
+        let by = current.unwrap_or("local");
+        let devices = self.inner.devices.get();
         let reply = match env.body {
             ClientMsg::Hello {
                 protocol_version, ..
@@ -257,14 +315,26 @@ impl Api {
                 ErrorCode::Unsupported,
                 "cloud sessions are not wired up yet",
             ),
-            ClientMsg::ListDevices | ClientMsg::RevokeDevice { .. } => error(
-                ErrorCode::Unsupported,
-                "device management needs the remote transport, which is not wired up yet",
-            ),
-            ClientMsg::KillSwitch => error(
-                ErrorCode::Unsupported,
-                "the kill switch needs the remote transport, which is not wired up yet",
-            ),
+            ClientMsg::ListDevices => match devices.map(|d| d.list_devices(current)) {
+                Some(Ok(devices)) => ServerMsg::Devices { devices },
+                Some(Err(err)) => error_msg(&err),
+                None => remote_off(),
+            },
+            ClientMsg::RevokeDevice { device_id } => {
+                match devices.map(|d| d.revoke_device(&device_id)) {
+                    Some(Ok(true)) => ServerMsg::Ok,
+                    Some(Ok(false)) => {
+                        error(ErrorCode::NotFound, format!("no active device {device_id}"))
+                    }
+                    Some(Err(err)) => error_msg(&err),
+                    None => remote_off(),
+                }
+            }
+            ClientMsg::KillSwitch => match devices.map(|d| d.trip_kill_switch(by)) {
+                Some(Ok(())) => ServerMsg::Ok,
+                Some(Err(err)) => error_msg(&err),
+                None => remote_off(),
+            },
             ClientMsg::GetResources => match mgr.broker() {
                 Some(broker) => {
                     client.wants_resources.store(true, Ordering::Relaxed);

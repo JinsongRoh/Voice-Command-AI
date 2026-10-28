@@ -94,6 +94,7 @@ async fn start_server(dir: &Path, name: &str) -> Server {
         ..Config::default()
     };
     config.discovery.enabled = false;
+    config.remote.bind = "127.0.0.1:0".into();
     config.sessions.heuristics_interval_ms = 100;
     config.sessions.exited_retention_secs = 60;
     config.broker.policy_path = Some(policy);
@@ -493,19 +494,29 @@ async fn run_attach_lookup_and_unsupported_messages() {
         .unwrap();
     assert!(matches!(resp, LocalResponse::Attach { endpoint: e, .. } if e == endpoint));
 
-    for msg in [ClientMsg::KillSwitch, ClientMsg::ListDevices] {
-        let resp = client.api(msg).await.unwrap();
-        assert!(
-            matches!(
-                resp,
-                ServerMsg::Error {
-                    code: ErrorCode::Unsupported,
-                    ..
-                }
-            ),
-            "{resp:?}"
-        );
-    }
+    let resp = client
+        .api(ClientMsg::LaunchCloud {
+            request: vca_core::CloudLaunchRequest {
+                provider: vca_core::CloudProvider::Jules,
+                repository: "o/r".into(),
+                prompt: "p".into(),
+                display_name: None,
+            },
+        })
+        .await
+        .unwrap();
+    assert!(
+        matches!(
+            resp,
+            ServerMsg::Error {
+                code: ErrorCode::Unsupported,
+                ..
+            }
+        ),
+        "{resp:?}"
+    );
+    let devices = client.api(ClientMsg::ListDevices).await.unwrap();
+    assert_eq!(devices, ServerMsg::Devices { devices: vec![] });
     let resources = client.api(ClientMsg::GetResources).await.unwrap();
     assert!(
         matches!(resources, ServerMsg::Resources { .. }),
@@ -527,6 +538,7 @@ async fn second_server_on_same_endpoint_is_refused() {
     let server = start_server(dir.path(), "single").await;
     let mut config = Config::default();
     config.discovery.enabled = false;
+    config.remote.enabled = false;
     let second = Server::start(
         Options {
             control: Some(server.control_endpoint.clone()),

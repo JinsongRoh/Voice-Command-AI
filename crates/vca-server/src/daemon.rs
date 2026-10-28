@@ -15,6 +15,7 @@ use crate::control;
 use crate::devws::DevWs;
 use crate::events::LogLimits;
 use crate::local::LocalServer;
+use crate::remote::Remote;
 use crate::sessions::{ManagerConfig, SessionManager};
 use crate::workspace::WorkspaceRoots;
 
@@ -48,6 +49,7 @@ pub struct Server {
     pub paths: Paths,
     pub control_endpoint: PathBuf,
     pub dev_ws: Option<DevWs>,
+    pub remote: Option<Arc<Remote>>,
     local: Option<LocalServer>,
     discovery: Option<tokio::task::JoinHandle<()>>,
 }
@@ -129,9 +131,21 @@ impl Server {
             config.server_name(),
             Duration::from_secs(config.resources.push_interval_secs),
         );
-        let local = LocalServer::bind(&control_endpoint, api.clone())
+        let remote_slot: crate::local::RemoteSlot = Arc::default();
+        let local = LocalServer::bind(&control_endpoint, api.clone(), Arc::clone(&remote_slot))
             .await
             .with_context(|| format!("listening on {}", control_endpoint.display()))?;
+
+        let remote = if config.remote.enabled {
+            let data_dir = &paths.data_dir;
+            let remote = Remote::start(api.clone(), &config.remote, config.server_name(), data_dir)
+                .await
+                .context("starting the remote transport")?;
+            let _ = remote_slot.set(Arc::clone(&remote));
+            Some(remote)
+        } else {
+            None
+        };
 
         let discovery = config.discovery.enabled.then(|| {
             tokio::spawn(crate::discovery::discovery_loop(
@@ -162,6 +176,7 @@ impl Server {
             paths,
             control_endpoint,
             dev_ws,
+            remote,
             local: Some(local),
             discovery,
         })
@@ -172,6 +187,9 @@ impl Server {
     pub async fn shutdown(mut self) {
         self.local.take();
         self.dev_ws.take();
+        if let Some(remote) = self.remote.take() {
+            remote.stop();
+        }
         if let Some(d) = self.discovery.take() {
             d.abort();
         }

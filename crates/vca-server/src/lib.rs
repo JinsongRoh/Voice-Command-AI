@@ -16,6 +16,7 @@ mod discovery;
 pub mod events;
 mod hooks;
 mod local;
+pub mod remote;
 pub mod sessions;
 mod util;
 pub mod workspace;

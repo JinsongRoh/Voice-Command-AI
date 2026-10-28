@@ -82,6 +82,26 @@ pub enum LocalRequest {
     Run { id: u64, request: RunRequest },
     /// Answered with [`LocalResponse::Attach`].
     Attach { id: u64, session_id: SessionId },
+    /// Issues a one-time pairing code for a new device. `scope` is `view`,
+    /// `command` or `admin`; `endpoints` override the configured ones.
+    /// Answered with [`LocalResponse::Pairing`].
+    Pair {
+        id: u64,
+        scope: String,
+        #[serde(default)]
+        endpoints: Vec<String>,
+    },
+    /// Starts TOTP enrollment. Answered with [`LocalResponse::TotpPending`].
+    TotpBegin { id: u64, account: String },
+    /// Finishes the pending enrollment with a code from the authenticator
+    /// app. Answered with [`LocalResponse::TotpEnrolled`].
+    TotpConfirm { id: u64, code: String },
+    /// Re-allows remote connections after the kill switch was tripped.
+    /// Answered with [`LocalResponse::Done`].
+    KillSwitchReset { id: u64 },
+    /// State of the remote transport. Answered with
+    /// [`LocalResponse::RemoteStatus`].
+    RemoteStatus { id: u64 },
 }
 
 impl LocalRequest {
@@ -90,7 +110,12 @@ impl LocalRequest {
             Self::Api { id, .. }
             | Self::Hook { id, .. }
             | Self::Run { id, .. }
-            | Self::Attach { id, .. } => *id,
+            | Self::Attach { id, .. }
+            | Self::Pair { id, .. }
+            | Self::TotpBegin { id, .. }
+            | Self::TotpConfirm { id, .. }
+            | Self::KillSwitchReset { id }
+            | Self::RemoteStatus { id } => *id,
         }
     }
 }
@@ -118,6 +143,40 @@ pub enum LocalResponse {
         session_id: SessionId,
         endpoint: PathBuf,
     },
+    /// A pairing code: show `uri` as a QR code. Single use; expires at
+    /// `expires_at` (Unix seconds).
+    Pairing {
+        id: u64,
+        uri: String,
+        expires_at: u64,
+        server_fingerprint: String,
+    },
+    /// Add `otpauth_uri` (or `secret_base32`) to an authenticator app, then
+    /// confirm with a code.
+    TotpPending {
+        id: u64,
+        otpauth_uri: String,
+        secret_base32: String,
+    },
+    /// Enrollment done. The backup codes are shown once and not stored.
+    TotpEnrolled {
+        id: u64,
+        backup_codes: Vec<String>,
+    },
+    RemoteStatus {
+        id: u64,
+        enabled: bool,
+        listen: Option<String>,
+        server_fingerprint: Option<String>,
+        totp_enrolled: bool,
+        require_totp: bool,
+        kill_switch_tripped: bool,
+        paired_devices: usize,
+        connections: usize,
+    },
+    Done {
+        id: u64,
+    },
     /// A local request failed (API errors use `Api` with
     /// [`ServerMsg::Error`]).
     Error {
@@ -134,6 +193,11 @@ impl LocalResponse {
             | Self::Hook { id, .. }
             | Self::Run { id, .. }
             | Self::Attach { id, .. }
+            | Self::Pairing { id, .. }
+            | Self::TotpPending { id, .. }
+            | Self::TotpEnrolled { id, .. }
+            | Self::RemoteStatus { id, .. }
+            | Self::Done { id }
             | Self::Error { id, .. } => *id,
         }
     }

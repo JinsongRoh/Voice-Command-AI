@@ -34,8 +34,17 @@
 //! # policy_path = "/path/to/policies.toml"  (default: <config dir>/policies.toml)
 //!
 //! # Development only: an unauthenticated-by-device, token-protected
-//! # WebSocket on 127.0.0.1 so the UI can be tested before the encrypted
-//! # remote transport exists. Never enable this on a shared machine.
+//! # Paired devices: Noise-encrypted WebSocket. Providers (tunnel, VPN, LAN
+//! # forwarding) expose this port; it binds loopback by default.
+//! [remote]
+//! enabled = true
+//! bind = "127.0.0.1:47800"
+//! require_totp = true
+//! # URLs written into pairing QR codes (default: ws://<bind>/v1/ws).
+//! # endpoints = ["wss://vca-k3x9q2.example.net/v1/ws"]
+//!
+//! # WebSocket on 127.0.0.1 for UI development, without device pairing.
+//! # Never enable this on a shared machine.
 //! [dev_ws]
 //! enabled = false
 //! port = 47801
@@ -161,6 +170,34 @@ pub struct BrokerSection {
     pub socket: Option<PathBuf>,
 }
 
+/// The remote transport for paired devices (`vca-net`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RemoteConfig {
+    pub enabled: bool,
+    /// Listen address. Loopback by default: connectivity providers forward
+    /// to it, and every connection is authenticated inside Noise anyway.
+    pub bind: String,
+    /// Require a TOTP code (or backup code) to sign in after pairing.
+    pub require_totp: bool,
+    /// Heartbeat interval in seconds (at most 30).
+    pub heartbeat_secs: u64,
+    /// Endpoints written into pairing QR codes. Empty: `ws://<bind>/v1/ws`.
+    pub endpoints: Vec<String>,
+}
+
+impl Default for RemoteConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            bind: vca_net::DEFAULT_BIND_ADDR.into(),
+            require_totp: true,
+            heartbeat_secs: 20,
+            endpoints: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct DevWsConfig {
@@ -194,6 +231,7 @@ pub struct Config {
     pub sessions: SessionsConfig,
     pub resources: ResourcesConfig,
     pub broker: BrokerSection,
+    pub remote: RemoteConfig,
     pub dev_ws: DevWsConfig,
     /// Log filter in `tracing_subscriber::EnvFilter` syntax; `RUST_LOG` wins.
     pub log: Option<String>,

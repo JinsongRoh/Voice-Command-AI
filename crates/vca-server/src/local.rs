@@ -2,6 +2,7 @@
 
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use interprocess::local_socket::tokio::{Listener, Stream, prelude::*};
@@ -15,7 +16,77 @@ use crate::api::Api;
 use crate::control::{
     ControlClient, LocalRequest, LocalResponse, read_line, split_stream, write_line,
 };
+use crate::remote::Remote;
 use crate::util::error_text;
+
+/// The remote transport, once started (it starts after the local channel).
+pub type RemoteSlot = Arc<OnceLock<Arc<Remote>>>;
+
+/// Owner-only administration of the remote transport.
+fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
+    let id = req.id();
+    let Some(remote) = remote.get() else {
+        if let LocalRequest::RemoteStatus { id } = req {
+            return LocalResponse::RemoteStatus {
+                id,
+                enabled: false,
+                listen: None,
+                server_fingerprint: None,
+                totp_enrolled: false,
+                require_totp: false,
+                kill_switch_tripped: false,
+                paired_devices: 0,
+                connections: 0,
+            };
+        }
+        return LocalResponse::error(id, ErrorCode::Unsupported, "the remote transport is off");
+    };
+    let fail = |err: vca_core::Error| LocalResponse::error(id, err.code(), error_text(&err));
+    match req {
+        LocalRequest::Pair {
+            scope, endpoints, ..
+        } => match remote.pair(&scope, endpoints) {
+            Ok(p) => LocalResponse::Pairing {
+                id,
+                uri: p.uri,
+                expires_at: p.expires_at,
+                server_fingerprint: p.server_fingerprint,
+            },
+            Err(err) => fail(err),
+        },
+        LocalRequest::TotpBegin { account, .. } => {
+            let (otpauth_uri, secret_base32) = remote.totp_begin(&account);
+            LocalResponse::TotpPending {
+                id,
+                otpauth_uri,
+                secret_base32,
+            }
+        }
+        LocalRequest::TotpConfirm { code, .. } => match remote.totp_confirm(&code) {
+            Ok(backup_codes) => LocalResponse::TotpEnrolled { id, backup_codes },
+            Err(err) => fail(err),
+        },
+        LocalRequest::KillSwitchReset { .. } => match remote.reset_kill_switch("local") {
+            Ok(()) => LocalResponse::Done { id },
+            Err(err) => fail(err),
+        },
+        LocalRequest::RemoteStatus { .. } => {
+            let s = remote.status();
+            LocalResponse::RemoteStatus {
+                id,
+                enabled: true,
+                listen: Some(s.listen.to_string()),
+                server_fingerprint: Some(s.server_fingerprint),
+                totp_enrolled: s.totp_enrolled,
+                require_totp: s.require_totp,
+                kill_switch_tripped: s.kill_switch_tripped,
+                paired_devices: s.paired_devices,
+                connections: s.connections,
+            }
+        }
+        _ => LocalResponse::error(id, ErrorCode::InvalidRequest, "unexpected request"),
+    }
+}
 
 /// Listens on the control endpoint until dropped.
 pub struct LocalServer {
@@ -35,7 +106,7 @@ impl Drop for LocalServer {
 impl LocalServer {
     /// Binds `endpoint` and starts serving. Fails if another vcad already
     /// listens there.
-    pub async fn bind(endpoint: &Path, api: Api) -> io::Result<Self> {
+    pub async fn bind(endpoint: &Path, api: Api, remote: RemoteSlot) -> io::Result<Self> {
         if ControlClient::connect_timeout(endpoint, Duration::from_millis(500))
             .await
             .is_ok()
@@ -49,7 +120,7 @@ impl LocalServer {
             ));
         }
         let listener = listener(endpoint)?;
-        let task = tokio::spawn(accept_loop(listener, api));
+        let task = tokio::spawn(accept_loop(listener, api, remote));
         Ok(Self {
             endpoint: endpoint.to_owned(),
             task,
@@ -108,13 +179,13 @@ fn listener(endpoint: &Path) -> io::Result<Listener> {
         .create_tokio()
 }
 
-async fn accept_loop(listener: Listener, api: Api) {
+async fn accept_loop(listener: Listener, api: Api, remote: RemoteSlot) {
     let mut conns = JoinSet::new();
     loop {
         tokio::select! {
             conn = listener.accept() => match conn {
                 Ok(stream) => {
-                    conns.spawn(serve(stream, api.clone()));
+                    conns.spawn(serve(stream, api.clone(), Arc::clone(&remote)));
                 }
                 Err(e) => {
                     tracing::warn!("control accept failed: {e}");
@@ -126,7 +197,7 @@ async fn accept_loop(listener: Listener, api: Api) {
     }
 }
 
-async fn serve(stream: Stream, api: Api) {
+async fn serve(stream: Stream, api: Api, remote: RemoteSlot) {
     let (recv, mut send) = split_stream(stream);
     let mut recv = BufReader::new(recv);
     let (client, mut outbound) = api.connect("local");
@@ -213,6 +284,10 @@ async fn serve(stream: Stream, api: Api) {
                         format!("no session {session_id}"),
                     ),
                 };
+                let _ = local_tx.send(resp).await;
+            }
+            other => {
+                let resp = admin(&remote, other);
                 let _ = local_tx.send(resp).await;
             }
         }

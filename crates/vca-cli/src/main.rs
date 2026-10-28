@@ -11,6 +11,7 @@ mod error;
 mod hook;
 mod hooks_cmd;
 mod output;
+mod remote_cmd;
 mod run;
 
 use std::ffi::OsString;
@@ -117,8 +118,56 @@ enum Cmd {
         #[arg(long)]
         foreground: bool,
     },
+    /// Create a single-use pairing code (QR) for a phone or another device.
+    Pair {
+        /// What the device may do: view, command or admin.
+        #[arg(long, default_value = "command")]
+        scope: String,
+        /// Endpoint URL to put in the code (repeatable; default: configured).
+        #[arg(long = "url", value_name = "URL")]
+        urls: Vec<String>,
+        /// Print only the link, without the QR code.
+        #[arg(long)]
+        no_qr: bool,
+    },
+    /// Two-factor sign-in for paired devices.
+    Totp {
+        #[command(subcommand)]
+        action: TotpCmd,
+    },
+    /// List paired devices.
+    Devices {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Revoke a paired device and close its connections.
+    Revoke { device_id: String },
+    /// Drop every remote connection and refuse new ones (or undo it).
+    KillSwitch {
+        /// Allow remote connections again.
+        #[arg(long)]
+        reset: bool,
+    },
+    /// Show the state of the remote transport.
+    Remote,
     /// Print version information.
     Version,
+}
+
+#[derive(Debug, Subcommand)]
+enum TotpCmd {
+    /// Enroll an authenticator app.
+    Enroll {
+        /// Account label shown in the authenticator app.
+        #[arg(long, default_value = "owner")]
+        account: String,
+        /// Confirm with this code instead of asking for it.
+        #[arg(long)]
+        code: Option<String>,
+        /// Print only the secret, without the QR code.
+        #[arg(long)]
+        no_qr: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -218,6 +267,19 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
         } => hooks_cmd::hooks(action, agent, scope, dir).await,
         Cmd::ShellInit { shell } => shell_init(&shell),
         Cmd::Daemon { foreground } => daemon::daemon(endpoint, control, foreground).await,
+        Cmd::Pair { scope, urls, no_qr } => remote_cmd::pair(endpoint, &scope, urls, !no_qr).await,
+        Cmd::Totp {
+            action:
+                TotpCmd::Enroll {
+                    account,
+                    code,
+                    no_qr,
+                },
+        } => remote_cmd::totp_enroll(endpoint, &account, code, !no_qr).await,
+        Cmd::Devices { json } => remote_cmd::devices(endpoint, json).await,
+        Cmd::Revoke { device_id } => remote_cmd::revoke(endpoint, &device_id).await,
+        Cmd::KillSwitch { reset } => remote_cmd::kill_switch(endpoint, reset).await,
+        Cmd::Remote => remote_cmd::status(endpoint).await,
         Cmd::Version => {
             println!(
                 "vca {} (protocol {PROTOCOL_VERSION})",
