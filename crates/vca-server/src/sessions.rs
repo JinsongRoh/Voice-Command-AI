@@ -478,9 +478,10 @@ impl SessionManager {
         opts: SpawnOptions,
     ) -> Result<SessionInfo, Error> {
         let id = SessionId::new();
-        let opts = opts
-            .env(SESSION_ENV, id.0.as_str())
-            .env(CONTROL_ENV, self.inner.cfg.control_endpoint.as_os_str());
+        let opts = opts.env(SESSION_ENV, id.0.as_str()).env(
+            CONTROL_ENV,
+            crate::control::endpoint_env_value(&self.inner.cfg.control_endpoint),
+        );
         let pty = PtySession::spawn(opts.clone())
             .map_err(|e| api_error(ErrorCode::InvalidRequest, e.to_string()))?;
         let endpoint = self.attach_endpoint(&id);

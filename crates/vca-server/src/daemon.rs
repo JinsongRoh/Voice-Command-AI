@@ -74,6 +74,7 @@ impl Server {
             .control
             .clone()
             .or_else(|| config.control_socket.clone())
+            .map(|p| control::parse_endpoint(&p.to_string_lossy()))
             .unwrap_or_else(control::default_endpoint);
 
         let policy_path = config

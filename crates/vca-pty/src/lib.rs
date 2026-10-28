@@ -21,6 +21,8 @@ mod cpr;
 mod error;
 pub mod input;
 mod modes;
+#[cfg(any(windows, test))]
+mod resolve;
 mod ring;
 mod screen;
 mod session;

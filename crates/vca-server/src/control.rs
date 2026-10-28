@@ -162,8 +162,8 @@ fn user_name() -> String {
 ///   `/tmp/vca-<user>/control.sock` when `XDG_RUNTIME_DIR` is unset.
 /// * Windows: `\\.\pipe\vca-control-<user>`.
 pub fn default_endpoint() -> PathBuf {
-    if let Some(p) = std::env::var_os(CONTROL_ENV).filter(|p| !p.is_empty()) {
-        return PathBuf::from(p);
+    if let Some(p) = std::env::var(CONTROL_ENV).ok().filter(|p| !p.is_empty()) {
+        return parse_endpoint(&p);
     }
     let user = user_name();
     if cfg!(windows) {
@@ -175,6 +175,43 @@ pub fn default_endpoint() -> PathBuf {
         };
         dir.join("control.sock")
     }
+}
+
+/// Parses an endpoint given on the command line or in [`CONTROL_ENV`].
+///
+/// On Windows a bare name (no slash or backslash) means the named pipe
+/// `\\.\pipe\<name>`. Git Bash, which Claude Code uses to run hooks on
+/// Windows, can rewrite `\\.\pipe\x` in the environment to `\.\pipe\x` or
+/// `//./pipe/x`, so those forms are accepted too.
+pub fn parse_endpoint(value: &str) -> PathBuf {
+    if cfg!(windows) {
+        if !value.contains(['/', '\\']) {
+            return PathBuf::from(format!(r"\\.\pipe\{value}"));
+        }
+        let rest = value.trim_start_matches(['/', '\\']);
+        let prefix = rest.get(..7).map(str::to_ascii_lowercase);
+        if matches!(prefix.as_deref(), Some(r".\pipe\") | Some("./pipe/")) {
+            let name = &rest[7..];
+            if !name.is_empty() && !name.contains(['/', '\\']) {
+                return PathBuf::from(format!(r"\\.\pipe\{name}"));
+            }
+        }
+    }
+    PathBuf::from(value)
+}
+
+/// How an endpoint is written into [`CONTROL_ENV`] for child processes: the
+/// bare pipe name on Windows (it survives Git Bash), the path elsewhere.
+pub fn endpoint_env_value(endpoint: &Path) -> std::ffi::OsString {
+    if cfg!(windows) {
+        let s = endpoint.to_string_lossy();
+        if let Some(name) = s.strip_prefix(r"\\.\pipe\") {
+            if !name.is_empty() && !name.contains(['/', '\\']) {
+                return name.into();
+            }
+        }
+    }
+    endpoint.as_os_str().to_owned()
 }
 
 /// Writes one message as a JSON line.
@@ -357,6 +394,26 @@ mod tests {
         assert_eq!(v["body"]["type"], "send_input");
         let back: LocalRequest = serde_json::from_value(v).unwrap();
         assert_eq!(back, req);
+    }
+
+    #[test]
+    fn endpoints_from_the_environment() {
+        if cfg!(windows) {
+            let pipe = PathBuf::from(r"\\.\pipe\vca-x");
+            for v in [
+                r"\\.\pipe\vca-x",
+                r"\.\pipe\vca-x",
+                "//./pipe/vca-x",
+                "vca-x",
+            ] {
+                assert_eq!(parse_endpoint(v), pipe, "{v}");
+            }
+            assert_eq!(endpoint_env_value(&pipe), "vca-x");
+        } else {
+            let p = PathBuf::from("/run/user/1/vca/control.sock");
+            assert_eq!(parse_endpoint("/run/user/1/vca/control.sock"), p);
+            assert_eq!(endpoint_env_value(&p), p.as_os_str());
+        }
     }
 
     #[test]

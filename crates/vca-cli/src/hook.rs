@@ -95,7 +95,9 @@ fn run(endpoint: Option<PathBuf>, args: Vec<OsString>) -> anyhow::Result<HookRes
     let Some((agent, rest)) = args.split_first() else {
         bail!("missing agent name");
     };
-    let endpoint = endpoint.unwrap_or_else(vca_server::control::default_endpoint);
+    let endpoint = endpoint
+        .map(|p| vca_server::control::parse_endpoint(&p.to_string_lossy()))
+        .unwrap_or_else(vca_server::control::default_endpoint);
     match agent.as_str() {
         "claude" => claude(&endpoint, rest),
         "codex" => codex(&endpoint, rest),

@@ -177,7 +177,8 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
     let control = cli.endpoint.as_deref();
     let endpoint = cli
         .endpoint
-        .clone()
+        .as_deref()
+        .map(|p| vca_server::control::parse_endpoint(&p.to_string_lossy()))
         .unwrap_or_else(vca_server::control::default_endpoint);
     let endpoint = endpoint.as_path();
     match cli.command {

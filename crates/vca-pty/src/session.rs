@@ -172,9 +172,10 @@ impl SpawnOptions {
         self
     }
 
-    fn command(&self) -> CommandBuilder {
-        let mut cmd = CommandBuilder::new(&self.program);
-        cmd.args(&self.args);
+    fn command(&self) -> Result<CommandBuilder, PtyError> {
+        let (program, args) = self.program_and_args()?;
+        let mut cmd = CommandBuilder::new(program);
+        cmd.args(&args);
         if let Some(cwd) = &self.cwd {
             cmd.cwd(cwd);
         }
@@ -187,7 +188,34 @@ impl SpawnOptions {
         if cmd.get_env("TERM").is_none_or(|t| t.is_empty()) {
             cmd.env("TERM", "xterm-256color");
         }
-        cmd
+        Ok(cmd)
+    }
+
+    /// The program to start, looked up like `cmd.exe` does (see
+    /// [`crate::resolve`]).
+    #[cfg(windows)]
+    fn program_and_args(&self) -> Result<(OsString, Vec<OsString>), PtyError> {
+        let lookup = |key: &str| {
+            self.env
+                .iter()
+                .rev()
+                .find(|(k, _)| k.to_string_lossy().eq_ignore_ascii_case(key))
+                .map(|(_, v)| v.clone())
+                .or_else(|| std::env::var_os(key))
+        };
+        let r = crate::resolve::resolve(
+            &self.program,
+            &self.args,
+            lookup("PATH").as_deref(),
+            lookup("PATHEXT").as_deref(),
+            lookup("ComSpec").as_deref(),
+        )?;
+        Ok((r.program, r.args))
+    }
+
+    #[cfg(not(windows))]
+    fn program_and_args(&self) -> Result<(OsString, Vec<OsString>), PtyError> {
+        Ok((self.program.clone(), self.args.clone()))
     }
 }
 
@@ -269,7 +297,7 @@ impl PtySession {
             .map_err(|e| PtyError::Spawn(e.to_string()))?;
         let mut child = pair
             .slave
-            .spawn_command(opts.command())
+            .spawn_command(opts.command()?)
             .map_err(|e| PtyError::Spawn(format!("{:?}: {e}", opts.program)))?;
         // Close our copy of the slave so that EOF is seen when the child exits.
         drop(pair.slave);

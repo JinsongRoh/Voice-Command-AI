@@ -319,3 +319,38 @@ async fn starts_without_screen_tracking() {
     session.kill().unwrap();
     wait_exit(&session).await;
 }
+
+/// npm-style launchers are batch files; they run through `cmd.exe`, also
+/// from a directory with spaces and with arguments that contain spaces.
+#[cfg(windows)]
+#[tokio::test]
+async fn batch_files_start_with_their_arguments() {
+    let dir = tempfile::tempdir().unwrap();
+    let sub = dir.path().join("dir with space");
+    std::fs::create_dir(&sub).unwrap();
+    let script = sub.join("tool.cmd");
+    std::fs::write(&script, "@echo off\r\necho ARGS[%1][%2]\r\n").unwrap();
+    let session =
+        PtySession::spawn(vca_pty::SpawnOptions::new(&script).args(["x", "a b"])).unwrap();
+    let out = wait_for(&session, "ARGS[").await;
+    let line = out
+        .lines()
+        .find(|l| l.contains("ARGS["))
+        .unwrap_or_default()
+        .to_owned();
+    let mut sub = session.subscribe_from(0);
+    let mut acc = String::new();
+    read_until(&mut sub, &mut acc, "]\r").await;
+    assert!(acc.contains("ARGS[x][\"a b\"]"), "{line:?} / {acc:?}");
+    wait_exit(&session).await;
+}
+
+#[cfg(windows)]
+#[test]
+fn batch_arguments_with_cmd_metacharacters_are_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let script = dir.path().join("tool.cmd");
+    std::fs::write(&script, "@echo off\r\n").unwrap();
+    let err = PtySession::spawn(vca_pty::SpawnOptions::new(&script).arg("a&calc")).unwrap_err();
+    assert!(err.to_string().contains("cannot be passed safely"), "{err}");
+}

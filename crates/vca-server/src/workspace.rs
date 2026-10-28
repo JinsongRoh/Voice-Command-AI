@@ -71,11 +71,22 @@ impl WorkspaceRoots {
                 format!("{} is outside the allowed workspace roots", dir.display()),
             ));
         }
-        Ok(canonical)
+        Ok(without_verbatim_prefix(canonical))
     }
 
     fn allows(&self, path: &Path) -> bool {
         self.roots.iter().any(|root| path.starts_with(root))
+    }
+}
+
+/// Drops the `\\?\` prefix that `canonicalize` adds on Windows to plain
+/// drive paths (`\\?\C:\x` becomes `C:\x`), so that paths shown to users
+/// and passed to agents look normal. UNC and other verbatim forms are kept.
+fn without_verbatim_prefix(path: PathBuf) -> PathBuf {
+    let s = path.to_string_lossy();
+    match s.strip_prefix(r"\\?\") {
+        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
+        _ => path,
     }
 }
 
