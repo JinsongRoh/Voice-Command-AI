@@ -8,7 +8,28 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+futures = "0.3"
+interprocess = { version = "2.4.7", features = ["tokio"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sysinfo = "0.36.1"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { version = "0.7.20", features = ["codec"] }
+toml = "1.1.8"
+tracing.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 vca-core.workspace = true
 
 [lints]
 workspace = true
+
+[target."cfg(unix)".dependencies]
+nix = { version = "0.31.3", features = ["signal", "process", "user"] }
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_System_Diagnostics_ToolHelp", "Win32_Security"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+tokio = { workspace = true, features = ["test-util", "full"] }
