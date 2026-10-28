@@ -57,6 +57,14 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 - [Architecture](docs/architecture.md)
 - [DNS Pilot integration requirements](docs/dnspilot-requirements.md)
 
+## Supporting the project
+
+Voice Command AI is free and open source, and every feature works without paying anyone. If you want to support its development, you can:
+
+- **Use DNS Pilot as your connectivity provider.** DNS Pilot is developed by the same team that maintains VCA, and its subscriptions help fund VCA's development. It is entirely optional: Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on equal footing.
+- **Contribute** code, agent adapters, translations or vocabulary for your language.
+- **Star the repository** and share it with other developers.
+
 ## License
 
 [MIT](LICENSE)
