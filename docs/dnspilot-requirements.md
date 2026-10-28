@@ -1,6 +1,6 @@
 # DNS Pilot Integration Requirements
 
-> **Status:** Draft v0.3. Based on the DNS Pilot feature guide (console 1.24.2, 2026-10-28). Pricing and plan limits on the DNS Pilot side are not final.
+> **Status:** Draft v0.4. Based on the DNS Pilot feature guide (console 1.24.2, 2026-10-28). Pricing and plan limits on the DNS Pilot side are not final. The DNS Pilot team has agreed to close the gaps below; implementation is tracked on the DNS Pilot side.
 
 DNS Pilot is VCA's default connectivity provider. This document covers four things:
 
@@ -51,9 +51,14 @@ VCA Mobile (embedded DPT/2 client) ◄──QUIC direct / relay fallback──�
 - The service never gets a public hostname, which shrinks the attack surface.
 - This path could be offered on lower-priced plans, which lowers the barrier for open-source users.
 
-### 2.3 Fallbacks
+### 2.3 Other providers (bring your own)
 
-Tailscale, Cloudflare Tunnel and direct LAN stay available through VCA's provider abstraction, for users without a DNS Pilot plan or in regions far from a relay.
+DNS Pilot tunnels are a paid feature. Users who prefer not to use DNS Pilot can choose another provider through VCA's provider abstraction:
+
+- built-in providers: Tailscale, Cloudflare Tunnel and direct LAN;
+- a **custom provider**: any tunnel or VPN that can forward to `127.0.0.1:47800`.
+
+With any provider other than DNS Pilot, the user is responsible for configuring that provider securely. VCA's own pairing, authentication and Noise end-to-end encryption always stay in force, whatever the provider.
 
 ## 3. Gap analysis
 
@@ -63,7 +68,7 @@ Tailscale, Cloudflare Tunnel and direct LAN stay available through VCA's provide
 | **G2** | **No embeddable P2P client.** DPT/2 requires a full Agent on both sides. There is no iOS client, and Android is a reference viewer only. | Blocks Phase B. | High |
 | G3 | WebSocket and long-lived connection support through tunnels is not documented (upgrade handling, idle timeouts, maximum connection duration). | Live streaming and notifications rely on it. | High |
 | G4 | No **push notification relay** (APNs/FCM). Webhooks go to chat tools only. | Background notifications on mobile. | High |
-| G5 | Only one relay region (Seoul). | High latency for users in the Americas, Europe and elsewhere in Asia. | High (global launch) |
+| G5 | Relay regions cover Seoul and Tokyo only. | High latency for users in the Americas and Europe. | High (global launch) |
 | G6 | The macOS Agent is not released, and the Windows Agent is in preview. | macOS is a primary VCA platform. | High |
 | G7 | There is no documented **local Agent API** (localhost) for detecting the Agent and toggling tunnels, and no programmatic kill switch. | Setup wizard automation and VCA kill switch. | Medium |
 | G8 | No per-request **tunnel access log** or new-location alerts for tunnel visitors (only demo-link visits are logged). | VCA security alerts (SEC-08). | Medium |
@@ -120,7 +125,7 @@ Document and guarantee the following:
 
 ### R5. Additional relay regions (closes G5)
 
-At least North America, Europe and one more Asia-Pacific region. The Agent selects a region automatically by latency.
+In addition to Seoul and Tokyo: North America (west and east), Europe and Southeast Asia. The Agent selects a region automatically by latency and fails over on outage.
 
 ### R6. Platform coverage (closes G6)
 
