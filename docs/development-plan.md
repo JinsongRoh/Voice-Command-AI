@@ -49,7 +49,7 @@ Goal: retire the highest technical risks before building the product.
 | PoC-2 Existing-terminal injection | Can text be delivered to sessions **not** started by VCA? | Results table per terminal (tmux, WezTerm, kitty, iTerm2, Windows Terminal or conhost), each marked works, partial or no. |
 | PoC-3 Agent signals | Can completion, waiting-for-input and permission requests be detected reliably? | Claude Code hooks and Codex `notify` produce events into the PoC daemon. The integration paths for Gemini CLI, Antigravity and Grok are documented. |
 | PoC-4 Admission control | Can a PreToolUse hook hold a heavy command until the broker grants a slot? | Two agents running `cargo build` concurrently are serialized by the broker with a 2-slot policy. |
-| PoC-5 Connectivity | Does a WebSocket stream survive each provider? | 1-hour stream with p95 latency measured over Tailscale, Cloudflare Tunnel, LAN and (when available) DNS Pilot tunnel and P2P. |
+| PoC-5 Connectivity | Does a WebSocket stream (HTTP/1.1, 30 s heartbeat, resumable) survive each provider, including relay restarts? | 2-hour stream with p95 latency and reconnection time measured over Tailscale, Cloudflare Tunnel and LAN. Also measured over DNS Pilot P2P, via its existing Android binding, and over a DNS Pilot tunnel once `app` mode is available. |
 | PoC-6 Mobile audio | Can a Tauri 2 mobile app capture audio with VAD and stream it? | Android and iOS builds capture and transcribe one utterance (local Whisper on the server and one cloud engine), including mixed-language speech. |
 
 **Deliverable:** an M0 report that updates the architecture document and confirms or revises the estimates.
@@ -141,10 +141,15 @@ Goal: retire the highest technical risks before building the product.
 
 | DNS Pilot item | Needed by | If late |
 |---|---|---|
-| WebSocket and long-lived connection guarantees, local Agent API | M2 | Ship the DNS Pilot provider later; the other providers are unaffected. |
-| App access mode (tunnel) and P2P client SDK | M2 | Same as above. |
+| `app` access mode, OAuth device flow, local REST API, 24-hour proxy timeout | M2 | Ship the DNS Pilot provider later; the other providers are unaffected. |
+| Redistributable P2P mobile binding (Android and iOS) | M2 | DNS Pilot P2P stays out of release builds; tunnel and other providers remain. |
 | Push relay | M2 | In-app notifications only, or a temporary self-hosted push option. |
-| macOS Agent, Agent module support | M4 | Standalone installers remain the primary distribution. |
+| Delegated P2P grants | M3 | The phone signs in to the user's DNS Pilot organization instead. |
+| Code-signed and notarized Agent, Agent module support, international payments, API usage policy | M4 | Standalone installers remain the primary distribution; the DNS Pilot provider is labeled preview. |
+
+See [dnspilot-requirements.md](dnspilot-requirements.md) for the full gap list.
+
+**Build rule:** the DNS Pilot P2P client is a separately licensed binary. It is included only behind a build feature flag, and the default open-source build compiles and runs without it.
 
 ## 8. Risk register
 

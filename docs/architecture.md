@@ -140,7 +140,11 @@ pub trait AgentAdapter: Send + Sync {
 
 ## 7. Protocol
 
-- **Transport:** WebSocket over TLS through the connectivity provider. Messages are encoded with MessagePack.
+- **Transport:**
+  - WebSocket over HTTP/1.1 and TLS, through the connectivity provider. Messages are encoded with MessagePack.
+  - The server listens with plain HTTP on loopback (`127.0.0.1:47800`). Providers terminate TLS in front of it.
+  - VCA does not depend on HTTP/2 or HTTP/3, so it works with every provider.
+- **Heartbeat:** application-level ping in both directions at least every 30 s, so idle-timeout proxies keep the connection open.
 - **Application-layer E2E encryption:** a Noise protocol (`XX` pattern) session between the paired device key and the server key. The tunnel operator only sees ciphertext.
 - **Message families:** `session.*` (list, update, create, control), `cmd.*` (send, ack), `stream.*` (subscribe, chunk, resume from offset), `notify.*`, `res.*` (metrics, queue, policy), `auth.*` and `audit.*`.
 - **Resumable streams:** every stream chunk has a sequence number, so clients resume from the last offset after reconnecting.
@@ -153,7 +157,7 @@ pub trait AgentAdapter: Send + Sync {
 | Authentication | Device key signature, plus TOTP at sign-in and for step-up actions. |
 | Sessions | Access tokens valid for 15 minutes. Refresh tokens are bound to the device key and revocable. |
 | Authorization | Workspace allow-list, plus per-device permission scopes (view only / command / admin). |
-| Transport | Tunnel TLS, plus Noise end-to-end encryption. |
+| Transport | Provider TLS is treated as an **untrusted transport**, because a provider may hold the TLS keys. Confidentiality and integrity come from the Noise channel between the paired device and the server, which is mandatory for every provider. |
 | Detection | Audit log, new-device and new-location alerts, and rate limiting with lockout. |
 | Response | Kill switch (local, mobile, DNS Pilot console) and device revocation. |
 | Secrets | OS keychain (Windows Credential Manager, macOS Keychain, Secret Service), plus output masking in streams. |
