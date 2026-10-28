@@ -50,8 +50,8 @@ Goal: retire the highest technical risks before building the product.
 | PoC-3 Agent signals | Can completion, waiting-for-input and permission requests be detected reliably? | Claude Code hooks and Codex `notify` produce events into the PoC daemon. The integration paths for Gemini CLI, Antigravity and Grok are documented. |
 | PoC-4 Admission control | Can a PreToolUse hook hold a heavy command until the broker grants a slot? | Two agents running `cargo build` concurrently are serialized by the broker with a 2-slot policy. |
 | PoC-5 Connectivity | Does a WebSocket stream (HTTP/1.1, 30 s heartbeat, resumable) survive each provider, including relay restarts? | 2-hour stream with p95 latency and reconnection time measured over Tailscale, Cloudflare Tunnel and LAN. Also measured over DNS Pilot P2P, via its existing Android binding, and over a DNS Pilot tunnel once `app` mode is available. |
-| PoC-7 Cloud APIs | Do the official cloud agent APIs behave as documented? | For each provider in the architecture matrix: create, list, follow-up and progress verified with a real account, with the capability flags confirmed. |
 | PoC-6 Mobile audio | Can a Tauri 2 mobile app capture audio with VAD and stream it? | Android and iOS builds capture and transcribe one utterance (local Whisper on the server and one cloud engine), including mixed-language speech. |
+| PoC-7 Cloud APIs | Do the official cloud agent APIs behave as documented? | For each provider in the architecture matrix: create, list, follow-up and progress verified with a real account, with the capability flags confirmed. |
 
 **Deliverable:** an M0 report that updates the architecture document and confirms or revises the estimates.
 
@@ -171,4 +171,4 @@ See [dnspilot-requirements.md](dnspilot-requirements.md) for the full gap list.
 
 1. Fold in the DNS Pilot answers and finalize the requirements, architecture and this plan.
 2. Approve the plan.
-3. Start M0: create the Cargo workspace skeleton, CI, and the six PoCs.
+3. Start M0: create the Cargo workspace skeleton, CI, and the seven PoCs.
