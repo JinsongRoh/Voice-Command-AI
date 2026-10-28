@@ -3,11 +3,12 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use vca_adapters::HookDecision;
 use vca_adapters::claude::hook_event::ClaudeHookPayload;
+use vca_broker::contain::{ContainResult, Priority, ProcessControl, Scope};
 use vca_core::error::ErrorCode;
 use vca_core::{
     AgentKind, ClientMsg, DeliveryStatus, Input, LaunchRequest, PROTOCOL_VERSION, ServerMsg,
@@ -18,6 +19,30 @@ use vca_server::control::{ControlClient, LocalRequest, LocalResponse, RunRequest
 use vca_server::daemon::{Options, Server};
 
 const TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Process control that never touches a real process. The end-to-end tests
+/// run on developer machines with other work in progress, so the broker
+/// must not be able to suspend or terminate anything there.
+struct NoProcessControl;
+
+impl ProcessControl for NoProcessControl {
+    fn set_priority(&self, root: u32, _: Scope, _: Priority) -> ContainResult {
+        Ok(vec![root])
+    }
+    fn suspend(&self, root: u32, _: Scope) -> ContainResult {
+        Ok(vec![root])
+    }
+    fn resume(&self, root: u32, _: Scope) -> ContainResult {
+        Ok(vec![root])
+    }
+    fn terminate(&self, root: u32, _: Scope, _: Duration) -> ContainResult {
+        panic!("the end-to-end tests must never terminate processes through the broker ({root})")
+    }
+}
+
+fn no_process_control() -> Option<Arc<dyn ProcessControl>> {
+    Some(Arc::new(NoProcessControl))
+}
 
 fn fake_agent() -> PathBuf {
     static PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -78,6 +103,7 @@ async fn start_server(dir: &Path, name: &str) -> Server {
             config_file: Some(dir.join("config.toml")),
             control: Some(control_endpoint(dir, name)),
             data_dir: Some(dir.join("data")),
+            process_control: no_process_control(),
         },
         Some(config),
     )
@@ -506,6 +532,7 @@ async fn second_server_on_same_endpoint_is_refused() {
             control: Some(server.control_endpoint.clone()),
             config_file: Some(dir.path().join("none.toml")),
             data_dir: None,
+            process_control: no_process_control(),
         },
         Some(config),
     )

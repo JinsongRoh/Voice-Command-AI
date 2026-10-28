@@ -694,13 +694,18 @@ mod tests {
 
     #[tokio::test]
     async fn started_broker_publishes_snapshots() {
-        let broker = Broker::start(BrokerConfig {
-            monitor: MonitorConfig {
-                interval: Duration::from_millis(50),
+        // A recorder instead of the OS control: the test registers its own
+        // process, and must never suspend anything on a developer machine.
+        let broker = Broker::start_with_control(
+            BrokerConfig {
+                monitor: MonitorConfig {
+                    interval: Duration::from_millis(50),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
-            ..Default::default()
-        });
+            Arc::new(Recorder::default()),
+        );
         broker.register_session("me".into(), std::process::id());
         let mut rx = broker.subscribe_snapshots().unwrap();
         for _ in 0..3 {

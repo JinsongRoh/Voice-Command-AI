@@ -85,7 +85,6 @@ pub(crate) struct Managed {
 }
 
 pub(crate) struct Observed {
-    pub pid: Option<u32>,
     pub terminal: Option<TerminalTarget>,
 }
 
@@ -696,29 +695,21 @@ impl SessionManager {
                 Ok(())
             }
             SessionAction::Stop => match &session.kind {
+                // Only the process VCA started is killed. Closing its
+                // pseudo-console ends the console processes attached to it;
+                // the broker's tree termination is deliberately not used
+                // until it can only reach processes VCA owns.
                 Kind::Managed(m) => {
                     let pty = lock(&m.pty).clone();
-                    if let Some(broker) = &self.inner.broker {
-                        // Children first, so builds the agent started go too.
-                        let _ = broker.terminate_session(id, Scope::ChildrenOnly).await;
-                    }
                     pty.kill()
                         .map_err(|e| api_error(ErrorCode::Internal, e.to_string()))?;
                     Ok(())
                 }
-                Kind::Observed(_) => {
-                    let Some(broker) = &self.inner.broker else {
-                        return Err(api_error(
-                            ErrorCode::Unsupported,
-                            "the resource broker is off",
-                        ));
-                    };
-                    broker
-                        .terminate_session(id, Scope::WholeTree)
-                        .await
-                        .map_err(broker_err)?;
-                    Ok(())
-                }
+                // VCA never terminates processes it did not start.
+                Kind::Observed(_) => Err(api_error(
+                    ErrorCode::Unsupported,
+                    "sessions VCA did not start cannot be stopped from VCA",
+                )),
             },
             SessionAction::Restart => self.restart(&session).await,
         }
@@ -813,12 +804,10 @@ impl SessionManager {
     }
 
     pub(crate) fn insert_observed(&self, info: SessionInfo, observed: Observed) -> Arc<Session> {
-        let id = info.id.clone();
-        let pid = observed.pid;
-        let session = self.new_session(id.clone(), info, Kind::Observed(observed));
-        if let (Some(broker), Some(pid)) = (&self.inner.broker, pid) {
-            broker.register_session(id, pid);
-        }
+        // Observed sessions are not registered with the broker, so neither
+        // autonomous containment nor user actions can reach processes VCA
+        // did not start.
+        let session = self.new_session(info.id.clone(), info, Kind::Observed(observed));
         self.insert(Arc::clone(&session));
         session
     }

@@ -98,13 +98,7 @@ pub async fn discovery_loop(
                 unread: 0,
                 preview: None,
             };
-            let session = mgr.insert_observed(
-                info,
-                Observed {
-                    pid: Some(pid),
-                    terminal,
-                },
-            );
+            let session = mgr.insert_observed(info, Observed { terminal });
             *lock(&session.agent_session_id) = d.agent_session_id.clone();
             if d.transcript_path.is_some() {
                 mgr.follow_transcript(&session, SessionLocator::from(&d));

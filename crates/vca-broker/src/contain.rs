@@ -637,3 +637,55 @@ mod tests {
         ));
     }
 }
+
+/// Tests that terminate real processes on Windows. They only run when
+/// `VCA_PROCESS_CONTROL_TESTS=1`, which CI sets on its disposable VMs;
+/// never run them on a workstation with other work in progress.
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use std::process::Command;
+    use std::time::{Duration, Instant};
+
+    use super::{OsProcessControl, ProcessControl, Scope};
+    use crate::proctree::current_tree;
+
+    fn allowed() -> bool {
+        let ok = std::env::var("VCA_PROCESS_CONTROL_TESTS").as_deref() == Ok("1");
+        if !ok {
+            eprintln!("skipped: set VCA_PROCESS_CONTROL_TESTS=1 (isolated VMs only)");
+        }
+        ok
+    }
+
+    #[test]
+    fn terminate_children_only_ends_own_tree() {
+        if !allowed() {
+            return;
+        }
+        let mut root = Command::new("cmd")
+            .args(["/c", "ping -n 30 127.0.0.1 >NUL"])
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let kids = loop {
+            let kids = current_tree().descendants(root.id());
+            if !kids.is_empty() {
+                break kids;
+            }
+            assert!(Instant::now() < deadline, "child did not start");
+            std::thread::sleep(Duration::from_millis(50));
+        };
+        let me = std::process::id();
+        assert!(!kids.contains(&me));
+        let affected = OsProcessControl
+            .terminate(root.id(), Scope::ChildrenOnly, Duration::from_secs(1))
+            .unwrap();
+        assert!(!affected.contains(&root.id()));
+        assert!(
+            affected.iter().all(|p| kids.contains(p)),
+            "{affected:?} vs {kids:?}"
+        );
+        // cmd exits once ping is gone.
+        root.wait().unwrap();
+    }
+}

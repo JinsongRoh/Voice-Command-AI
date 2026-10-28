@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
-use vca_broker::contain::Scope;
+use vca_broker::contain::{ProcessControl, Scope};
 use vca_broker::ipc::IpcEndpoint;
 use vca_broker::{Broker, BrokerConfig, Policy};
 
@@ -19,11 +19,25 @@ use crate::sessions::{ManagerConfig, SessionManager};
 use crate::workspace::WorkspaceRoots;
 
 /// Command-line overrides for [`Server::start`].
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Options {
     pub config_file: Option<PathBuf>,
     pub control: Option<PathBuf>,
     pub data_dir: Option<PathBuf>,
+    /// Replaces the OS process control of the broker (tests use a fake so
+    /// that no real process is ever suspended or terminated).
+    pub process_control: Option<Arc<dyn ProcessControl>>,
+}
+
+impl std::fmt::Debug for Options {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Options")
+            .field("config_file", &self.config_file)
+            .field("control", &self.control)
+            .field("data_dir", &self.data_dir)
+            .field("process_control", &self.process_control.is_some())
+            .finish()
+    }
 }
 
 /// A running server. Dropping it stops listening; call
@@ -69,11 +83,15 @@ impl Server {
             .unwrap_or_else(|| paths.policy_file());
         let policy = Policy::load(&policy_path)
             .with_context(|| format!("loading {}", policy_path.display()))?;
-        let mut broker = Broker::start(BrokerConfig {
+        let broker_config = BrokerConfig {
             policy,
             terminate_grace: Duration::from_secs(config.shutdown.grace_secs),
             ..BrokerConfig::default()
-        });
+        };
+        let mut broker = match &opts.process_control {
+            Some(control) => Broker::start_with_control(broker_config, Arc::clone(control)),
+            None => Broker::start(broker_config),
+        };
         if let Some(socket) = &config.broker.socket {
             let s = socket.to_string_lossy();
             let endpoint = if cfg!(windows) && !s.contains(['/', '\\']) {
