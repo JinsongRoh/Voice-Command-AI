@@ -24,7 +24,7 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | `vca-cloud` | Done | 38 | Cloud adapters. Copilot, Claude Managed Agents, Claude Code routines and Codex cloud were checked against official sources. **Jules, Cursor and Devin field names are unverified** (docs were blocked in the cloud session). |
 | `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNS Pilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNS Pilot JSON fields are placeholders in `dnspilot/contract.rs`. |
 | `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Tauri shells not created yet. |
-| `vca-server` (`vcad`) | Done for §6 (local transports only) | 22 | Session manager, API, local control channel, hooks with admission, discovery, dev WebSocket. Remote transport, cloud, providers and speech are not wired yet (§4 steps 3–4). |
+| `vca-server` (`vcad`) | §6 done; remote transport wired (§4 step 3) | 28 (Windows) | Session manager, API, local control channel, hooks with admission, discovery, Job Objects (Windows), `vca-net` remote transport (pairing, TOTP, scopes, revoke, kill switch, audit). Cloud, providers and speech are not wired yet (§4 step 4). |
 | `vca-cli` (`vca`) | Done | 28 | All §6 commands. Hooks fail open (checked against a missing vcad). |
 
 ## 3. Known issues
@@ -44,7 +44,7 @@ Windows keeps a process's parent pid after the parent exits and reuses pids, and
 - Observed sessions are neither stoppable nor registered with the broker.
 - Tests use fake process controls.
 
-**Rule:** tests that terminate or suspend real processes run only with `VCA_PROCESS_CONTROL_TESTS=1`, which is set in CI (disposable VMs). Never set it on a workstation. Follow-up: put managed sessions in a Job Object so that containment can only reach processes VCA started, then restore tree termination for `Stop`.
+**Rule:** tests that terminate or suspend real processes run only with `VCA_PROCESS_CONTROL_TESTS=1`, which is set in CI (disposable VMs). Never set it on a workstation. Done in `cca8d75`: on Windows each managed session has its own Job Object, and `Stop` terminates that job. CI checks this (`stop_ends_processes_the_agent_started`).
 
 ### 3.3 Other items
 - `vca-adapters`: WezTerm, kitty, iTerm2 and Windows console injection are unverified on real machines.
@@ -61,11 +61,21 @@ Windows keeps a process's parent pid after the parent exits and reuses pids, and
   - the exit code reaches the terminal (`/exit 5` showed code 5).
 - `ping`, `ls`, `resources` and `stop` against a live vcad.
 
-Not verified yet:
-- Claude Code hooks installed through `vca hooks install` (user-scope installation was avoided on the shared machine).
-- `vca run -- codex`.
-- iTerm2 and other terminals.
-- Linux and macOS (CI only).
+Verified later on the same machine (task 3 session):
+- **Claude Code hooks, project-local only** (installed in a temporary project; a user-scope install would affect every session on a shared machine).
+  - The real SessionStart hook reached vcad. A/B test against a project without hooks: heuristics stopped for the hooked session.
+  - A Notification hook run through Git Bash produced a notification event.
+  - Found and fixed: Git Bash rewrote `VCA_CONTROL=\\.\pipe\...`, so the hook could not reach vcad.
+- **`codex` 0.153.4 through API `Launch`**: it starts and accepts focus-free input.
+  - Found and fixed: portable-pty picked npm's extensionless `codex` script instead of `codex.cmd`.
+  - The trust dialog was not answered, because answering writes to the global `~/.codex/config.toml`.
+- **Remote transport against a live vcad**: `vca remote`, `vca pair` (terminal QR), `vca devices` and `vca kill-switch [--reset]` work; the listener is bound to 127.0.0.1 only.
+- **Linux tests** run in WSL2 Ubuntu 24.04, isolated from Windows processes. They found Windows-only lookup tests running on Linux (fixed).
+
+Still unverified:
+- Codex `notify` installation: it only supports the global config.
+- iTerm2 and macOS on real hardware.
+- A real phone client (needs the Tauri shell, task 5).
 
 ## 4. Next steps (in order)
 
