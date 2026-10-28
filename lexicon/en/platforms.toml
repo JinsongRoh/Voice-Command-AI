@@ -1,0 +1,111 @@
+# English base lexicon: Operating systems, runtimes and servers.
+# Format: see lexicon/README.md.
+language = "en"
+category = "platform"
+
+[[entry]]
+term = "Linux"
+tags = ["linux"]
+weight = 1.2
+
+[[entry]]
+term = "macOS"
+variants = ["mac os", "mac o s", "mac oh s"]
+tags = ["macos"]
+weight = 1.2
+
+[[entry]]
+term = "Windows"
+tags = ["windows"]
+
+[[entry]]
+term = "Ubuntu"
+tags = ["linux"]
+
+[[entry]]
+term = "Debian"
+tags = ["linux"]
+
+[[entry]]
+term = "Fedora"
+tags = ["linux"]
+
+[[entry]]
+term = "Arch Linux"
+variants = ["arch linux"]
+tags = ["linux"]
+
+[[entry]]
+term = "Alpine Linux"
+variants = ["alpine linux"]
+tags = ["docker"]
+
+[[entry]]
+term = "iOS"
+variants = ["i o s", "eye os"]
+tags = ["swift"]
+weight = 1.2
+
+[[entry]]
+term = "iPadOS"
+variants = ["i pad os"]
+tags = ["swift"]
+
+[[entry]]
+term = "Android"
+tags = ["kotlin"]
+
+[[entry]]
+term = "Apache"
+tags = ["web"]
+
+[[entry]]
+term = "Tomcat"
+variants = ["tom cat"]
+tags = ["java"]
+
+[[entry]]
+term = "Jenkins"
+tags = ["ci"]
+
+[[entry]]
+term = "GitHub Codespaces"
+variants = ["code spaces", "codespaces"]
+tags = ["git"]
+
+[[entry]]
+term = "Raspberry Pi"
+variants = ["raspberry pie"]
+tags = ["hardware"]
+
+[[entry]]
+term = "CUDA"
+variants = ["cooda", "c u d a"]
+tags = ["gpu"]
+weight = 1.2
+
+[[entry]]
+term = "ROCm"
+variants = ["rock m", "r o c m"]
+tags = ["gpu"]
+
+[[entry]]
+term = "Apple Silicon"
+variants = ["apple silicon"]
+tags = ["macos"]
+
+[[entry]]
+term = "M1"
+variants = ["m one"]
+tags = ["macos"]
+weight = 0.5
+
+[[entry]]
+term = "x86"
+variants = ["x eighty six", "x 86"]
+tags = ["hardware"]
+
+[[entry]]
+term = "ARM64"
+variants = ["arm sixty four", "arm 64"]
+tags = ["hardware"]

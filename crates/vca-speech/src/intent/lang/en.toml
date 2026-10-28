@@ -1,0 +1,57 @@
+# English intent table.
+#
+# Format (same for every language):
+# - `actions.<key>`: phrases that express the action. Keys: select, pause,
+#   resume, stop, restart, show_resources, approve, deny, read_last_output,
+#   run_template.
+# - `session_words`, `current_words`, `template_words`: vocabulary for targets.
+# - `numbers`: spoken numbers and ordinals (digits are always understood).
+# - `fillers`: words ignored when deciding whether anything is left over.
+# Matching is case-insensitive; the longest phrase wins.
+language = "en"
+
+session_words = ["session", "sessions", "terminal", "tab", "card", "window", "agent"]
+current_words = ["this one", "this", "current", "current one", "it", "that one"]
+template_words = ["template", "templates", "macro"]
+fillers = [
+    "please", "the", "a", "an", "now", "right now", "immediately", "to", "can you",
+    "could you", "would you", "will you", "hey", "ok", "okay", "for me", "number",
+    "go ahead and", "and", "just", "again", "back", "of", "me", "us",
+    "what's", "is", "are", "my", "our", "thanks", "thank you", "vca",
+]
+
+[actions]
+select = ["switch to", "switch", "select", "go to", "focus", "focus on", "jump to", "move to", "open", "show session", "bring up"]
+pause = ["pause", "hold", "suspend", "freeze"]
+resume = ["resume", "unpause", "un-pause", "unfreeze", "wake up"]
+stop = ["stop", "kill", "terminate", "abort", "halt", "end", "shut down"]
+restart = ["restart", "relaunch", "reboot", "reload", "start over"]
+show_resources = ["show resources", "resources", "resource usage", "show resource usage", "cpu usage", "memory usage", "system status", "show usage", "how busy"]
+approve = ["approve", "yes", "allow", "accept", "confirm", "go ahead", "grant", "yes approve", "permit"]
+deny = ["deny", "no", "reject", "decline", "refuse", "don't allow", "do not allow", "block"]
+read_last_output = ["read last output", "read the last output", "read output", "read it", "read the output", "what did it say", "last output", "read back", "read the result", "read last message"]
+run_template = ["run template", "use template", "execute template", "run the template", "apply template", "run macro"]
+
+[numbers]
+"one" = 1
+"two" = 2
+"three" = 3
+"four" = 4
+"five" = 5
+"six" = 6
+"seven" = 7
+"eight" = 8
+"nine" = 9
+"ten" = 10
+"eleven" = 11
+"twelve" = 12
+"first" = 1
+"second" = 2
+"third" = 3
+"fourth" = 4
+"fifth" = 5
+"sixth" = 6
+"seventh" = 7
+"eighth" = 8
+"ninth" = 9
+"tenth" = 10

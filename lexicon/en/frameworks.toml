@@ -1,0 +1,372 @@
+# English base lexicon: Frameworks and libraries.
+# Format: see lexicon/README.md.
+language = "en"
+category = "framework"
+
+[[entry]]
+term = "React"
+tags = ["react"]
+weight = 1.5
+
+[[entry]]
+term = "React Native"
+variants = ["react native"]
+tags = ["react"]
+
+[[entry]]
+term = "Next.js"
+variants = ["next js", "next jay s", "nextjs"]
+tags = ["react"]
+weight = 1.3
+
+[[entry]]
+term = "Vue.js"
+variants = ["view js", "vue js", "view jay s"]
+tags = ["vue"]
+weight = 1.2
+
+[[entry]]
+term = "Vue"
+tags = ["vue"]
+
+[[entry]]
+term = "Nuxt"
+variants = ["nucks", "nuxt js"]
+tags = ["vue"]
+
+[[entry]]
+term = "Angular"
+variants = ["angular js"]
+tags = ["angular"]
+
+[[entry]]
+term = "Svelte"
+variants = ["svelt"]
+tags = ["svelte"]
+
+[[entry]]
+term = "SvelteKit"
+variants = ["svelte kit", "svelt kit"]
+tags = ["svelte"]
+
+[[entry]]
+term = "SolidJS"
+variants = ["solid js"]
+tags = ["solid"]
+
+[[entry]]
+term = "Astro"
+tags = ["web"]
+
+[[entry]]
+term = "Remix"
+tags = ["react"]
+
+[[entry]]
+term = "Vite"
+variants = ["veet", "vit", "vite js"]
+tags = ["javascript"]
+weight = 1.2
+
+[[entry]]
+term = "Node.js"
+variants = ["node js", "node jay s", "nodejs"]
+tags = ["javascript"]
+weight = 1.5
+
+[[entry]]
+term = "Deno"
+variants = ["dee no", "deeno"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Bun"
+variants = ["bun js"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Express"
+variants = ["express js"]
+tags = ["javascript"]
+
+[[entry]]
+term = "NestJS"
+variants = ["nest js"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Fastify"
+variants = ["fast if y", "fastify js"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Tailwind CSS"
+variants = ["tailwind", "tail wind", "tail wind css"]
+tags = ["web"]
+weight = 1.2
+
+[[entry]]
+term = "shadcn/ui"
+variants = ["shad c n", "shad cn", "shadcn ui", "shad c n ui"]
+tags = ["react"]
+weight = 1.2
+
+[[entry]]
+term = "Redux"
+variants = ["re ducks"]
+tags = ["react"]
+
+[[entry]]
+term = "Zustand"
+variants = ["zoo stand", "zu stand"]
+tags = ["react"]
+
+[[entry]]
+term = "TanStack Query"
+variants = ["tan stack query", "tan stack"]
+tags = ["react"]
+
+[[entry]]
+term = "React Query"
+tags = ["react"]
+
+[[entry]]
+term = "Jest"
+tags = ["testing"]
+
+[[entry]]
+term = "Vitest"
+variants = ["vi test", "vee test", "vitest"]
+tags = ["testing"]
+
+[[entry]]
+term = "Playwright"
+variants = ["play wright", "play right"]
+tags = ["testing"]
+weight = 1.2
+
+[[entry]]
+term = "Cypress"
+tags = ["testing"]
+
+[[entry]]
+term = "Storybook"
+variants = ["story book"]
+tags = ["react"]
+
+[[entry]]
+term = "Electron"
+tags = ["desktop"]
+
+[[entry]]
+term = "Tauri"
+variants = ["tow ree", "tauri app"]
+tags = ["desktop"]
+weight = 1.2
+
+[[entry]]
+term = "Flutter"
+tags = ["dart"]
+
+[[entry]]
+term = "Jetpack Compose"
+variants = ["jet pack compose"]
+tags = ["kotlin"]
+
+[[entry]]
+term = "SwiftUI"
+variants = ["swift u i", "swift ui"]
+tags = ["swift"]
+
+[[entry]]
+term = "UIKit"
+variants = ["u i kit", "ui kit"]
+tags = ["swift"]
+
+[[entry]]
+term = "Django"
+variants = ["jango", "d jango"]
+tags = ["python"]
+weight = 1.2
+
+[[entry]]
+term = "Flask"
+tags = ["python"]
+
+[[entry]]
+term = "FastAPI"
+variants = ["fast api", "fast a p i"]
+tags = ["python"]
+weight = 1.2
+
+[[entry]]
+term = "Pydantic"
+variants = ["pie dantic", "pi dantic"]
+tags = ["python"]
+
+[[entry]]
+term = "pandas"
+tags = ["python"]
+
+[[entry]]
+term = "NumPy"
+variants = ["num pie", "numb pie", "num py"]
+tags = ["python"]
+weight = 1.2
+
+[[entry]]
+term = "SciPy"
+variants = ["sci pie", "sigh pie"]
+tags = ["python"]
+
+[[entry]]
+term = "PyTorch"
+variants = ["pie torch", "py torch", "pi torch"]
+tags = ["python"]
+weight = 1.3
+
+[[entry]]
+term = "TensorFlow"
+variants = ["tensor flow"]
+tags = ["python"]
+
+[[entry]]
+term = "JAX"
+tags = ["python"]
+
+[[entry]]
+term = "scikit-learn"
+variants = ["sci kit learn", "scikit learn", "psychic learn"]
+tags = ["python"]
+
+[[entry]]
+term = "Hugging Face"
+variants = ["hugging face"]
+tags = ["ai"]
+
+[[entry]]
+term = "Transformers"
+tags = ["ai"]
+weight = 0.6
+
+[[entry]]
+term = "LangChain"
+variants = ["lang chain"]
+tags = ["ai"]
+
+[[entry]]
+term = "LlamaIndex"
+variants = ["llama index"]
+tags = ["ai"]
+
+[[entry]]
+term = "Spring Boot"
+variants = ["spring boot"]
+tags = ["java"]
+
+[[entry]]
+term = "Rails"
+tags = ["ruby"]
+
+[[entry]]
+term = "Laravel"
+variants = ["lara vel"]
+tags = ["php"]
+
+[[entry]]
+term = "Phoenix"
+tags = ["elixir"]
+
+[[entry]]
+term = "Tokio"
+variants = ["toki o"]
+tags = ["rust"]
+weight = 1.2
+
+[[entry]]
+term = "Axum"
+variants = ["axe um", "ax um"]
+tags = ["rust"]
+
+[[entry]]
+term = "Actix"
+variants = ["act ix", "actix web"]
+tags = ["rust"]
+
+[[entry]]
+term = "Serde"
+variants = ["sir day", "ser day", "sir dee", "serdy"]
+tags = ["rust"]
+weight = 1.2
+
+[[entry]]
+term = "Clap"
+tags = ["rust"]
+weight = 0.6
+
+[[entry]]
+term = "anyhow"
+variants = ["any how"]
+tags = ["rust"]
+
+[[entry]]
+term = "thiserror"
+tags = ["rust"]
+
+[[entry]]
+term = "reqwest"
+variants = ["request crate"]
+tags = ["rust"]
+
+[[entry]]
+term = "Diesel"
+tags = ["rust"]
+
+[[entry]]
+term = "SQLx"
+variants = ["sql x", "sequel x", "s q l x"]
+tags = ["rust"]
+
+[[entry]]
+term = "Leptos"
+variants = ["lep toss"]
+tags = ["rust"]
+
+[[entry]]
+term = "Bevy"
+tags = ["rust"]
+
+[[entry]]
+term = "gRPC"
+variants = ["g r p c", "gee rpc", "grpc"]
+tags = ["grpc"]
+weight = 1.2
+
+[[entry]]
+term = "Prisma"
+tags = ["database"]
+
+[[entry]]
+term = "Drizzle"
+variants = ["drizzle orm"]
+tags = ["database"]
+
+[[entry]]
+term = "SQLAlchemy"
+variants = ["sql alchemy", "sequel alchemy"]
+tags = ["python"]
+
+[[entry]]
+term = "Three.js"
+variants = ["three js"]
+tags = ["web"]
+
+[[entry]]
+term = "D3.js"
+variants = ["d3 js", "d three"]
+tags = ["web"]
+
+[[entry]]
+term = "Socket.IO"
+variants = ["socket io", "socket i o"]
+tags = ["web"]

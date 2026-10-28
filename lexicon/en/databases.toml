@@ -1,0 +1,120 @@
+# English base lexicon: Databases and data tools.
+# Format: see lexicon/README.md.
+language = "en"
+category = "database"
+
+[[entry]]
+term = "PostgreSQL"
+variants = ["postgres q l", "post gres q l", "postgre sql"]
+tags = ["database"]
+weight = 1.3
+
+[[entry]]
+term = "Postgres"
+variants = ["post gres", "post gress"]
+tags = ["database"]
+weight = 1.3
+
+[[entry]]
+term = "MySQL"
+variants = ["my sequel", "my s q l"]
+tags = ["database"]
+weight = 1.2
+
+[[entry]]
+term = "SQLite"
+variants = ["sequel lite", "s q lite", "sqlite"]
+tags = ["database"]
+weight = 1.2
+
+[[entry]]
+term = "MongoDB"
+variants = ["mongo db", "mongo d b"]
+tags = ["database"]
+weight = 1.2
+
+[[entry]]
+term = "MariaDB"
+variants = ["maria db"]
+tags = ["database"]
+
+[[entry]]
+term = "Cassandra"
+tags = ["database"]
+
+[[entry]]
+term = "Elasticsearch"
+variants = ["elastic search"]
+tags = ["database"]
+
+[[entry]]
+term = "OpenSearch"
+variants = ["open search"]
+tags = ["database"]
+
+[[entry]]
+term = "ClickHouse"
+variants = ["click house"]
+tags = ["database"]
+
+[[entry]]
+term = "DuckDB"
+variants = ["duck db", "duck d b"]
+tags = ["database"]
+
+[[entry]]
+term = "Snowflake"
+tags = ["database"]
+
+[[entry]]
+term = "Neo4j"
+variants = ["neo four j", "neo 4 j"]
+tags = ["database"]
+
+[[entry]]
+term = "Pinecone"
+variants = ["pine cone"]
+tags = ["database"]
+
+[[entry]]
+term = "pgvector"
+variants = ["p g vector", "pg vector"]
+tags = ["database"]
+
+[[entry]]
+term = "psql"
+variants = ["p s q l"]
+tags = ["database"]
+
+[[entry]]
+term = "ORM"
+variants = ["o r m"]
+tags = ["database"]
+
+[[entry]]
+term = "migration"
+tags = ["database"]
+weight = 0.6
+
+[[entry]]
+term = "schema"
+tags = ["database"]
+weight = 0.6
+
+[[entry]]
+term = "foreign key"
+tags = ["database"]
+
+[[entry]]
+term = "primary key"
+tags = ["database"]
+
+[[entry]]
+term = "index"
+tags = ["database"]
+weight = 0.3
+
+[[entry]]
+term = "JOIN"
+tags = ["database"]
+weight = 0.3

@@ -1,0 +1,299 @@
+# English base lexicon: Cloud, infrastructure and operations.
+# Format: see lexicon/README.md.
+language = "en"
+category = "cloud"
+
+[[entry]]
+term = "AWS"
+variants = ["a w s"]
+tags = ["aws"]
+weight = 1.3
+
+[[entry]]
+term = "EC2"
+variants = ["e c two", "ec two", "e c 2"]
+tags = ["aws"]
+
+[[entry]]
+term = "S3"
+variants = ["s three", "s 3"]
+tags = ["aws"]
+weight = 1.2
+
+[[entry]]
+term = "Lambda"
+tags = ["aws"]
+
+[[entry]]
+term = "CloudFormation"
+variants = ["cloud formation"]
+tags = ["aws"]
+
+[[entry]]
+term = "CloudFront"
+variants = ["cloud front"]
+tags = ["aws"]
+
+[[entry]]
+term = "DynamoDB"
+variants = ["dynamo db", "dynamo d b"]
+tags = ["aws"]
+
+[[entry]]
+term = "IAM"
+variants = ["i a m"]
+tags = ["aws"]
+
+[[entry]]
+term = "ECS"
+variants = ["e c s"]
+tags = ["aws"]
+
+[[entry]]
+term = "EKS"
+variants = ["e k s"]
+tags = ["aws"]
+
+[[entry]]
+term = "Azure"
+tags = ["azure"]
+weight = 1.2
+
+[[entry]]
+term = "Google Cloud"
+variants = ["google cloud"]
+tags = ["gcp"]
+weight = 1.2
+
+[[entry]]
+term = "GCP"
+variants = ["g c p"]
+tags = ["gcp"]
+
+[[entry]]
+term = "Cloud Run"
+variants = ["cloud run"]
+tags = ["gcp"]
+
+[[entry]]
+term = "BigQuery"
+variants = ["big query"]
+tags = ["gcp"]
+
+[[entry]]
+term = "Firebase"
+variants = ["fire base"]
+tags = ["gcp"]
+
+[[entry]]
+term = "gcloud"
+variants = ["g cloud", "gee cloud"]
+tags = ["gcp"]
+
+[[entry]]
+term = "Vercel"
+variants = ["ver cell", "versel"]
+tags = ["web"]
+weight = 1.2
+
+[[entry]]
+term = "Netlify"
+variants = ["net lify", "net li fy"]
+tags = ["web"]
+
+[[entry]]
+term = "Cloudflare"
+variants = ["cloud flare"]
+tags = ["web"]
+weight = 1.2
+
+[[entry]]
+term = "Cloudflare Workers"
+variants = ["cloud flare workers"]
+tags = ["web"]
+
+[[entry]]
+term = "Supabase"
+variants = ["supa base", "super base", "soupa base"]
+tags = ["database"]
+weight = 1.2
+
+[[entry]]
+term = "Heroku"
+variants = ["hero ku"]
+tags = ["web"]
+
+[[entry]]
+term = "Fly.io"
+variants = ["fly io", "fly dot io"]
+tags = ["web"]
+
+[[entry]]
+term = "Railway"
+tags = ["web"]
+weight = 0.6
+
+[[entry]]
+term = "DigitalOcean"
+variants = ["digital ocean"]
+tags = ["cloud"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["cooper netties", "kuber netties", "kuber nettis", "kubernetes"]
+tags = ["kubernetes"]
+weight = 1.5
+
+[[entry]]
+term = "k8s"
+variants = ["k eight s", "k eights"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "pod"
+tags = ["kubernetes"]
+weight = 0.4
+
+[[entry]]
+term = "Ingress"
+variants = ["in gress"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "ConfigMap"
+variants = ["config map"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "StatefulSet"
+variants = ["stateful set"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "DaemonSet"
+variants = ["demon set", "daemon set"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "namespace"
+variants = ["name space"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "minikube"
+variants = ["mini kube", "mini cube"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "kind cluster"
+tags = ["kubernetes"]
+
+[[entry]]
+term = "Istio"
+variants = ["is tio", "east io"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "Prometheus"
+tags = ["observability"]
+
+[[entry]]
+term = "Grafana"
+variants = ["gra fana", "graph ana"]
+tags = ["observability"]
+
+[[entry]]
+term = "OpenTelemetry"
+variants = ["open telemetry"]
+tags = ["observability"]
+
+[[entry]]
+term = "Datadog"
+variants = ["data dog"]
+tags = ["observability"]
+
+[[entry]]
+term = "Sentry"
+tags = ["observability"]
+
+[[entry]]
+term = "nginx"
+variants = ["engine x", "n ginx", "engine ex"]
+tags = ["web"]
+weight = 1.3
+
+[[entry]]
+term = "Caddy"
+tags = ["web"]
+
+[[entry]]
+term = "Traefik"
+variants = ["tray fick"]
+tags = ["web"]
+
+[[entry]]
+term = "Redis"
+variants = ["reddis"]
+tags = ["database"]
+weight = 1.2
+
+[[entry]]
+term = "RabbitMQ"
+variants = ["rabbit m q", "rabbit mq"]
+tags = ["messaging"]
+
+[[entry]]
+term = "Kafka"
+tags = ["messaging"]
+
+[[entry]]
+term = "NATS"
+variants = ["nats"]
+tags = ["messaging"]
+
+[[entry]]
+term = "Tailscale"
+variants = ["tail scale"]
+tags = ["network"]
+
+[[entry]]
+term = "WireGuard"
+variants = ["wire guard"]
+tags = ["network"]
+
+[[entry]]
+term = "DNS"
+variants = ["d n s"]
+tags = ["network"]
+weight = 1.2
+
+[[entry]]
+term = "TLS"
+variants = ["t l s"]
+tags = ["network"]
+
+[[entry]]
+term = "SSL"
+variants = ["s s l"]
+tags = ["network"]
+
+[[entry]]
+term = "VPN"
+variants = ["v p n"]
+tags = ["network"]
+
+[[entry]]
+term = "VPC"
+variants = ["v p c"]
+tags = ["network"]
+
+[[entry]]
+term = "CDN"
+variants = ["c d n"]
+tags = ["network"]
+
+[[entry]]
+term = "localhost"
+variants = ["local host"]
+tags = ["network"]
+weight = 1.2

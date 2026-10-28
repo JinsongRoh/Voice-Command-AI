@@ -1,0 +1,43 @@
+# Portuguese intent table. See en.toml for the format.
+language = "pt"
+
+session_words = ["sessão", "sessao", "sessões", "terminal", "aba", "cartão", "agente"]
+current_words = ["esta", "este", "atual", "essa"]
+template_words = ["modelo", "template", "macro"]
+fillers = [
+    "por favor", "a", "o", "os", "as", "à", "ao", "da", "do", "número", "numero", "agora", "já",
+    "pode", "você pode", "ok", "de novo", "obrigado", "obrigada",
+]
+
+[actions]
+select = ["muda para", "mudar para", "vai para", "ir para", "seleciona", "selecionar", "abre", "abrir", "troca para"]
+pause = ["pausa", "pausar", "suspende", "suspender"]
+resume = ["retoma", "retomar", "continua", "continuar", "despausa"]
+stop = ["para", "parar", "interrompe", "interromper", "encerra", "encerrar", "mata"]
+restart = ["reinicia", "reiniciar", "recomeça", "recomeçar"]
+show_resources = ["recursos", "mostra os recursos", "mostrar recursos", "uso de recursos", "uso de cpu", "uso de memória", "estado do sistema"]
+approve = ["aprova", "aprovar", "sim", "permite", "permitir", "aceita", "aceitar", "confirma"]
+deny = ["nega", "negar", "não", "nao", "rejeita", "rejeitar", "recusa", "recusar"]
+read_last_output = ["lê a última saída", "le a ultima saida", "última saída", "ultima saida", "lê o resultado", "o que ele disse"]
+run_template = ["executa o modelo", "executar modelo", "usa o modelo", "roda o modelo"]
+
+[numbers]
+"um" = 1
+"uma" = 1
+"dois" = 2
+"duas" = 2
+"três" = 3
+"tres" = 3
+"quatro" = 4
+"cinco" = 5
+"seis" = 6
+"sete" = 7
+"oito" = 8
+"nove" = 9
+"dez" = 10
+"primeira" = 1
+"primeiro" = 1
+"segunda" = 2
+"segundo" = 2
+"terceira" = 3
+"terceiro" = 3

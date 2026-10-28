@@ -1,0 +1,461 @@
+# English base lexicon: Build tools, package managers, editors and command-line tools.
+# Format: see lexicon/README.md.
+language = "en"
+category = "tool"
+
+[[entry]]
+term = "npm"
+variants = ["n p m"]
+tags = ["javascript"]
+weight = 1.5
+
+[[entry]]
+term = "npx"
+variants = ["n p x"]
+tags = ["javascript"]
+weight = 1.2
+
+[[entry]]
+term = "pnpm"
+variants = ["p n p m"]
+tags = ["javascript"]
+weight = 1.2
+
+[[entry]]
+term = "Yarn"
+tags = ["javascript"]
+
+[[entry]]
+term = "Cargo"
+tags = ["rust"]
+weight = 1.3
+
+[[entry]]
+term = "rustup"
+variants = ["rust up"]
+tags = ["rust"]
+
+[[entry]]
+term = "rustc"
+variants = ["rust c", "rust see"]
+tags = ["rust"]
+
+[[entry]]
+term = "Clippy"
+tags = ["rust"]
+
+[[entry]]
+term = "rustfmt"
+variants = ["rust format", "rust fmt", "rust fumt"]
+tags = ["rust"]
+
+[[entry]]
+term = "pip"
+tags = ["python"]
+weight = 0.8
+
+[[entry]]
+term = "pipx"
+variants = ["pip x"]
+tags = ["python"]
+
+[[entry]]
+term = "uv"
+variants = ["u v"]
+tags = ["python"]
+
+[[entry]]
+term = "Poetry"
+tags = ["python"]
+
+[[entry]]
+term = "virtualenv"
+variants = ["virtual env"]
+tags = ["python"]
+
+[[entry]]
+term = "venv"
+variants = ["v env", "vee env"]
+tags = ["python"]
+
+[[entry]]
+term = "conda"
+tags = ["python"]
+
+[[entry]]
+term = "pytest"
+variants = ["pie test", "py test"]
+tags = ["python"]
+weight = 1.2
+
+[[entry]]
+term = "mypy"
+variants = ["my pie"]
+tags = ["python"]
+
+[[entry]]
+term = "Ruff"
+tags = ["python"]
+
+[[entry]]
+term = "Black"
+tags = ["python"]
+weight = 0.5
+
+[[entry]]
+term = "ESLint"
+variants = ["e s lint", "es lint", "e lint"]
+tags = ["javascript"]
+weight = 1.2
+
+[[entry]]
+term = "Prettier"
+tags = ["javascript"]
+
+[[entry]]
+term = "Biome"
+tags = ["javascript"]
+
+[[entry]]
+term = "Webpack"
+variants = ["web pack"]
+tags = ["javascript"]
+
+[[entry]]
+term = "esbuild"
+variants = ["e s build", "es build"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Babel"
+tags = ["javascript"]
+
+[[entry]]
+term = "tsc"
+variants = ["t s c"]
+tags = ["typescript"]
+
+[[entry]]
+term = "tsconfig"
+variants = ["ts config", "t s config"]
+tags = ["typescript"]
+
+[[entry]]
+term = "Gradle"
+tags = ["java"]
+
+[[entry]]
+term = "Maven"
+tags = ["java"]
+
+[[entry]]
+term = "CMake"
+variants = ["c make", "see make"]
+tags = ["cpp"]
+
+[[entry]]
+term = "Makefile"
+variants = ["make file"]
+tags = ["cpp"]
+
+[[entry]]
+term = "Homebrew"
+variants = ["home brew"]
+tags = ["macos"]
+
+[[entry]]
+term = "apt-get"
+variants = ["apt get"]
+tags = ["linux"]
+
+[[entry]]
+term = "Docker"
+tags = ["docker"]
+weight = 1.5
+
+[[entry]]
+term = "Dockerfile"
+variants = ["docker file"]
+tags = ["docker"]
+weight = 1.2
+
+[[entry]]
+term = "Docker Compose"
+variants = ["docker compose"]
+tags = ["docker"]
+weight = 1.2
+
+[[entry]]
+term = "Podman"
+variants = ["pod man"]
+tags = ["docker"]
+
+[[entry]]
+term = "VS Code"
+variants = ["v s code", "vs code", "visual studio code", "vscode"]
+tags = ["editor"]
+weight = 1.3
+
+[[entry]]
+term = "Visual Studio"
+tags = ["editor"]
+
+[[entry]]
+term = "Neovim"
+variants = ["neo vim"]
+tags = ["editor"]
+
+[[entry]]
+term = "Vim"
+tags = ["editor"]
+
+[[entry]]
+term = "Emacs"
+variants = ["e max"]
+tags = ["editor"]
+
+[[entry]]
+term = "JetBrains"
+variants = ["jet brains"]
+tags = ["editor"]
+
+[[entry]]
+term = "IntelliJ"
+variants = ["intelli j", "intelligent j"]
+tags = ["editor"]
+
+[[entry]]
+term = "Xcode"
+variants = ["x code", "ex code"]
+tags = ["swift"]
+
+[[entry]]
+term = "Android Studio"
+variants = ["android studio"]
+tags = ["kotlin"]
+
+[[entry]]
+term = "tmux"
+variants = ["t mux", "tee mux"]
+tags = ["terminal"]
+
+[[entry]]
+term = "Windows Terminal"
+variants = ["windows terminal"]
+tags = ["terminal"]
+
+[[entry]]
+term = "iTerm2"
+variants = ["i term", "i term two"]
+tags = ["terminal"]
+
+[[entry]]
+term = "WezTerm"
+variants = ["wez term"]
+tags = ["terminal"]
+
+[[entry]]
+term = "Ghostty"
+variants = ["ghosty", "ghost tee"]
+tags = ["terminal"]
+
+[[entry]]
+term = "WSL"
+variants = ["w s l"]
+tags = ["windows"]
+
+[[entry]]
+term = "kubectl"
+variants = ["kube control", "kube cuddle", "cube control", "kube c t l", "cube c t l", "kube ctl", "cube cuddle"]
+tags = ["kubernetes"]
+weight = 1.5
+
+[[entry]]
+term = "kubectx"
+variants = ["kube c t x"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "k9s"
+variants = ["k nine s"]
+tags = ["kubernetes"]
+
+[[entry]]
+term = "Helm"
+tags = ["kubernetes"]
+
+[[entry]]
+term = "Terraform"
+variants = ["terra form"]
+tags = ["terraform"]
+weight = 1.2
+
+[[entry]]
+term = "OpenTofu"
+variants = ["open tofu"]
+tags = ["terraform"]
+
+[[entry]]
+term = "Ansible"
+tags = ["devops"]
+
+[[entry]]
+term = "Vagrant"
+tags = ["devops"]
+
+[[entry]]
+term = "gh"
+variants = ["g h"]
+tags = ["git"]
+
+[[entry]]
+term = "curl"
+tags = ["cli"]
+weight = 0.6
+
+[[entry]]
+term = "wget"
+variants = ["w get"]
+tags = ["cli"]
+
+[[entry]]
+term = "jq"
+variants = ["j q"]
+tags = ["cli"]
+
+[[entry]]
+term = "ripgrep"
+variants = ["rip grep"]
+tags = ["cli"]
+
+[[entry]]
+term = "grep"
+variants = ["grap"]
+tags = ["cli"]
+
+[[entry]]
+term = "sed"
+tags = ["cli"]
+weight = 0.6
+
+[[entry]]
+term = "awk"
+tags = ["cli"]
+weight = 0.6
+
+[[entry]]
+term = "ssh"
+variants = ["s s h"]
+tags = ["cli"]
+weight = 1.2
+
+[[entry]]
+term = "scp"
+variants = ["s c p"]
+tags = ["cli"]
+
+[[entry]]
+term = "rsync"
+variants = ["r sync"]
+tags = ["cli"]
+
+[[entry]]
+term = "chmod"
+variants = ["ch mod", "change mod", "c h mod"]
+tags = ["cli"]
+
+[[entry]]
+term = "chown"
+variants = ["ch own", "c h own"]
+tags = ["cli"]
+
+[[entry]]
+term = "sudo"
+variants = ["sue do", "sue dough"]
+tags = ["cli"]
+
+[[entry]]
+term = "systemctl"
+variants = ["system c t l", "system control", "system ctl"]
+tags = ["linux"]
+
+[[entry]]
+term = "journalctl"
+variants = ["journal c t l", "journal control"]
+tags = ["linux"]
+
+[[entry]]
+term = "htop"
+variants = ["h top"]
+tags = ["cli"]
+
+[[entry]]
+term = "nvidia-smi"
+variants = ["nvidia s m i", "nvidia smi"]
+tags = ["gpu"]
+
+[[entry]]
+term = "ffmpeg"
+variants = ["f f mpeg", "f f m peg"]
+tags = ["media"]
+
+[[entry]]
+term = "SQLite CLI"
+variants = ["sqlite cli"]
+tags = ["database"]
+weight = 0.5
+
+[[entry]]
+term = "Postman"
+variants = ["post man"]
+tags = ["web"]
+
+[[entry]]
+term = "Swagger"
+tags = ["web"]
+
+[[entry]]
+term = "OpenAPI"
+variants = ["open api", "open a p i"]
+tags = ["web"]
+
+[[entry]]
+term = "Jupyter"
+variants = ["jupiter notebook"]
+tags = ["python"]
+
+[[entry]]
+term = "Bazel"
+tags = ["build"]
+
+[[entry]]
+term = "Nx"
+variants = ["n x"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Turborepo"
+variants = ["turbo repo"]
+tags = ["javascript"]
+
+[[entry]]
+term = "Lerna"
+tags = ["javascript"]
+
+[[entry]]
+term = "Dependabot"
+variants = ["depend a bot", "dependa bot"]
+tags = ["git"]
+
+[[entry]]
+term = "Renovate"
+tags = ["git"]
+
+[[entry]]
+term = "pre-commit"
+variants = ["pre commit"]
+tags = ["git"]
+
+[[entry]]
+term = "Husky"
+tags = ["git"]

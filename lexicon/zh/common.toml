@@ -1,0 +1,172 @@
+# Chinese spoken forms and established Chinese names of developer terms.
+# Spoken variants only; categories and tags come from the English entries.
+# Format: see lexicon/README.md.
+language = "zh"
+
+[[entry]]
+term = "Python"
+variants = ["派森"]
+
+[[entry]]
+term = "Java"
+variants = ["爪哇"]
+
+[[entry]]
+term = "Scala"
+variants = ["斯卡拉"]
+
+[[entry]]
+term = "C++"
+variants = ["C加加", "c加加"]
+
+[[entry]]
+term = "C#"
+variants = ["C井", "c井"]
+
+[[entry]]
+term = "Kotlin"
+variants = ["科特林"]
+
+[[entry]]
+term = "Swift"
+variants = ["斯威夫特"]
+
+[[entry]]
+term = "Haskell"
+variants = ["哈斯克尔"]
+
+[[entry]]
+term = "Docker"
+variants = ["道克", "多克"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["库伯内蒂斯", "酷伯内蒂斯", "库伯尼特斯", "库伯内特斯"]
+
+[[entry]]
+term = "kubectl"
+variants = ["库伯控制", "酷伯控制", "库伯ctl"]
+
+[[entry]]
+term = "GitHub"
+variants = ["吉特哈布", "git哈布"]
+
+[[entry]]
+term = "GitLab"
+variants = ["吉特莱布"]
+
+[[entry]]
+term = "Git"
+variants = ["吉特"]
+
+[[entry]]
+term = "Claude"
+variants = ["克劳德"]
+
+[[entry]]
+term = "Claude Code"
+variants = ["克劳德code", "克劳德 code", "克劳德扣的"]
+
+[[entry]]
+term = "Codex"
+variants = ["柯德克斯"]
+
+[[entry]]
+term = "Gemini"
+variants = ["杰米尼", "哲米尼"]
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["杰米尼cli", "杰米尼 cli"]
+
+[[entry]]
+term = "Grok"
+variants = ["格罗克"]
+
+[[entry]]
+term = "DeepSeek"
+variants = ["深度求索"]
+
+[[entry]]
+term = "Qwen"
+variants = ["通义千问", "千问"]
+
+[[entry]]
+term = "Hugging Face"
+variants = ["抱抱脸"]
+
+[[entry]]
+term = "JSON"
+variants = ["杰森"]
+
+[[entry]]
+term = "nginx"
+variants = ["引擎x", "引擎X", "恩金克斯"]
+
+[[entry]]
+term = "Apache"
+variants = ["阿帕奇"]
+
+[[entry]]
+term = "Tomcat"
+variants = ["汤姆猫"]
+
+[[entry]]
+term = "Jenkins"
+variants = ["詹金斯"]
+
+[[entry]]
+term = "Redis"
+variants = ["瑞迪斯", "雷迪斯"]
+
+[[entry]]
+term = "MongoDB"
+variants = ["芒果db", "芒果DB"]
+
+[[entry]]
+term = "Kafka"
+variants = ["卡夫卡"]
+
+[[entry]]
+term = "RabbitMQ"
+variants = ["兔子mq", "兔子MQ"]
+
+[[entry]]
+term = "Prometheus"
+variants = ["普罗米修斯"]
+
+[[entry]]
+term = "Grafana"
+variants = ["格拉法纳"]
+
+[[entry]]
+term = "Django"
+variants = ["姜戈"]
+
+[[entry]]
+term = "Flask"
+variants = ["弗拉斯克"]
+
+[[entry]]
+term = "Linux"
+variants = ["利纳克斯", "林纳克斯"]
+
+[[entry]]
+term = "Ubuntu"
+variants = ["乌班图"]
+
+[[entry]]
+term = "Debian"
+variants = ["德比安"]
+
+[[entry]]
+term = "Android"
+variants = ["安卓"]
+
+[[entry]]
+term = "Rust"
+variants = ["拉斯特"]
+
+[[entry]]
+term = "Ollama"
+variants = ["欧拉玛"]

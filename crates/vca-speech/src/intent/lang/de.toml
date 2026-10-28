@@ -1,0 +1,42 @@
+# German intent table. See en.toml for the format.
+language = "de"
+
+session_words = ["sitzung", "session", "terminal", "tab", "karte", "agent"]
+current_words = ["diese", "dieses", "aktuelle", "aktuellen", "die hier"]
+template_words = ["vorlage", "template", "makro"]
+fillers = [
+    "bitte", "die", "der", "das", "den", "dem", "zu", "zur", "zum", "nummer", "jetzt", "sofort",
+    "mal", "kannst du", "könntest du", "hey", "ok", "okay", "wieder", "mir", "danke",
+]
+
+[actions]
+select = ["wechsle zu", "wechseln zu", "wechsel zu", "geh zu", "gehe zu", "wähle", "auswählen", "öffne", "öffnen", "fokussiere"]
+pause = ["pausiere", "pausieren", "pause", "anhalten", "halte an", "unterbrechen"]
+resume = ["fortsetzen", "setze fort", "weitermachen", "fortfahren"]
+stop = ["stopp", "stoppe", "stoppen", "beende", "beenden", "abbrechen", "brich ab", "töte"]
+restart = ["neustart", "neu starten", "starte neu", "neustarten"]
+show_resources = ["ressourcen", "zeige ressourcen", "ressourcen anzeigen", "ressourcenverbrauch", "cpu auslastung", "speicherverbrauch", "systemstatus", "auslastung"]
+approve = ["genehmigen", "genehmige", "ja", "erlauben", "erlaube", "zulassen", "bestätigen", "bestätige", "akzeptieren"]
+deny = ["ablehnen", "lehne ab", "nein", "verweigern", "verweigere", "nicht erlauben"]
+read_last_output = ["letzte ausgabe vorlesen", "lies die letzte ausgabe", "letzte ausgabe", "vorlesen", "lies vor", "was hat es gesagt"]
+run_template = ["vorlage ausführen", "führe die vorlage aus", "vorlage verwenden", "vorlage starten"]
+
+[numbers]
+"eins" = 1
+"zwei" = 2
+"drei" = 3
+"vier" = 4
+"fünf" = 5
+"sechs" = 6
+"sieben" = 7
+"acht" = 8
+"neun" = 9
+"zehn" = 10
+"erste" = 1
+"ersten" = 1
+"zweite" = 2
+"zweiten" = 2
+"dritte" = 3
+"dritten" = 3
+"vierte" = 4
+"fünfte" = 5

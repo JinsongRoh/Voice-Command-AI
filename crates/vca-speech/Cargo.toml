@@ -8,7 +8,29 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+async-trait.workspace = true
+base64 = "0.22"
+hound = "3.5.1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "multipart", "json"] }
+serde.workspace = true
+serde_json.workspace = true
+strsim = "0.11.1"
+thiserror.workspace = true
+tokio.workspace = true
+toml = "1.1.8"
+tracing.workspace = true
+unicode-normalization = "0.1.26"
 vca-core.workspace = true
+whisper-rs = { version = "0.16.0", optional = true }
+
+[features]
+default = []
+# Local Whisper inference through whisper.cpp (needs a C/C++ toolchain and CMake).
+whisper-local = ["dep:whisper-rs"]
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
+wiremock = "0.6.5"

@@ -1,0 +1,40 @@
+# French intent table. See en.toml for the format.
+language = "fr"
+
+session_words = ["session", "sessions", "terminal", "onglet", "carte", "agent"]
+current_words = ["celle-ci", "celle ci", "actuelle", "courante", "cette session"]
+template_words = ["modèle", "modele", "template", "macro"]
+fillers = [
+    "s'il te plaît", "s'il vous plaît", "stp", "svp", "la", "le", "les", "l'", "à", "au", "de",
+    "du", "numéro", "numero", "maintenant", "tout de suite", "peux-tu", "pourrais-tu", "ok",
+    "d'accord", "encore", "merci", "moi",
+]
+
+[actions]
+select = ["passe à", "passer à", "va à", "aller à", "sélectionne", "sélectionner", "ouvre", "ouvrir", "bascule sur", "bascule vers"]
+pause = ["pause", "mets en pause", "mettre en pause", "suspends", "suspendre"]
+resume = ["reprends", "reprendre", "relance la", "continuer"]
+stop = ["arrête", "arrete", "arrêter", "stoppe", "termine", "terminer", "tue", "ferme"]
+restart = ["redémarre", "redemarre", "redémarrer", "relance", "relancer"]
+show_resources = ["ressources", "montre les ressources", "affiche les ressources", "utilisation des ressources", "utilisation cpu", "utilisation mémoire", "état du système"]
+approve = ["approuve", "approuver", "oui", "autorise", "autoriser", "accepte", "accepter", "confirme"]
+deny = ["refuse", "refuser", "non", "rejette", "rejeter", "n'autorise pas"]
+read_last_output = ["lis la dernière sortie", "lis la derniere sortie", "dernière sortie", "derniere sortie", "lis le résultat", "lis-le", "qu'est-ce qu'il a dit"]
+run_template = ["exécute le modèle", "execute le modele", "lance le modèle", "utilise le modèle"]
+
+[numbers]
+"deux" = 2
+"trois" = 3
+"quatre" = 4
+"cinq" = 5
+"six" = 6
+"sept" = 7
+"huit" = 8
+"neuf" = 9
+"dix" = 10
+"premier" = 1
+"première" = 1
+"deuxième" = 2
+"troisième" = 3
+"quatrième" = 4
+"cinquième" = 5
