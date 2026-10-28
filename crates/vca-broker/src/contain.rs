@@ -600,8 +600,13 @@ mod tests {
         assert!(start.elapsed() >= Duration::from_millis(300));
         // The root shell exits once its child is gone.
         root.wait().unwrap();
+        // SIGKILL delivery is asynchronous, so give the kernel a moment.
         for k in kids {
-            assert!(matches!(state(k), None | Some('Z')), "{k} still alive");
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while !matches!(state(k), None | Some('Z')) {
+                assert!(Instant::now() < deadline, "{k} still alive");
+                std::thread::sleep(Duration::from_millis(20));
+            }
         }
     }
 
