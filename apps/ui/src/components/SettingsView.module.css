@@ -1,0 +1,72 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+.title {
+  font-size: 20px;
+}
+.section {
+  padding: 14px 16px;
+}
+.section h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+.dl dt {
+  color: var(--text-muted);
+}
+.dl dd {
+  margin: 0;
+  font-weight: 600;
+}
+.devices {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.deviceText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+.current {
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--st-running);
+  background: var(--st-running-bg);
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.support {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

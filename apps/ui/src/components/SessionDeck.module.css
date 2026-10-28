@@ -1,0 +1,28 @@
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.title {
+  font-size: 20px;
+  margin-inline-end: auto;
+}
+.attention {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--st-decision);
+}
+.list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}

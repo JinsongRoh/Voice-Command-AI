@@ -1,0 +1,63 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--st-idle);
+  background: var(--st-idle-bg);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.running {
+  color: var(--st-running);
+  background: var(--st-running-bg);
+}
+.running .dot {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.idle {
+  color: var(--st-idle);
+  background: var(--st-idle-bg);
+}
+.awaiting_input {
+  color: var(--st-input);
+  background: var(--st-input-bg);
+}
+.awaiting_decision {
+  color: var(--st-decision);
+  background: var(--st-decision-bg);
+}
+.error {
+  color: var(--st-error);
+  background: var(--st-error-bg);
+}
+.paused {
+  color: var(--st-paused);
+  background: var(--st-paused-bg);
+}
+.starting {
+  color: var(--st-starting);
+  background: var(--st-starting-bg);
+}
+.exited {
+  color: var(--st-idle);
+  background: var(--st-idle-bg);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "nav.sessions": "세션",
+  "nav.resources": "리소스",
+  "nav.settings": "설정",
+  "deck.title": "세션",
+  "deck.new": "새 세션",
+  "filter.all": "전체",
+  "filter.attention": "확인 필요",
+  "filter.local": "로컬",
+  "filter.cloud": "클라우드",
+  "state.running": "실행 중",
+  "state.idle": "대기",
+  "state.awaiting_input": "입력 대기",
+  "state.awaiting_decision": "결정 대기",
+  "composer.send": "보내기",
+  "composer.micHold": "눌러서 말하기",
+  "settings.title": "설정",
+  "settings.language": "언어",
+  "settings.theme": "테마"
+}

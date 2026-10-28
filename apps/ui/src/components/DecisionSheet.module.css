@@ -1,0 +1,50 @@
+.sheet {
+  margin: 0 12px 8px;
+  padding: 12px 14px;
+  border: 2px solid var(--st-decision);
+  border-radius: var(--radius);
+  background: var(--st-decision-bg);
+  box-shadow: var(--shadow-lg);
+}
+.title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--st-decision);
+}
+.prompt {
+  margin: 6px 0;
+  font-weight: 700;
+}
+.detail {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.options :global(.btn) {
+  justify-content: flex-start;
+  white-space: normal;
+  text-align: start;
+  min-height: 44px;
+}
+@media (min-width: 640px) {
+  .options {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+.error {
+  color: var(--danger);
+  margin: 8px 0 0;
+}

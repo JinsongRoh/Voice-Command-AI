@@ -1,0 +1,21 @@
+{
+  "nav.sessions": "Sesiones",
+  "nav.resources": "Recursos",
+  "nav.settings": "Ajustes",
+  "deck.title": "Sesiones",
+  "deck.new": "Nueva sesión",
+  "filter.all": "Todas",
+  "filter.attention": "Requieren atención",
+  "filter.local": "Locales",
+  "filter.cloud": "Nube",
+  "state.running": "En ejecución",
+  "state.idle": "Inactiva",
+  "state.awaiting_input": "Esperando entrada",
+  "state.awaiting_decision": "Esperando decisión",
+  "composer.send": "Enviar",
+  "composer.micHold": "Mantén para hablar",
+  "settings.title": "Ajustes",
+  "settings.language": "Idioma",
+  "settings.theme": "Tema",
+  "card.unread": "{count} sin leer"
+}

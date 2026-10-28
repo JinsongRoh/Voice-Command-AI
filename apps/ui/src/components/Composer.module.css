@@ -1,0 +1,120 @@
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.templates {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.template {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.template:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.corrections {
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-input);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mic {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.1s;
+}
+.mic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.recording {
+  background: var(--danger);
+  color: #fff;
+  transform: scale(1.08);
+  animation: ring 1.2s ease-out infinite;
+}
+@keyframes ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+.status {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+}
+.phase {
+  font-weight: 600;
+}
+.delivery {
+  color: var(--text-muted);
+}
+.delivery[data-status='delivered'] {
+  color: var(--st-running);
+}
+.delivery[data-status='queued'] {
+  color: var(--st-input);
+}
+.delivery[data-status='failed'],
+.error {
+  color: var(--danger);
+}
+.keys {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.keys :global(.btn) {
+  flex: none;
+}
+.interrupt {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.flip {
+  transform: scaleX(-1);
+}
