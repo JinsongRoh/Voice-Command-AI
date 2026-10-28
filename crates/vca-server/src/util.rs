@@ -9,6 +9,7 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 /// Shortens `text` to at most `max` characters (keeping the end when
 /// `keep_end`), adding an ellipsis.
+#[allow(dead_code)] // Used by the session manager, which is not wired up yet.
 pub(crate) fn truncate_chars(text: &str, max: usize, keep_end: bool) -> String {
     let count = text.chars().count();
     if count <= max {
@@ -18,7 +19,10 @@ pub(crate) fn truncate_chars(text: &str, max: usize, keep_end: bool) -> String {
         let skip = count - max.saturating_sub(1);
         format!("…{}", text.chars().skip(skip).collect::<String>())
     } else {
-        format!("{}…", text.chars().take(max.saturating_sub(1)).collect::<String>())
+        format!(
+            "{}…",
+            text.chars().take(max.saturating_sub(1)).collect::<String>()
+        )
     }
 }
 

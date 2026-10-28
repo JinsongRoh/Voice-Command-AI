@@ -178,7 +178,7 @@ impl Default for DevWsConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     /// Name shown to clients; defaults to the host name.
@@ -196,23 +196,6 @@ pub struct Config {
     pub dev_ws: DevWsConfig,
     /// Log filter in `tracing_subscriber::EnvFilter` syntax; `RUST_LOG` wins.
     pub log: Option<String>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            server_name: None,
-            workspace_roots: Vec::new(),
-            control_socket: None,
-            shutdown: ShutdownConfig::default(),
-            discovery: DiscoveryConfig::default(),
-            sessions: SessionsConfig::default(),
-            resources: ResourcesConfig::default(),
-            broker: BrokerSection::default(),
-            dev_ws: DevWsConfig::default(),
-            log: None,
-        }
-    }
 }
 
 /// Errors from loading the configuration.
@@ -269,7 +252,10 @@ impl Config {
         if self.workspace_roots.is_empty() {
             return home_dir().into_iter().collect();
         }
-        self.workspace_roots.iter().map(|p| expand_tilde(p)).collect()
+        self.workspace_roots
+            .iter()
+            .map(|p| expand_tilde(p))
+            .collect()
     }
 }
 

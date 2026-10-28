@@ -107,9 +107,7 @@ impl EventLog {
 
     /// Oldest buffered sequence number (`next_seq` when empty).
     pub fn first_available(&self) -> u64 {
-        self.events
-            .front()
-            .map_or(self.next_seq, |(e, _)| e.seq())
+        self.events.front().map_or(self.next_seq, |(e, _)| e.seq())
     }
 
     /// Buffered events with `seq > after`.
@@ -255,7 +253,9 @@ mod tests {
     fn evicts_by_bytes() {
         let mut log = EventLog::new(LogLimits {
             max_events: 100,
-            max_bytes: 300,
+            // Each event counts 64 bytes of overhead plus its data, so two
+            // fit and a third evicts the oldest.
+            max_bytes: 400,
         });
         for _ in 0..4 {
             log.push(|s| out(s, 100));

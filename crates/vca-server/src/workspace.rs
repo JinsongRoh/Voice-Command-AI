@@ -46,10 +46,7 @@ impl WorkspaceRoots {
         if !self.allows(&resolved) {
             return Err(Error::api(
                 ErrorCode::Forbidden,
-                format!(
-                    "{} is outside the allowed workspace roots",
-                    dir.display()
-                ),
+                format!("{} is outside the allowed workspace roots", dir.display()),
             ));
         }
         if !resolved.exists() {
@@ -110,7 +107,10 @@ fn resolve_existing_prefix(path: &Path) -> PathBuf {
             }
             return out;
         }
-        match (existing.file_name().map(|n| n.to_owned()), existing.parent()) {
+        match (
+            existing.file_name().map(|n| n.to_owned()),
+            existing.parent(),
+        ) {
             (Some(name), Some(parent)) => {
                 rest.push(name);
                 existing = parent.to_owned();
@@ -156,7 +156,10 @@ mod tests {
             ErrorCode::Forbidden
         );
         assert_eq!(
-            roots.prepare(Path::new("rel/dir"), true).unwrap_err().code(),
+            roots
+                .prepare(Path::new("rel/dir"), true)
+                .unwrap_err()
+                .code(),
             ErrorCode::InvalidRequest
         );
     }
@@ -172,7 +175,10 @@ mod tests {
         std::os::unix::fs::symlink(&outside, root.join("link")).unwrap();
         let roots = WorkspaceRoots::new([root.clone()]);
         assert_eq!(
-            roots.prepare(&root.join("link/new"), true).unwrap_err().code(),
+            roots
+                .prepare(&root.join("link/new"), true)
+                .unwrap_err()
+                .code(),
             ErrorCode::Forbidden
         );
         assert!(!outside.join("new").exists());
