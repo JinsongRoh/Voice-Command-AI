@@ -1,0 +1,14 @@
+[package]
+name = "vca-adapters"
+description = "Local coding agent adapters and terminal input injection"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vca-core.workspace = true
+
+[lints]
+workspace = true

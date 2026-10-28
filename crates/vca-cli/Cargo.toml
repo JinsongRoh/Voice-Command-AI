@@ -1,0 +1,18 @@
+[package]
+name = "vca-cli"
+description = "Voice Command AI command-line interface (vca)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vca-core.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "vca"
+path = "src/main.rs"
