@@ -155,8 +155,9 @@ impl Default for ResourcesConfig {
 pub struct BrokerSection {
     /// `policies.toml`; defaults to `<config dir>/policies.toml`.
     pub policy_path: Option<PathBuf>,
-    /// Broker IPC endpoint for hooks; defaults to the per-user endpoint
-    /// (`VCA_BROKER_SOCKET` or `$XDG_RUNTIME_DIR/vca/broker.sock`).
+    /// Broker IPC endpoint for third-party wrappers (socket path, or pipe
+    /// name on Windows). Off when unset: VCA's own hooks reach the broker
+    /// through vcad's control channel.
     pub socket: Option<PathBuf>,
 }
 

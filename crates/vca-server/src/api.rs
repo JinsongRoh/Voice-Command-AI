@@ -1,0 +1,347 @@
+//! The transport-agnostic API: one [`Client`] per connection, requests
+//! through [`Api::handle`], and everything the server sends (responses and
+//! pushes) on the client's outbound channel.
+
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use tokio::sync::{broadcast, mpsc};
+use tokio::task::JoinHandle;
+use vca_core::error::ErrorCode;
+use vca_core::{
+    ClientMsg, DeliveryStatus, Envelope, Error, PROTOCOL_VERSION, ServerMsg, SessionId,
+};
+
+use crate::events::{EventStream, StreamItem};
+use crate::sessions::{SessionManager, Update};
+use crate::util::{error_text, lock};
+
+/// Outbound queue length per client. A client that falls this far behind
+/// slows down its own event forwarding; other clients are unaffected.
+const OUTBOUND_CAPACITY: usize = 1024;
+
+/// One connected client.
+pub struct Client {
+    pub id: u64,
+    pub transport: &'static str,
+    out: mpsc::Sender<Envelope<ServerMsg>>,
+    subs: Mutex<HashMap<SessionId, JoinHandle<()>>>,
+    tasks: Mutex<Vec<JoinHandle<()>>>,
+    wants_resources: Arc<AtomicBool>,
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        for (_, t) in lock(&self.subs).drain() {
+            t.abort();
+        }
+        for t in lock(&self.tasks).drain(..) {
+            t.abort();
+        }
+    }
+}
+
+impl Client {
+    async fn send(&self, id: u64, body: ServerMsg) {
+        let _ = self.out.send(Envelope { id, body }).await;
+    }
+}
+
+struct Inner {
+    mgr: SessionManager,
+    server_name: String,
+    resources_interval: Duration,
+    next_client: AtomicU64,
+}
+
+/// The API core shared by all transports. Cheap to clone.
+#[derive(Clone)]
+pub struct Api {
+    inner: Arc<Inner>,
+}
+
+fn error_msg(err: &Error) -> ServerMsg {
+    ServerMsg::Error {
+        code: err.code(),
+        message: error_text(err),
+    }
+}
+
+fn error(code: ErrorCode, message: impl Into<String>) -> ServerMsg {
+    ServerMsg::Error {
+        code,
+        message: message.into(),
+    }
+}
+
+impl Api {
+    pub fn new(mgr: SessionManager, server_name: String, resources_interval: Duration) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                mgr,
+                server_name,
+                resources_interval,
+                next_client: AtomicU64::new(1),
+            }),
+        }
+    }
+
+    pub fn sessions(&self) -> &SessionManager {
+        &self.inner.mgr
+    }
+
+    pub fn server_name(&self) -> &str {
+        &self.inner.server_name
+    }
+
+    /// Registers a client. Session card changes are pushed to it right away;
+    /// session events only after `Subscribe`, resources after
+    /// `GetResources`. Dropping the client stops all of its pushes.
+    pub fn connect(
+        &self,
+        transport: &'static str,
+    ) -> (Arc<Client>, mpsc::Receiver<Envelope<ServerMsg>>) {
+        let (out, rx) = mpsc::channel(OUTBOUND_CAPACITY);
+        let client = Arc::new(Client {
+            id: self.inner.next_client.fetch_add(1, Ordering::Relaxed),
+            transport,
+            out: out.clone(),
+            subs: Mutex::new(HashMap::new()),
+            tasks: Mutex::new(Vec::new()),
+            wants_resources: Arc::new(AtomicBool::new(false)),
+        });
+
+        let mgr = self.inner.mgr.clone();
+        let mut updates = mgr.subscribe_updates();
+        let tx = out.clone();
+        let forward = tokio::spawn(async move {
+            loop {
+                let body = match updates.recv().await {
+                    Ok(Update::Changed(session)) => ServerMsg::SessionUpdated { session },
+                    Ok(Update::Removed(session_id)) => ServerMsg::SessionRemoved { session_id },
+                    Err(broadcast::error::RecvError::Lagged(_)) => ServerMsg::Sessions {
+                        sessions: mgr.list(),
+                    },
+                    Err(broadcast::error::RecvError::Closed) => return,
+                };
+                if tx.send(Envelope { id: 0, body }).await.is_err() {
+                    return;
+                }
+            }
+        });
+
+        let mgr = self.inner.mgr.clone();
+        let wants = Arc::clone(&client.wants_resources);
+        let every = self
+            .inner
+            .resources_interval
+            .max(Duration::from_millis(200));
+        let resources = tokio::spawn(async move {
+            let mut tick = tokio::time::interval(every);
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                tick.tick().await;
+                if !wants.load(Ordering::Relaxed) {
+                    continue;
+                }
+                let Some(broker) = mgr.broker() else { return };
+                let body = ServerMsg::Resources {
+                    snapshot: broker.snapshot(),
+                };
+                if out.send(Envelope { id: 0, body }).await.is_err() {
+                    return;
+                }
+            }
+        });
+        lock(&client.tasks).extend([forward, resources]);
+        (client, rx)
+    }
+
+    /// Handles one request. Responses carry the request's id.
+    pub async fn handle(&self, client: &Arc<Client>, env: Envelope<ClientMsg>) {
+        let id = env.id;
+        let mgr = &self.inner.mgr;
+        let reply = match env.body {
+            ClientMsg::Hello {
+                protocol_version, ..
+            } => {
+                if protocol_version == PROTOCOL_VERSION {
+                    ServerMsg::Welcome {
+                        protocol_version: PROTOCOL_VERSION,
+                        server_version: env!("CARGO_PKG_VERSION").to_owned(),
+                        server_name: self.inner.server_name.clone(),
+                    }
+                } else {
+                    error(
+                        ErrorCode::Unsupported,
+                        format!(
+                            "protocol version {protocol_version} is not supported \
+                             (server speaks {PROTOCOL_VERSION})"
+                        ),
+                    )
+                }
+            }
+            ClientMsg::Ping { at } => ServerMsg::Pong { at },
+            ClientMsg::ListSessions => ServerMsg::Sessions {
+                sessions: mgr.list(),
+            },
+            ClientMsg::Subscribe {
+                session_id,
+                from_seq,
+            } => match mgr.get(&session_id) {
+                Some(session) => {
+                    client.send(id, ServerMsg::Ok).await;
+                    self.subscribe(client, session_id, session.log(), from_seq);
+                    return;
+                }
+                None => error(ErrorCode::NotFound, format!("no session {session_id}")),
+            },
+            ClientMsg::Unsubscribe { session_id } => {
+                if let Some(t) = lock(&client.subs).remove(&session_id) {
+                    t.abort();
+                }
+                ServerMsg::Ok
+            }
+            ClientMsg::SendInput { session_id, input } => {
+                match mgr.send_input(&session_id, input) {
+                    Ok(done) => {
+                        client
+                            .send(
+                                id,
+                                ServerMsg::InputAck {
+                                    session_id: session_id.clone(),
+                                    status: DeliveryStatus::Queued,
+                                },
+                            )
+                            .await;
+                        let client = Arc::clone(client);
+                        tokio::spawn(async move {
+                            match done.await {
+                                Ok(Ok(())) => {
+                                    client
+                                        .send(
+                                            0,
+                                            ServerMsg::InputAck {
+                                                session_id,
+                                                status: DeliveryStatus::Delivered,
+                                            },
+                                        )
+                                        .await;
+                                }
+                                Ok(Err(err)) => client.send(id, error_msg(&err)).await,
+                                Err(_) => {
+                                    client
+                                        .send(id, error(ErrorCode::Unavailable, "input dropped"))
+                                        .await;
+                                }
+                            }
+                        });
+                        return;
+                    }
+                    Err(err) => error_msg(&err),
+                }
+            }
+            ClientMsg::Control { session_id, action } => {
+                match mgr.control(&session_id, action).await {
+                    Ok(()) => ServerMsg::Ok,
+                    Err(err) => error_msg(&err),
+                }
+            }
+            ClientMsg::Launch { request } => match mgr.launch(&request) {
+                Ok(session) => ServerMsg::Launched { session },
+                Err(err) => error_msg(&err),
+            },
+            ClientMsg::LaunchCloud { .. } => error(
+                ErrorCode::Unsupported,
+                "cloud sessions are not wired up yet",
+            ),
+            ClientMsg::ListDevices | ClientMsg::RevokeDevice { .. } => error(
+                ErrorCode::Unsupported,
+                "device management needs the remote transport, which is not wired up yet",
+            ),
+            ClientMsg::KillSwitch => error(
+                ErrorCode::Unsupported,
+                "the kill switch needs the remote transport, which is not wired up yet",
+            ),
+            ClientMsg::GetResources => match mgr.broker() {
+                Some(broker) => {
+                    client.wants_resources.store(true, Ordering::Relaxed);
+                    ServerMsg::Resources {
+                        snapshot: broker.snapshot(),
+                    }
+                }
+                None => error(ErrorCode::Unsupported, "the resource broker is off"),
+            },
+            ClientMsg::ReorderQueue { job_id, position } => match mgr.broker() {
+                Some(b) if b.admission().reorder(&job_id, position) => ServerMsg::Ok,
+                Some(_) => error(ErrorCode::NotFound, format!("no queued job {job_id}")),
+                None => error(ErrorCode::Unsupported, "the resource broker is off"),
+            },
+            ClientMsg::CancelQueued { job_id } => match mgr.broker() {
+                Some(b) if b.admission().cancel(&job_id) => ServerMsg::Ok,
+                Some(_) => error(ErrorCode::NotFound, format!("no queued job {job_id}")),
+                None => error(ErrorCode::Unsupported, "the resource broker is off"),
+            },
+            ClientMsg::MarkRead { session_id } => match mgr.mark_read(&session_id) {
+                Ok(()) => ServerMsg::Ok,
+                Err(err) => error_msg(&err),
+            },
+        };
+        client.send(id, reply).await;
+    }
+
+    /// Streams a session's events to the client, replaying from `from_seq`
+    /// first. Replaces an existing subscription to the same session.
+    fn subscribe(
+        &self,
+        client: &Arc<Client>,
+        session_id: SessionId,
+        log: &Arc<Mutex<crate::events::EventLog>>,
+        from_seq: Option<u64>,
+    ) {
+        let (replay, mut stream) = EventStream::open(log, from_seq);
+        let out = client.out.clone();
+        let sid = session_id.clone();
+        let task = tokio::spawn(async move {
+            let send = |body| out.send(Envelope { id: 0, body });
+            if let Some(first) = replay.gap {
+                let gap = ServerMsg::StreamGap {
+                    session_id: sid.clone(),
+                    first_available_seq: first,
+                };
+                if send(gap).await.is_err() {
+                    return;
+                }
+            }
+            for event in replay.events {
+                let msg = ServerMsg::Event {
+                    session_id: sid.clone(),
+                    event,
+                };
+                if send(msg).await.is_err() {
+                    return;
+                }
+            }
+            while let Some(item) = stream.recv().await {
+                let msg = match item {
+                    StreamItem::Event(event) => ServerMsg::Event {
+                        session_id: sid.clone(),
+                        event,
+                    },
+                    StreamItem::Gap(first) => ServerMsg::StreamGap {
+                        session_id: sid.clone(),
+                        first_available_seq: first,
+                    },
+                };
+                if send(msg).await.is_err() {
+                    return;
+                }
+            }
+        });
+        if let Some(old) = lock(&client.subs).insert(session_id, task) {
+            old.abort();
+        }
+    }
+}

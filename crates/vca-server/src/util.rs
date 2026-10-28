@@ -7,9 +7,16 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// The human-readable part of an API error.
+pub(crate) fn error_text(err: &vca_core::Error) -> String {
+    match err {
+        vca_core::Error::Api { message, .. } => message.clone(),
+        other => other.to_string(),
+    }
+}
+
 /// Shortens `text` to at most `max` characters (keeping the end when
 /// `keep_end`), adding an ellipsis.
-#[allow(dead_code)] // Used by the session manager, which is not wired up yet.
 pub(crate) fn truncate_chars(text: &str, max: usize, keep_end: bool) -> String {
     let count = text.chars().count();
     if count <= max {
