@@ -149,6 +149,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 |---|---|---|
 | CON-01 | DNS Pilot provider (default): tunnel with app-token access first, then embedded P2P. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
 | CON-02 | Alternative providers: Tailscale, Cloudflare Tunnel and direct LAN. | S |
+| CON-05 | Custom provider: any user-supplied tunnel or VPN that forwards to the server's local port. The user is responsible for securing it; VCA's own authentication and end-to-end encryption still apply. | S |
 | CON-03 | Connectivity diagnostics in the setup wizard (NAT type, reachability, recommended provider). | M |
 | CON-04 | Automatic reconnection, with the stream resuming without data loss. | M |
 
