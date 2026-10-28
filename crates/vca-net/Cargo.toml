@@ -8,7 +8,40 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+base64 = "0.23.1"
+data-encoding = "2.11.1"
+getrandom = "0.4.3"
+hmac = "0.13.0"
+keyring = { version = "3.6.3", optional = true, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
+regex = "1.13.1"
+sha1 = "0.11.0"
+sha2 = "0.11.0"
+snow = { version = "0.10.0", default-features = false, features = ["default-resolver", "use-chacha20poly1305", "use-sha2", "use-curve25519", "use-getrandom"] }
+subtle = "2.6.1"
+tokio-tungstenite = "0.28"
+url = "2.5.8"
 vca-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rmp-serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+zeroize = "1.9.1"
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+futures-channel = { version = "0.3.34", features = ["sink"] }
 
 [lints]
 workspace = true
+
+[features]
+default = []
+# OS keychain key storage (Windows Credential Manager, macOS Keychain, Secret Service).
+keychain = ["dep:keyring"]
+# TLS for `wss://` client connections (the server itself listens on plain loopback HTTP).
+client-tls = ["tokio-tungstenite/rustls-tls-webpki-roots"]
+
+[dev-dependencies]
+tempfile = "3.27.0"
