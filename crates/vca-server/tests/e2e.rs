@@ -551,3 +551,73 @@ fn dunce_canonical(p: &Path) -> PathBuf {
         _ => c,
     }
 }
+
+/// Stopping a managed session on Windows ends the processes the agent
+/// started (through the session's Job Object). Terminates real processes,
+/// so it only runs with `VCA_PROCESS_CONTROL_TESTS=1` (CI's disposable VMs).
+#[cfg(windows)]
+#[tokio::test(flavor = "multi_thread")]
+async fn stop_ends_processes_the_agent_started() {
+    if std::env::var("VCA_PROCESS_CONTROL_TESTS").as_deref() != Ok("1") {
+        eprintln!("skipped: set VCA_PROCESS_CONTROL_TESTS=1 (isolated VMs only)");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let server = start_server(dir.path(), "job").await;
+    let mut client = connect(&server).await;
+    let id = client.next_id();
+    let resp = client
+        .call(&LocalRequest::Run {
+            id,
+            request: RunRequest {
+                program: "cmd".into(),
+                args: vec!["/c".into(), "ping -n 60 127.0.0.1 >NUL".into()],
+                cwd: dir.path().to_owned(),
+                env: Vec::new(),
+                size: None,
+                agent: None,
+                display_name: None,
+            },
+        })
+        .await
+        .unwrap();
+    let LocalResponse::Run { session, .. } = resp else {
+        panic!("run failed: {resp:?}");
+    };
+    let vca_core::SessionOrigin::Local {
+        pid: Some(root), ..
+    } = session.origin
+    else {
+        panic!("no pid");
+    };
+    let deadline = std::time::Instant::now() + TIMEOUT;
+    let ping = loop {
+        let procs = vca_adapters::ProcessTable::snapshot();
+        if let Some(p) = procs.descendants(root).into_iter().find(|p| {
+            procs
+                .get(*p)
+                .is_some_and(|i| i.name.eq_ignore_ascii_case("PING.EXE"))
+        }) {
+            break p;
+        }
+        assert!(std::time::Instant::now() < deadline, "ping did not start");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    let stopped = client
+        .api(ClientMsg::Control {
+            session_id: session.id.clone(),
+            action: SessionAction::Stop,
+        })
+        .await
+        .unwrap();
+    assert_eq!(stopped, ServerMsg::Ok);
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while vca_adapters::ProcessTable::snapshot().get(ping).is_some() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "ping {ping} survived Stop"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    server.shutdown().await;
+}

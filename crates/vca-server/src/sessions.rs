@@ -82,6 +82,59 @@ pub(crate) struct Managed {
     /// Bumped on every (re)start so stale exit notifications are ignored.
     generation: AtomicU64,
     last_output: Mutex<Instant>,
+    /// The processes this session started (Windows Job Object).
+    job: Mutex<Option<ProcessJob>>,
+}
+
+impl Managed {
+    /// Ends the agent and everything it started: the Job Object first (on
+    /// Windows), then the PTY child. Both act on handles VCA owns, never on
+    /// pids it merely observed.
+    fn end(&self) -> Result<(), vca_pty::PtyError> {
+        if let Some(job) = lock(&self.job).as_ref() {
+            job.terminate();
+        }
+        lock(&self.pty).kill()
+    }
+}
+
+/// Groups a managed agent with the processes it starts, so that stopping it
+/// reaches exactly those processes.
+#[cfg(windows)]
+pub(crate) struct ProcessJob(vca_broker::contain::JobGroup);
+
+#[cfg(windows)]
+impl ProcessJob {
+    /// Puts the freshly spawned PTY child in a new job. Its children join
+    /// the job automatically; processes it started before the assignment
+    /// (a few milliseconds) are not covered. The pid cannot have been reused
+    /// because the PTY still holds the child's handle.
+    fn for_child(pid: Option<u32>) -> Option<Self> {
+        let pid = pid?;
+        let job = vca_broker::contain::JobGroup::new()
+            .and_then(|j| j.assign(pid).map(|()| j))
+            .inspect_err(|e| tracing::warn!("cannot create a job for the session: {e}"))
+            .ok()?;
+        Some(Self(job))
+    }
+
+    fn terminate(&self) {
+        if let Err(e) = self.0.terminate(1) {
+            tracing::warn!("terminating the session job failed: {e}");
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub(crate) struct ProcessJob;
+
+#[cfg(not(windows))]
+impl ProcessJob {
+    fn for_child(_pid: Option<u32>) -> Option<Self> {
+        None
+    }
+
+    fn terminate(&self) {}
 }
 
 pub(crate) struct Observed {
@@ -363,7 +416,7 @@ impl SessionManager {
             }
             if let Some(m) = session.managed() {
                 lock(&m.attach).take();
-                let _ = lock(&m.pty).kill();
+                let _ = m.end();
             }
             let _ = self.inner.updates.send(Update::Removed(id.clone()));
         }
@@ -517,6 +570,7 @@ impl SessionManager {
                 spawn: opts,
                 generation: AtomicU64::new(0),
                 last_output: Mutex::new(Instant::now()),
+                job: Mutex::new(ProcessJob::for_child(pty.pid())),
             })),
         );
         self.insert(Arc::clone(&session));
@@ -696,13 +750,11 @@ impl SessionManager {
                 Ok(())
             }
             SessionAction::Stop => match &session.kind {
-                // Only the process VCA started is killed. Closing its
-                // pseudo-console ends the console processes attached to it;
-                // the broker's tree termination is deliberately not used
-                // until it can only reach processes VCA owns.
+                // Only processes VCA started are ended: the session's job on
+                // Windows, then the PTY child. The broker's pid-based tree
+                // termination is deliberately not used here.
                 Kind::Managed(m) => {
-                    let pty = lock(&m.pty).clone();
-                    pty.kill()
+                    m.end()
                         .map_err(|e| api_error(ErrorCode::Internal, e.to_string()))?;
                     Ok(())
                 }
@@ -725,13 +777,14 @@ impl SessionManager {
         };
         let generation = m.generation.fetch_add(1, Ordering::SeqCst) + 1;
         let old = lock(&m.pty).clone();
-        let _ = old.kill();
+        let _ = m.end();
         let _ = tokio::time::timeout(Duration::from_secs(5), old.wait()).await;
         lock(&m.attach).take();
         let pty = PtySession::spawn(m.spawn.clone())
             .map_err(|e| api_error(ErrorCode::Internal, e.to_string()))?;
         let attach = AttachServer::bind(&m.endpoint, pty.clone())
             .map_err(|e| api_error(ErrorCode::Internal, format!("attach server: {e}")))?;
+        *lock(&m.job) = ProcessJob::for_child(pty.pid());
         *lock(&m.pty) = pty.clone();
         *lock(&m.attach) = Some(attach);
         lock(&session.pending).take();
@@ -788,14 +841,15 @@ impl SessionManager {
 
     /// Stops every managed session (used at shutdown).
     pub async fn stop_all(&self, grace: Duration) {
-        let managed: Vec<PtySession> = self
-            .all()
+        let sessions = self.all();
+        let managed: Vec<PtySession> = sessions
             .iter()
-            .filter_map(|s| s.managed().map(|m| lock(&m.pty).clone()))
+            .filter_map(|s| s.managed())
+            .map(|m| {
+                let _ = m.end();
+                lock(&m.pty).clone()
+            })
             .collect();
-        for pty in &managed {
-            let _ = pty.kill();
-        }
         let _ = tokio::time::timeout(grace, async {
             for pty in &managed {
                 let _ = pty.wait().await;
