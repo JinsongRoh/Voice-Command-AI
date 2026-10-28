@@ -10,6 +10,7 @@ use super::protocol::{
     read_server_frame, write_client_frame,
 };
 use super::{StreamHalf, endpoint_name, split_stream};
+use crate::cpr::{CprReplyFilter, CprScanner};
 use crate::session::PtySize;
 
 /// Default detach prefix: Ctrl-] (0x1d), as in telnet.
@@ -283,6 +284,10 @@ pub async fn attach_stdio(endpoint: &Path) -> io::Result<AttachOutcome> {
 
     let mut stdout = tokio::io::stdout();
     let mut detector = DetachDetector::default();
+    // The session answers cursor position queries itself, so the local
+    // terminal's answers to the same queries are dropped.
+    let mut cpr_scanner = CprScanner::default();
+    let mut cpr_filter = CprReplyFilter::default();
     let mut modes = crate::modes::ModeTracker::new();
     let mut input_open = true;
 
@@ -296,6 +301,7 @@ pub async fn attach_stdio(endpoint: &Path) -> io::Result<AttachOutcome> {
             frame = frames.recv() => match frame {
                 Some(Ok(ServerFrame::Output { data, .. } | ServerFrame::Redraw(data))) => {
                     modes.feed(&data);
+                    cpr_filter.expect(cpr_scanner.scan(&data).len());
                     app_cursor.store(modes.modes().application_cursor, std::sync::atomic::Ordering::Relaxed);
                     stdout.write_all(&data).await?;
                     stdout.flush().await?;
@@ -314,7 +320,7 @@ pub async fn attach_stdio(endpoint: &Path) -> io::Result<AttachOutcome> {
             },
             event = local.recv(), if input_open => match event {
                 Some(LocalEvent::Input(bytes)) => {
-                    let (forward, detach) = detector.feed(&bytes);
+                    let (forward, detach) = detector.feed(&cpr_filter.filter(&bytes));
                     if !forward.is_empty() {
                         writer.input(&forward).await?;
                     }
@@ -324,7 +330,13 @@ pub async fn attach_stdio(endpoint: &Path) -> io::Result<AttachOutcome> {
                     }
                 }
                 Some(LocalEvent::Resize(size)) => writer.resize(size).await?,
-                Some(LocalEvent::Eof) | None => input_open = false,
+                Some(LocalEvent::Eof) | None => {
+                    input_open = false;
+                    let (rest, _) = detector.feed(&cpr_filter.flush());
+                    if !rest.is_empty() {
+                        writer.input(&rest).await?;
+                    }
+                }
             },
             Some(()) = resized => {
                 if let Some(size) = terminal_size() {

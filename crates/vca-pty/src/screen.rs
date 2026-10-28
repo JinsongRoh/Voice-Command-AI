@@ -87,6 +87,11 @@ impl Screen {
         self.parser.process(bytes);
     }
 
+    /// Cursor position as (row, col), zero based.
+    pub(crate) fn cursor(&self) -> (u16, u16) {
+        self.parser.screen().cursor_position()
+    }
+
     pub(crate) fn resize(&mut self, size: PtySize) {
         self.parser.set_size(nz(size.rows), nz(size.cols));
     }

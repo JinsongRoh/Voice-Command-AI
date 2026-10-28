@@ -16,7 +16,7 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | Component | Status | Tests (Linux) | Notes |
 |---|---|---|---|
 | `vca-core` | Done | 3 | Session model, events, inputs, resources and the client/server protocol. Includes the UI-requested additions (cloud launch, devices, kill switch, `preview`, `Acknowledged`). |
-| `vca-pty` + `tools/vca-fake-agent` | Done, **one Windows bug** | 62 | Managed PTY, focus-free input, sequence-numbered replay, screen snapshot, attach protocol, shell integration snippets. See §3.1. |
+| `vca-pty` + `tools/vca-fake-agent` | Done | 62 | Managed PTY, focus-free input, sequence-numbered replay, screen snapshot, attach protocol, shell integration snippets. See §3.1. |
 | `vca-adapters` | Done | 72 | Claude Code and Codex adapters (transcripts, hooks/notify install, hook payloads, profiles), generic adapters, output heuristics, process tables, tier-3 injection (tmux verified; WezTerm, kitty, iTerm2, Windows console unverified). |
 | `vca-broker` | Done | 75 | Classifier, `policies.toml`, admission controller with leased slots and queue, IPC for hooks (fail open), containment, monitor, threshold watcher. GPU sampling, cgroups v2 and history (RES-08) not done. |
 | `vca-net` | Done (agent stopped during final review) | 95 | Keys, Noise XX with chunking, QR pairing, device registry, TOTP, rotating tokens, WebSocket transport with heartbeat, replay buffers, audit log, kill switch. Re-review it against the new `ClientMsg` variants before wiring. |
@@ -29,14 +29,11 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 
 ## 3. Known issues
 
-### 3.1 Windows: ConPTY cursor query blocks managed sessions (high)
+### 3.1 Windows: ConPTY cursor query blocks managed sessions (fixed)
 
-On Windows, ConPTY writes a cursor position query (`ESC[6n`) at startup and waits for an answer. With no terminal attached, the agent never starts. CI shows it as `did not see "> "; output so far: "\u{1b}[6n"` in `crates/vca-pty/tests/attach.rs`.
+ConPTY writes a cursor position query (`ESC[6n`) at startup and waits for an answer; portable-pty 0.9 hard-codes the inherit-cursor flag, so the query cannot be turned off without forking it. `vca-pty` now answers every `ESC[6n` itself (also when split across chunks) from the vt100 cursor at the point of the query, or `1;1` with screen tracking off (`SpawnOptions::answer_cursor_queries`, on by default). `attach_stdio` counts the queries it writes to the local terminal and drops that terminal's replies (`CprReplyFilter`, with a 2 s expiry so Ctrl+F3 is not swallowed later).
 
-Fix in `vca-pty`:
-- **Answer cursor queries:** when output contains `ESC[6n` (also when the sequence is split across chunks), answer `ESC[{row};{col}R` from the vt100 cursor.
-- **Avoid duplicate answers:** decide how to handle this when a real terminal is attached. Either answer only while no attach client is connected, or drop CPR replies coming from clients.
-- **Alternative to evaluate:** create the pseudoconsole without the inherit-cursor flag.
+Found on the way, also fixed: portable-pty's Windows killer inverts `TerminateProcess`'s result (`PtySession::kill` ignores it on Windows); ConPTY drops bare line feeds inside bracketed paste (newlines are now sent as ``, as real terminals do); removing a paste marker could join its neighbors into a new marker (now stripped to a fixed point).
 
 ### 3.2 Other items
 - `vca-adapters`: WezTerm, kitty, iTerm2 and Windows console injection are unverified on real machines.

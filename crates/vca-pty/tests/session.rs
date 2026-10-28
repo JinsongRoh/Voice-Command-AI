@@ -227,10 +227,18 @@ async fn multi_line_text_uses_bracketed_paste() {
         .await
         .unwrap();
     read_until(&mut sub, &mut out, "Echo: line one").await;
-    read_until(&mut sub, &mut out, "Done.").await;
-    // One message, not two.
-    assert_eq!(out.matches("Echo:").count(), 1, "{out}");
-    assert!(out.contains("Echo: line one\r\nline two"), "{out}");
+    if cfg!(windows) {
+        // ConPTY consumes the paste markers for console applications that
+        // read in cooked mode (no VT input), like the fake agent, and the
+        // pasted carriage return ends the line. Check that both lines arrive
+        // and none is lost.
+        read_until(&mut sub, &mut out, "Echo: line two").await;
+    } else {
+        read_until(&mut sub, &mut out, "Done.").await;
+        // One message, not two.
+        assert_eq!(out.matches("Echo:").count(), 1, "{out}");
+        assert!(out.contains("Echo: line one\r\nline two"), "{out}");
+    }
 
     session.send_input(&text("/exit")).await.unwrap();
     assert_eq!(wait_exit(&session).await.code, Some(0));
@@ -282,4 +290,32 @@ async fn write_after_exit_does_not_hang() {
     )
     .await
     .expect("write hung");
+}
+
+/// The session answers `ESC[6n` itself, so the child gets a reply with no
+/// terminal attached (Windows ConPTY sends this query at startup).
+#[tokio::test]
+async fn answers_cursor_position_queries() {
+    let session = PtySession::spawn(fake_agent_opts()).unwrap();
+    let mut sub = session.subscribe_from(0);
+    let mut out = String::new();
+    read_until(&mut sub, &mut out, "> ").await;
+    session.send_input(&text("/cpr")).await.unwrap();
+    read_until(&mut sub, &mut out, "cpr ").await;
+    read_until(&mut sub, &mut out, "\n").await;
+    let line = out[out.rfind("cpr ").unwrap()..].lines().next().unwrap();
+    assert!(!line.contains("error"), "{line:?} in {out:?}");
+    let (row, col) = line["cpr ".len()..].trim().split_once(';').unwrap();
+    assert!(row.parse::<u16>().unwrap() >= 1, "{line:?}");
+    assert_eq!(col.parse::<u16>().unwrap(), 1, "{line:?}");
+    session.kill().unwrap();
+    wait_exit(&session).await;
+}
+
+#[tokio::test]
+async fn starts_without_screen_tracking() {
+    let session = PtySession::spawn(fake_agent_opts().screen(None)).unwrap();
+    wait_for(&session, "> ").await;
+    session.kill().unwrap();
+    wait_exit(&session).await;
 }

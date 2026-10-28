@@ -13,6 +13,7 @@ use portable_pty::{ChildKiller, CommandBuilder, MasterPty, native_pty_system};
 use tokio::sync::{broadcast, oneshot, watch};
 use vca_core::Input;
 
+use crate::cpr::{CprScanner, cpr_reply};
 use crate::error::PtyError;
 use crate::input::{ENTER, encode_input};
 use crate::modes::{ModeTracker, TerminalModes};
@@ -93,6 +94,12 @@ pub struct SpawnOptions {
     pub screen: Option<ScreenOptions>,
     /// Pause between the text and Enter of a submitted [`Input::Text`].
     pub submit_delay: Duration,
+    /// Answer cursor position queries (`ESC[6n`) from the session's screen
+    /// state (`1;1` when screen tracking is disabled). On by default:
+    /// Windows ConPTY blocks at startup until its query is answered, and
+    /// attached terminals' duplicate answers are dropped by the attach
+    /// client (see [`CprReplyFilter`](crate::CprReplyFilter)).
+    pub answer_cursor_queries: bool,
 }
 
 impl SpawnOptions {
@@ -107,6 +114,7 @@ impl SpawnOptions {
             buffer: BufferLimits::default(),
             screen: Some(ScreenOptions::default()),
             submit_delay: Duration::from_millis(30),
+            answer_cursor_queries: true,
         }
     }
 
@@ -156,6 +164,11 @@ impl SpawnOptions {
 
     pub fn submit_delay(mut self, delay: Duration) -> Self {
         self.submit_delay = delay;
+        self
+    }
+
+    pub fn answer_cursor_queries(mut self, answer: bool) -> Self {
+        self.answer_cursor_queries = answer;
         self
     }
 
@@ -282,12 +295,13 @@ impl PtySession {
         }));
         let master = Arc::new(Mutex::new(Some(pair.master)));
 
+        let (write_tx, write_rx) = std_mpsc::channel::<WriteCmd>();
         let reader_shared = Arc::clone(&shared);
+        let replies = opts.answer_cursor_queries.then(|| write_tx.clone());
         thread::Builder::new()
             .name("vca-pty-reader".into())
-            .spawn(move || reader_loop(reader, reader_shared))?;
+            .spawn(move || reader_loop(reader, reader_shared, replies))?;
 
-        let (write_tx, write_rx) = std_mpsc::channel::<WriteCmd>();
         thread::Builder::new()
             .name("vca-pty-writer".into())
             .spawn(move || writer_loop(writer, write_rx))?;
@@ -397,7 +411,13 @@ impl PtySession {
         if self.try_exit_status().is_some() {
             return Ok(());
         }
-        lock(&self.inner.killer).kill()?;
+        let result = lock(&self.inner.killer).kill();
+        // portable-pty 0.9's Windows killer inverts TerminateProcess's result
+        // (success comes back as an error carrying a stale last-error code,
+        // failure as Ok), so the result carries no information there.
+        if cfg!(not(windows)) {
+            result?;
+        }
         Ok(())
     }
 
@@ -473,8 +493,51 @@ impl PtySession {
     }
 }
 
-fn reader_loop(mut reader: Box<dyn Read + Send>, shared: Arc<Mutex<Shared>>) {
+/// Feeds `data` to the screen. When `replies` is set, answers every cursor
+/// position query in it with the cursor position at the point of the query.
+fn process_output(
+    screen: Option<&mut Screen>,
+    scanner: &mut CprScanner,
+    data: &[u8],
+    replies: Option<&std_mpsc::Sender<WriteCmd>>,
+) {
+    let Some(replies) = replies else {
+        if let Some(screen) = screen {
+            screen.process(data);
+        }
+        return;
+    };
+    let ends = scanner.scan(data);
+    let Some(screen) = screen else {
+        for _ in ends {
+            send_reply(replies, cpr_reply(0, 0));
+        }
+        return;
+    };
+    let mut start = 0;
+    for end in ends {
+        screen.process(&data[start..end]);
+        start = end;
+        let (row, col) = screen.cursor();
+        send_reply(replies, cpr_reply(row, col));
+    }
+    screen.process(&data[start..]);
+}
+
+fn send_reply(replies: &std_mpsc::Sender<WriteCmd>, data: Vec<u8>) {
+    // Nobody waits for the acknowledgement; a closed writer means the
+    // session is going away.
+    let (ack, _) = oneshot::channel();
+    let _ = replies.send(WriteCmd { data, ack });
+}
+
+fn reader_loop(
+    mut reader: Box<dyn Read + Send>,
+    shared: Arc<Mutex<Shared>>,
+    replies: Option<std_mpsc::Sender<WriteCmd>>,
+) {
     let mut buf = vec![0u8; READ_BUF_SIZE];
+    let mut scanner = CprScanner::default();
     loop {
         match reader.read(&mut buf) {
             Ok(0) => break,
@@ -482,9 +545,7 @@ fn reader_loop(mut reader: Box<dyn Read + Send>, shared: Arc<Mutex<Shared>>) {
                 let data = Bytes::copy_from_slice(&buf[..n]);
                 let mut s = lock(&shared);
                 s.modes.feed(&data);
-                if let Some(screen) = s.screen.as_mut() {
-                    screen.process(&data);
-                }
+                process_output(s.screen.as_mut(), &mut scanner, &data, replies.as_ref());
                 let chunk = s.ring.push(data);
                 if let Some(tx) = &s.tx {
                     // No receivers is fine: output stays in the ring.

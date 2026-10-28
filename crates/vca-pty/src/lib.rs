@@ -17,6 +17,7 @@
 //!   commands through `vca run`.
 
 pub mod attach;
+mod cpr;
 mod error;
 pub mod input;
 mod modes;
@@ -28,6 +29,7 @@ pub mod shell;
 pub use attach::{
     AttachClient, AttachOptions, AttachOutcome, AttachServer, AttachStart, attach_stdio,
 };
+pub use cpr::CprReplyFilter;
 pub use error::PtyError;
 pub use modes::{ModeTracker, TerminalModes};
 pub use ring::{BufferLimits, Gap, OutputChunk, OutputRing, Replay};

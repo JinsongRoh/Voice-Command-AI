@@ -14,6 +14,8 @@
 //! | `/size`          | Print `size <cols>x<rows>` of the terminal.       |
 //! | `/env NAME`      | Print `env NAME=<value>` (empty when unset).      |
 //! | `/cwd`           | Print `cwd <current directory>`.                  |
+//! | `/cpr`           | Query the cursor position (`ESC[6n`) and print    |
+//! |                  | `cpr <row>;<col>` (one based) or `cpr error ...`. |
 //!
 //! # Default rules (used after script rules)
 //!
@@ -357,6 +359,16 @@ impl Agent {
                 let name = words.next().unwrap_or_default();
                 let value = std::env::var(name).unwrap_or_default();
                 self.println(&format!("env {name}={value}"));
+                Some(Flow::Continue)
+            }
+            "/cpr" => {
+                // crossterm writes ESC[6n and reads the reply on Unix; on
+                // Windows it asks the console API instead.
+                let line = match crossterm::cursor::position() {
+                    Ok((col, row)) => format!("cpr {};{}", row + 1, col + 1),
+                    Err(err) => format!("cpr error {err}"),
+                };
+                self.println(&line);
                 Some(Flow::Continue)
             }
             "/cwd" => {

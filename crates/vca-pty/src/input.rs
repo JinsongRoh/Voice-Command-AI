@@ -46,12 +46,14 @@ pub fn encode_key(key: ControlKey, modes: TerminalModes) -> &'static [u8] {
 ///
 /// Multi-line text is wrapped in bracketed-paste markers when the
 /// application enabled bracketed paste, so that embedded newlines do not
-/// submit early. Any paste markers inside the text are removed first, so
-/// the text cannot terminate the paste and inject keystrokes.
+/// submit early. Newlines inside a paste are sent as carriage returns, as
+/// real terminals do (Windows ConPTY drops bare line feeds). Any paste
+/// markers inside the text are removed first, so the text cannot terminate
+/// the paste and inject keystrokes.
 pub fn encode_text(text: &str, modes: TerminalModes) -> Vec<u8> {
     let multi_line = text.contains(['\n', '\r']);
     if modes.bracketed_paste && multi_line {
-        let cleaned = strip_paste_markers(text.as_bytes());
+        let cleaned = strip_paste_markers(&paste_newlines(text));
         let mut out = Vec::with_capacity(cleaned.len() + PASTE_START.len() + PASTE_END.len());
         out.extend_from_slice(PASTE_START);
         out.extend_from_slice(&cleaned);
@@ -81,7 +83,25 @@ pub fn encode_input(input: &Input, modes: TerminalModes) -> Result<EncodedInput,
     }
 }
 
+/// Converts `\r\n` and `\n` to `\r`.
+fn paste_newlines(text: &str) -> Vec<u8> {
+    text.replace("\r\n", "\r").replace('\n', "\r").into_bytes()
+}
+
+/// Removes paste markers until none are left, so that removing one cannot
+/// join its neighbors into a new marker.
 fn strip_paste_markers(bytes: &[u8]) -> Vec<u8> {
+    let mut current = strip_paste_markers_once(bytes);
+    loop {
+        let next = strip_paste_markers_once(&current);
+        if next.len() == current.len() {
+            return next;
+        }
+        current = next;
+    }
+}
+
+fn strip_paste_markers_once(bytes: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
@@ -151,14 +171,23 @@ mod tests {
     #[test]
     fn multi_line_text_uses_bracketed_paste_only_when_enabled() {
         assert_eq!(encode_text("a\nb", PLAIN), b"a\nb");
-        assert_eq!(encode_text("a\nb", PASTE), b"\x1b[200~a\nb\x1b[201~");
+        assert_eq!(encode_text("a\nb", PASTE), b"\x1b[200~a\rb\x1b[201~");
+        assert_eq!(encode_text("a\r\nb\n", PASTE), b"\x1b[200~a\rb\r\x1b[201~");
         assert_eq!(encode_text("single", PASTE), b"single");
     }
 
     #[test]
     fn paste_markers_inside_text_are_removed() {
         let enc = encode_text("a\n\x1b[201~rm -rf /\r", PASTE);
-        assert_eq!(enc, b"\x1b[200~a\nrm -rf /\r\x1b[201~");
+        assert_eq!(enc, b"\x1b[200~a\rrm -rf /\r\x1b[201~");
+    }
+
+    #[test]
+    fn removing_a_marker_cannot_form_a_new_one() {
+        let enc = encode_text("a\n\x1b[20\x1b[200~1~rm -rf /\r", PASTE);
+        assert_eq!(enc, b"\x1b[200~a\rrm -rf /\r\x1b[201~");
+        let enc = encode_text("a\n\x1b[2\x1b[20\x1b[200~1~01~x", PASTE);
+        assert_eq!(enc, b"\x1b[200~a\rx\x1b[201~");
     }
 
     #[test]
