@@ -21,13 +21,13 @@ DNS Pilot is VCA's default connectivity provider. This document covers four thin
 | **Tunnel access modes** | Password, organization login (2FA, with an `X-DNSPilot-User` header passed to the local service) and fully public (reviewed per organization). | Edge access control, but designed for browsers (see gap G1). |
 | **P2P (DPT/2)** | Agent-to-Agent direct QUIC connection with NAT traversal. Falls back automatically to an encrypted relay (about 80–90 Mbps measured). Destinations are restricted to services registered in the console. | Ideal path for VCA Mobile, provided the phone can act as a P2P peer (see gap G2). |
 | **DDNS** | Agent-driven updates (60 s TTL), token API and DNSEver-compatible API. Free `<name>.yoitne.kr` hostnames. | Fallback for users who prefer port forwarding. |
-| **Console API** | Scoped API tokens (scopes, IP restriction, expiry), webhooks and an audit log. | Programmatic tunnel setup from VCA. |
+| **Console API** | Scoped API tokens (scopes, IP restriction, expiry), webhooks and an audit log. Tunnels and P2P services can already be created entirely through the API. | Programmatic tunnel and P2P setup from VCA. |
 | **Agent modules** | Console-managed extensions with settings and secrets. | Possible optional distribution channel for VCA. |
 | **Account security** | TOTP, passkeys, IP allow-lists, login rate limiting, re-authentication for sensitive actions. | Strong baseline for the account that owns the tunnel. |
 
 ## 2. Integration design
 
-### 2.1 Phase A: Tunnel (available today, needs G1)
+### 2.1 Track A: Tunnel (needs R1)
 
 ```
 VCA Mobile ──HTTPS/WSS (SNI=vca-<machine>.<domain>)──► relay ══► DNS Pilot Agent ──► 127.0.0.1:47800 (VCA Server)
@@ -38,10 +38,12 @@ VCA Mobile ──HTTPS/WSS (SNI=vca-<machine>.<domain>)──► relay ══►
 - The VCA setup wizard performs these steps:
   1. Detect the Agent.
   2. Start device activation if needed.
-  3. Create the tunnel through the API.
+  3. Create the tunnel or P2P service through the console API (already supported).
   4. Embed the resulting hostname in the pairing QR code.
 
-### 2.2 Phase B: Embedded P2P (target, needs G2)
+### 2.2 Track B: Embedded P2P (needs R2)
+
+Tracks A and B are developed **in parallel**. VCA supports both, and the setup wizard picks P2P when the direct path works, falling back to the tunnel otherwise.
 
 ```
 VCA Mobile (embedded DPT/2 client) ◄──QUIC direct / relay fallback──► DNS Pilot Agent ──► 127.0.0.1:47800
@@ -51,9 +53,13 @@ VCA Mobile (embedded DPT/2 client) ◄──QUIC direct / relay fallback──�
 - The service never gets a public hostname, which shrinks the attack surface.
 - This path could be offered on lower-priced plans, which lowers the barrier for open-source users.
 
-### 2.3 Other providers (bring your own)
+### 2.3 Distribution as a DNS Pilot Agent module
 
-DNS Pilot tunnels are a paid feature. Users who prefer not to use DNS Pilot can choose another provider through VCA's provider abstraction:
+Besides its standalone installers, VCA is also distributed as a **DNS Pilot Agent module**. DNS Pilot users can enable VCA from the console with one click. The module and the standalone build are the same software; the module simply comes pre-wired to the DNS Pilot provider.
+
+### 2.4 Other providers (bring your own)
+
+VCA treats connectivity providers as interchangeable choices. Users are free to pick whichever fits them, through VCA's provider abstraction:
 
 - built-in providers: Tailscale, Cloudflare Tunnel and direct LAN;
 - a **custom provider**: any tunnel or VPN that can forward to `127.0.0.1:47800`.
@@ -157,16 +163,22 @@ A localhost-only API (or CLI) authenticated with a local token. It provides:
 - Deploy the English landing page.
 - Expose API documentation pages without login, so that VCA's documentation can link to them.
 
+### R11. VCA as an Agent module
+
+- Package VCA Server as a DNS Pilot Agent module that can be enabled from the console.
+- The module installs or updates the same signed VCA build that the standalone installers ship, and wires it to the DNS Pilot provider automatically (tunnel or P2P service, client credentials, push relay).
+- Define the module interface, signing and release process for a third-party, open-source module.
+
 ### Requested deliverables
 
-1. Status and effort estimate for R1–R10.
+1. Status and effort estimate for R1–R11.
 2. OpenAPI specifications for R1, R4, R7 and R8, and the SDK interface for R2.
 3. Security model notes covering credential lifecycles and what the relay can observe.
 4. Sequence diagram of the VCA setup-wizard integration (activation → tunnel or P2P service → client credential → pairing).
 
 ## 5. Open questions for DNS Pilot
 
-1. Does the tunnel forward raw TLS streams (TCP after TLS termination), or does it parse HTTP? This determines WebSocket and HTTP/2 behavior.
-2. Can tunnels and P2P services be created entirely through the console API today, including device selection?
-3. Could VCA optionally be distributed as an Agent module, while staying an independent installable application?
-4. What is the target date for the macOS Agent and the English landing page?
+A detailed technical questionnaire has been sent to the DNS Pilot team. Answers will be folded into this document. Settled so far:
+
+- Tunnels and P2P services can be created entirely through the console API.
+- VCA will also be distributed as an Agent module (R11).
