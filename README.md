@@ -30,7 +30,7 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 - **Multi-agent orchestration.** Coordinate several sessions on one task through an optional orchestrator session.
 - **Multiple machines.** Pair your home, office and server machines with one app.
 - **Secure remote access.** Device pairing via QR code, TOTP two-factor authentication, short-lived tokens, end-to-end encryption, audit log and a kill switch.
-- **Flexible connectivity.** Built-in support for DNS Pilot tunnels and DDNS, with optional Tailscale and Cloudflare Tunnel providers.
+- **Your choice of connectivity.** Pluggable providers: DNS Pilot (tunnel or P2P), Tailscale, Cloudflare Tunnel, direct LAN, or bring your own.
 - **Pluggable speech-to-text.** Choose local Whisper, OpenAI, Google Cloud or another cloud provider.
 - **Account profiles.** Keep several legitimately owned agent accounts or API keys side by side, see usage at a glance, and choose which profile a session uses.
 

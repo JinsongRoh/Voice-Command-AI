@@ -47,7 +47,7 @@ A phone becomes the control surface for every agent on every machine you own. Yo
 | **VCA Desktop** | Tauri 2 tray app and local dashboard for VCA Server: settings, pairing QR code, session overview and kill switch. |
 | **VCA Mobile** | Tauri 2 app for iOS and Android: session cards, voice input, live view, notifications and machine switching. |
 | **`vca` CLI** | Command-line entry point. It runs agents under VCA management, attaches terminals and administers the server. |
-| **Connectivity providers** | DNS Pilot (default), Tailscale, Cloudflare Tunnel and direct LAN. |
+| **Connectivity providers** | Interchangeable plugins: DNS Pilot, Tailscale, Cloudflare Tunnel, direct LAN and custom. |
 | **Push relay** | Relays end-to-end encrypted notifications to APNs and FCM (provided by DNS Pilot). |
 
 ## 3. Functional requirements
@@ -147,8 +147,8 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 
 | ID | Requirement | Pri |
 |---|---|---|
-| CON-01 | DNS Pilot provider (default): tunnel with app-token access first, then embedded P2P. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
-| CON-02 | Alternative providers: Tailscale, Cloudflare Tunnel and direct LAN. | S |
+| CON-01 | DNS Pilot provider: app-token tunnel and embedded P2P, developed in parallel. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
+| CON-02 | Tailscale, Cloudflare Tunnel and direct LAN providers, supported on equal footing with DNS Pilot. The user chooses; the setup wizard recommends one based on diagnostics. | M |
 | CON-05 | Custom provider: any user-supplied tunnel or VPN that forwards to the server's local port. The user is responsible for securing it; VCA's own authentication and end-to-end encryption still apply. | S |
 | CON-03 | Connectivity diagnostics in the setup wizard (NAT type, reachability, recommended provider). | M |
 | CON-04 | Automatic reconnection, with the stream resuming without data loss. | M |
@@ -213,7 +213,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 | Reliability | The server restarts sessions' management state after a crash, and managed agents keep running if the server restarts. |
 | Privacy | No telemetry by default. Code and prompts never leave the user's machine except to the user's own devices and chosen STT provider. |
 | Extensibility | Agent adapters, STT engines and connectivity providers are plugins with documented interfaces. |
-| Distribution | Signed installers (MSI, DMG/PKG, deb/rpm/AppImage), Homebrew, winget and Cargo. Mobile through the App Store and Google Play. |
+| Distribution | Signed installers (MSI, DMG/PKG, deb/rpm/AppImage), Homebrew, winget and Cargo. Also available as a DNS Pilot Agent module. Mobile through the App Store and Google Play. |
 
 ## 5. Release plan
 
