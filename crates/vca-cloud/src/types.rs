@@ -127,6 +127,7 @@ impl CloudSession {
             created_at: created,
             last_activity: self.updated_at.unwrap_or(created),
             unread: 0,
+            preview: None,
         }
     }
 }

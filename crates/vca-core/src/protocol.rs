@@ -10,7 +10,7 @@ use crate::UnixMillis;
 use crate::error::ErrorCode;
 use crate::event::{Input, SessionEvent};
 use crate::resource::ResourceSnapshot;
-use crate::session::{LaunchRequest, SessionAction, SessionId, SessionInfo};
+use crate::session::{CloudLaunchRequest, LaunchRequest, SessionAction, SessionId, SessionInfo};
 
 /// Bumped on incompatible protocol changes.
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -52,6 +52,10 @@ pub enum ClientMsg {
     Launch {
         request: LaunchRequest,
     },
+    /// Answered with [`ServerMsg::Launched`].
+    LaunchCloud {
+        request: CloudLaunchRequest,
+    },
     GetResources,
     /// Move a queued job to a new position (0 = next).
     ReorderQueue {
@@ -64,6 +68,24 @@ pub enum ClientMsg {
     MarkRead {
         session_id: SessionId,
     },
+    ListDevices,
+    RevokeDevice {
+        device_id: String,
+    },
+    /// Drop every remote connection and close the tunnel (SEC-09).
+    KillSwitch,
+}
+
+/// A device paired with the server (SEC-10).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PairedDevice {
+    pub id: String,
+    pub name: String,
+    pub platform: String,
+    pub paired_at: UnixMillis,
+    pub last_seen: UnixMillis,
+    /// True for the device that sent the request.
+    pub current: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,6 +93,8 @@ pub enum ClientMsg {
 pub enum DeliveryStatus {
     Queued,
     Delivered,
+    /// The agent visibly reacted to the input.
+    Acknowledged,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -117,6 +141,9 @@ pub enum ServerMsg {
     },
     Resources {
         snapshot: ResourceSnapshot,
+    },
+    Devices {
+        devices: Vec<PairedDevice>,
     },
 }
 

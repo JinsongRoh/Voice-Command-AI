@@ -13,11 +13,13 @@ pub mod session;
 
 pub use error::{Error, Result};
 pub use event::{ControlKey, Decision, DecisionOption, Input, MessageRole, SessionEvent};
-pub use protocol::{ClientMsg, Envelope, PROTOCOL_VERSION, ServerMsg};
+pub use protocol::{
+    ClientMsg, DeliveryStatus, Envelope, PROTOCOL_VERSION, PairedDevice, ServerMsg,
+};
 pub use resource::{AdmissionVerdict, JobClass, QueueEntry, ResourceSnapshot, SessionUsage};
 pub use session::{
-    AgentKind, CloudProvider, ControlTier, LaunchRequest, SessionAction, SessionId, SessionInfo,
-    SessionOrigin, SessionState,
+    AgentKind, CloudLaunchRequest, CloudProvider, ControlTier, LaunchRequest, SessionAction,
+    SessionId, SessionInfo, SessionOrigin, SessionState,
 };
 
 /// Milliseconds since the Unix epoch, used for all timestamps in this crate.

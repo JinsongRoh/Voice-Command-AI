@@ -132,6 +132,10 @@ pub struct SessionInfo {
     pub last_activity: UnixMillis,
     /// Number of unread notifications for this session.
     pub unread: u32,
+    /// Short excerpt of recent output for the session card, so clients do
+    /// not need to subscribe to every session.
+    #[serde(default)]
+    pub preview: Option<String>,
 }
 
 /// Request to start a new local session.
@@ -145,6 +149,15 @@ pub struct LaunchRequest {
     pub profile: Option<String>,
     #[serde(default)]
     pub args: Vec<String>,
+    pub display_name: Option<String>,
+}
+
+/// Request to start a new cloud session (CLD-03).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CloudLaunchRequest {
+    pub provider: CloudProvider,
+    pub repository: String,
+    pub prompt: String,
     pub display_name: Option<String>,
 }
 
