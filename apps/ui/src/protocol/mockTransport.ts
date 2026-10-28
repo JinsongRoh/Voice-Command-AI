@@ -8,26 +8,27 @@
  * snapshots. Timing is driven by `tick()`, which runs on an interval unless
  * `autoTick` is false (tests call `tick()` directly).
  */
-import type { WireClientMsg, WireServerMsg } from './codec';
-import { createScenario, launchScript, type MockProfile, type ScriptStep } from './mockData';
-import type { PairedDevice } from './proposed';
-import type { ConnectionState, Transport, Unsubscribe } from './transport';
 import type {
+  ClientMsg,
   ControlKey,
   Decision,
   Envelope,
   ErrorCode,
   Input,
+  PairedDevice,
   QueueEntry,
   ResourceSnapshot,
+  ServerMsg,
   SessionAction,
   SessionEvent,
   SessionInfo,
   SessionState,
   UnixMillis,
 } from './types';
+import { createScenario, launchScript, type MockProfile, type ScriptStep } from './mockData';
+import type { ConnectionState, Transport, Unsubscribe } from './transport';
 import { PROTOCOL_VERSION } from './types';
-import { needsAttention } from './helpers';
+import { eventPreview, needsAttention } from './helpers';
 
 export interface MockTransportOptions {
   profile?: MockProfile;
@@ -84,7 +85,7 @@ const KEY_ECHO: Partial<Record<ControlKey, string>> = {
 
 export class MockTransport implements Transport {
   private _state: ConnectionState = 'disconnected';
-  private readonly messageListeners = new Set<(e: Envelope<WireServerMsg>) => void>();
+  private readonly messageListeners = new Set<(e: Envelope<ServerMsg>) => void>();
   private readonly stateListeners = new Set<(s: ConnectionState) => void>();
   private readonly sessions = new Map<string, MockSession>();
   private readonly subscriptions = new Set<string>();
@@ -99,6 +100,10 @@ export class MockTransport implements Transport {
   private readonly autoTick: boolean;
   private readonly random: () => number;
   private timer: ReturnType<typeof setInterval> | null = null;
+  /** Sessions whose card fields (preview) changed since the last push. */
+  private readonly dirty = new Set<string>();
+  /** Sessions with delivered text waiting for the agent to react. */
+  private readonly awaitingAck = new Set<string>();
   private ticks = 0;
   private launchCounter = 0;
   private jobCounter = 300;
@@ -167,14 +172,14 @@ export class MockTransport implements Transport {
     this.setState('disconnected');
   }
 
-  async send(envelope: Envelope<WireClientMsg>): Promise<WireServerMsg> {
+  async send(envelope: Envelope<ClientMsg>): Promise<ServerMsg> {
     if (this._state !== 'connected') throw new Error('not connected');
     await this.delay(this.latencyMs);
     if (this.state !== 'connected') throw new Error('connection lost');
     return this.handle(envelope.body);
   }
 
-  onMessage(listener: (envelope: Envelope<WireServerMsg>) => void): Unsubscribe {
+  onMessage(listener: (envelope: Envelope<ServerMsg>) => void): Unsubscribe {
     this.messageListeners.add(listener);
     return () => this.messageListeners.delete(listener);
   }
@@ -224,8 +229,14 @@ export class MockTransport implements Transport {
         continue;
       }
       const step = this.nextStep(session);
-      if (step) this.applyStep(session, step, at);
+      if (step) {
+        this.applyStep(session, step, at);
+        if (this.awaitingAck.delete(session.info.id)) {
+          this.push({ type: 'input_ack', session_id: session.info.id, status: 'acknowledged' });
+        }
+      }
     }
+    this.flushUpdates();
     // Admit the head of the queue every few ticks and enqueue a new job.
     if (this.ticks % 9 === 0 && this.queue.length > 0) {
       this.queue = this.queue.slice(1).map((q, i) => ({ ...q, position: i }));
@@ -250,7 +261,22 @@ export class MockTransport implements Transport {
 
   // ----------------------------------------------------------------- requests
 
-  private handle(msg: WireClientMsg): WireServerMsg {
+  private handle(msg: ClientMsg): ServerMsg {
+    const response = this.handleRequest(msg);
+    this.flushUpdates();
+    return response;
+  }
+
+  /** Pushes `session_updated` for sessions whose preview changed. */
+  private flushUpdates(): void {
+    for (const id of this.dirty) {
+      const s = this.sessions.get(id);
+      if (s) this.push({ type: 'session_updated', session: s.info });
+    }
+    this.dirty.clear();
+  }
+
+  private handleRequest(msg: ClientMsg): ServerMsg {
     switch (msg.type) {
       case 'hello':
         if (msg.protocol_version !== PROTOCOL_VERSION) {
@@ -295,6 +321,7 @@ export class MockTransport implements Transport {
           created_at: this.now(),
           last_activity: this.now(),
           unread: 0,
+          preview: null,
         };
         this.addSession(info, launchScript(name), 15, 400);
         return { type: 'launched', session: info };
@@ -317,6 +344,7 @@ export class MockTransport implements Transport {
           created_at: this.now(),
           last_activity: this.now(),
           unread: 0,
+          preview: null,
         };
         this.addSession(
           info,
@@ -379,7 +407,7 @@ export class MockTransport implements Transport {
     }
   }
 
-  private subscribe(sessionId: string, fromSeq: number | null): WireServerMsg {
+  private subscribe(sessionId: string, fromSeq: number | null): ServerMsg {
     const s = this.sessions.get(sessionId);
     if (!s) return this.error('not_found', `session ${sessionId} not found`);
     this.subscriptions.add(sessionId);
@@ -401,7 +429,7 @@ export class MockTransport implements Transport {
     return { type: 'ok' };
   }
 
-  private input(sessionId: string, input: Input): WireServerMsg {
+  private input(sessionId: string, input: Input): ServerMsg {
     const s = this.sessions.get(sessionId);
     if (!s) return this.error('not_found', `session ${sessionId} not found`);
     const at = this.now();
@@ -463,7 +491,7 @@ export class MockTransport implements Transport {
     }
   }
 
-  private control(sessionId: string, action: SessionAction): WireServerMsg {
+  private control(sessionId: string, action: SessionAction): ServerMsg {
     const s = this.sessions.get(sessionId);
     if (!s) return this.error('not_found', `session ${sessionId} not found`);
     const at = this.now();
@@ -526,6 +554,7 @@ export class MockTransport implements Transport {
   }
 
   private deliverText(s: MockSession, text: string, at: UnixMillis): void {
+    this.awaitingAck.add(s.info.id);
     if (s.info.origin.type === 'local') {
       this.emit(s, {
         type: 'output',
@@ -632,7 +661,10 @@ export class MockTransport implements Transport {
     const unread = !silent && needsAttention(state) ? s.info.unread + 1 : s.info.unread;
     s.info = { ...s.info, state, last_activity: at, unread };
     this.emit(s, { type: 'state_changed', seq: 0, at, state }, silent);
-    if (!silent) this.push({ type: 'session_updated', session: s.info });
+    if (!silent) {
+      this.dirty.delete(s.info.id);
+      this.push({ type: 'session_updated', session: s.info });
+    }
   }
 
   /** Appends an event with the next seq, trims the buffer and pushes it to subscribers. */
@@ -640,7 +672,9 @@ export class MockTransport implements Transport {
     const stamped = { ...event, seq: s.nextSeq++ } as SessionEvent;
     s.events.push(stamped);
     if (s.events.length > this.bufferSize) s.events.splice(0, s.events.length - this.bufferSize);
-    s.info = { ...s.info, last_activity: Math.max(s.info.last_activity, event.at) };
+    const preview = eventPreview(stamped) ?? s.info.preview;
+    s.info = { ...s.info, preview, last_activity: Math.max(s.info.last_activity, event.at) };
+    if (!silent) this.dirty.add(s.info.id);
     if (!silent && this.subscriptions.has(s.info.id)) {
       this.push({ type: 'event', session_id: s.info.id, event: stamped });
     }
@@ -679,11 +713,11 @@ export class MockTransport implements Transport {
     };
   }
 
-  private error(code: ErrorCode, message: string): WireServerMsg {
+  private error(code: ErrorCode, message: string): ServerMsg {
     return { type: 'error', code, message };
   }
 
-  private push(body: WireServerMsg): void {
+  private push(body: ServerMsg): void {
     if (this._state !== 'connected') return;
     const envelope = { id: 0, body };
     for (const listener of this.messageListeners) listener(envelope);

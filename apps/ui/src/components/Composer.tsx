@@ -152,6 +152,8 @@ export function Composer({ session }: { session: SessionInfo }) {
         return t('delivery.queued');
       case 'delivered':
         return t('delivery.delivered');
+      case 'acknowledged':
+        return t('delivery.acknowledged');
       case 'failed':
         return t('delivery.failed', { error: delivery.error ?? '' });
     }

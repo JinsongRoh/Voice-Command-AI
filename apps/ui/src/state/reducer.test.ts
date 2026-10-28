@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { WireServerMsg } from '../protocol/codec';
+import type { ServerMsg } from '../protocol/types';
 import type { SessionEvent } from '../protocol/types';
 import { cloudSession, localSession } from '../test/fixtures';
 import {
@@ -13,7 +13,7 @@ import {
 } from './reducer';
 
 const enc = new TextEncoder();
-const server = (state: AppState, msg: WireServerMsg) => reducer(state, { type: 'server', msg });
+const server = (state: AppState, msg: ServerMsg) => reducer(state, { type: 'server', msg });
 const ev = (state: AppState, event: SessionEvent, sid = 's1') =>
   server(state, { type: 'event', session_id: sid, event });
 
@@ -37,7 +37,7 @@ describe('reducer', () => {
   it('loads sessions in server order with empty views', () => {
     const s = withSessions();
     expect(s.order).toEqual(['s1', 's2', 'c1']);
-    expect(s.views.s1).toEqual({ events: [], lastSeq: null, gapFrom: null, preview: '' });
+    expect(s.views.s1).toEqual({ events: [], lastSeq: null, gapFrom: null });
   });
 
   it('keeps existing order and appends new sessions on reload', () => {
@@ -48,16 +48,13 @@ describe('reducer', () => {
     expect(s.order).toEqual(['s1', 'c1']);
   });
 
-  it('applies events in order, ignores duplicates and builds a preview', () => {
+  it('applies events in order and ignores duplicates', () => {
     let s = withSessions();
     s = ev(s, { type: 'output', seq: 1, at: 1, data: enc.encode('\x1b[32mbuild ok\x1b[0m\r\n') });
     s = ev(s, { type: 'tool_call', seq: 2, at: 2, name: 'Bash', summary: 'pnpm test' });
     s = ev(s, { type: 'output', seq: 2, at: 2, data: enc.encode('dup') });
     expect(s.views.s1!.events.map((e) => e.seq)).toEqual([1, 2]);
     expect(s.views.s1!.lastSeq).toBe(2);
-    expect(s.views.s1!.preview).toBe('Bash: pnpm test');
-    s = ev(s, { type: 'output', seq: 3, at: 3, data: enc.encode('line a\r\nline b\r\n') });
-    expect(s.views.s1!.preview).toBe('line b');
   });
 
   it('tracks pending decisions until the state moves on', () => {

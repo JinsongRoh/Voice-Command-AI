@@ -7,11 +7,7 @@
  */
 import { decode, encode } from '@msgpack/msgpack';
 
-import type { ProposedClientMsg, ProposedServerMsg } from './proposed';
 import type { ClientMsg, Envelope, ServerMsg, SessionEvent } from './types';
-
-export type WireClientMsg = ClientMsg | ProposedClientMsg;
-export type WireServerMsg = ServerMsg | ProposedServerMsg;
 
 export class ProtocolError extends Error {
   constructor(message: string) {
@@ -25,7 +21,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Structural check of an envelope; the body must carry a string `type` tag. */
-export function assertEnvelope(value: unknown): Envelope<WireServerMsg> {
+export function assertEnvelope(value: unknown): Envelope<ServerMsg> {
   if (!isRecord(value)) throw new ProtocolError('envelope is not an object');
   const { id, body } = value;
   if (typeof id !== 'number' || !Number.isInteger(id) || id < 0) {
@@ -34,7 +30,7 @@ export function assertEnvelope(value: unknown): Envelope<WireServerMsg> {
   if (!isRecord(body) || typeof body.type !== 'string') {
     throw new ProtocolError('envelope body must be a tagged object');
   }
-  return { id, body: normalizeServerMsg(body as unknown as WireServerMsg) };
+  return { id, body: normalizeServerMsg(body as unknown as ServerMsg) };
 }
 
 /** Ensures `Output.data` is a `Uint8Array`, whatever the source encoding. */
@@ -46,16 +42,16 @@ function normalizeEvent(event: SessionEvent): SessionEvent {
   throw new ProtocolError('output data must be bytes');
 }
 
-function normalizeServerMsg(msg: WireServerMsg): WireServerMsg {
+function normalizeServerMsg(msg: ServerMsg): ServerMsg {
   if (msg.type === 'event') return { ...msg, event: normalizeEvent(msg.event) };
   return msg;
 }
 
-export function encodeMsgpack(envelope: Envelope<WireClientMsg>): Uint8Array {
+export function encodeMsgpack(envelope: Envelope<ClientMsg>): Uint8Array {
   return encode(envelope);
 }
 
-export function decodeMsgpack(bytes: Uint8Array): Envelope<WireServerMsg> {
+export function decodeMsgpack(bytes: Uint8Array): Envelope<ServerMsg> {
   return assertEnvelope(decode(bytes));
 }
 
@@ -68,7 +64,7 @@ export function encodeJson<T>(envelope: Envelope<T>): string {
   return JSON.stringify(envelope, bytesReplacer);
 }
 
-export function decodeJson(text: string): Envelope<WireServerMsg> {
+export function decodeJson(text: string): Envelope<ServerMsg> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

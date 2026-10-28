@@ -115,3 +115,26 @@ const decoder = new TextDecoder();
 export function decodeOutput(data: Uint8Array): string {
   return decoder.decode(data);
 }
+
+/** One-line excerpt of an event for card previews, or null when it has none. */
+export function eventPreview(event: SessionEvent): string | null {
+  switch (event.type) {
+    case 'output': {
+      const lines = stripAnsi(decodeOutput(event.data))
+        .split(/\r?\n|\r/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      return lines[lines.length - 1] ?? null;
+    }
+    case 'message':
+      return event.text.split('\n')[0] ?? null;
+    case 'tool_call':
+      return `${event.name}: ${event.summary}`;
+    case 'decision_requested':
+      return event.decision.prompt.split('\n')[0] ?? null;
+    case 'notification':
+      return `${event.title}: ${event.body}`;
+    case 'state_changed':
+      return null;
+  }
+}

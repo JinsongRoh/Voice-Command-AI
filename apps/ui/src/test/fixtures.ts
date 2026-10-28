@@ -16,6 +16,7 @@ export function localSession(overrides: Partial<SessionInfo> = {}): SessionInfo 
     created_at: Date.now() - 60_000,
     last_activity: Date.now() - 30_000,
     unread: 0,
+    preview: null,
     ...overrides,
   };
 }
@@ -36,6 +37,7 @@ export function cloudSession(overrides: Partial<SessionInfo> = {}): SessionInfo 
     created_at: Date.now() - 60_000,
     last_activity: Date.now() - 30_000,
     unread: 0,
+    preview: null,
     ...overrides,
   };
 }

@@ -2,10 +2,10 @@
  * Scenario data for `MockTransport`: sessions, their history and the scripts
  * they "play" while running. Everything is deterministic.
  */
-import type { PairedDevice } from './proposed';
 import type {
   Decision,
   MessageRole,
+  PairedDevice,
   QueueEntry,
   SessionInfo,
   SessionOrigin,
@@ -79,6 +79,7 @@ function local(
     created_at: now - ageMin * MIN,
     last_activity: now - idleMin * MIN,
     unread: 0,
+    preview: null,
     ...extra,
   };
 }
@@ -278,6 +279,7 @@ function workstation(now: UnixMillis): MockScenario {
         created_at: now - 35 * MIN,
         last_activity: now - 2 * MIN,
         unread: 0,
+        preview: null,
       },
       history: [
         msg('user', 'Upgrade React Native to the latest stable and fix the build.'),
@@ -318,6 +320,7 @@ function workstation(now: UnixMillis): MockScenario {
         created_at: now - 300 * MIN,
         last_activity: now - 25 * MIN,
         unread: 1,
+        preview: null,
       },
       history: [
         msg('user', 'Make the reindex job resumable after a crash.'),

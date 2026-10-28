@@ -1,5 +1,4 @@
-import type { WireClientMsg, WireServerMsg } from './codec';
-import type { Envelope } from './types';
+import type { ClientMsg, Envelope, ServerMsg } from './types';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -24,8 +23,8 @@ export interface Transport {
   readonly state: ConnectionState;
   connect(): Promise<void>;
   disconnect(): void;
-  send(envelope: Envelope<WireClientMsg>): Promise<WireServerMsg>;
-  onMessage(listener: (envelope: Envelope<WireServerMsg>) => void): Unsubscribe;
+  send(envelope: Envelope<ClientMsg>): Promise<ServerMsg>;
+  onMessage(listener: (envelope: Envelope<ServerMsg>) => void): Unsubscribe;
   onStateChange(listener: (state: ConnectionState) => void): Unsubscribe;
 }
 
@@ -46,7 +45,7 @@ export class Client {
 
   constructor(readonly transport: Transport) {}
 
-  request(body: WireClientMsg): Promise<WireServerMsg> {
+  request(body: ClientMsg): Promise<ServerMsg> {
     return this.transport.send({ id: this.ids.allocate(), body });
   }
 }

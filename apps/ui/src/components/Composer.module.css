@@ -91,7 +91,8 @@
 .delivery {
   color: var(--text-muted);
 }
-.delivery[data-status='delivered'] {
+.delivery[data-status='delivered'],
+.delivery[data-status='acknowledged'] {
   color: var(--st-running);
 }
 .delivery[data-status='queued'] {

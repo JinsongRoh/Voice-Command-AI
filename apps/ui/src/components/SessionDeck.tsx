@@ -58,7 +58,7 @@ export function SessionDeck({
               key={s.id}
               session={s}
               index={state.order.indexOf(s.id) + 1}
-              preview={state.views[s.id]?.preview ?? ''}
+              preview={s.preview ?? ''}
               selected={s.id === state.selectedId}
               onSelect={(id) => {
                 actions.select(id);

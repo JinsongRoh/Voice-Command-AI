@@ -2,9 +2,8 @@
  * Derives user-facing alerts (NTF-01/02/04) from server messages.
  * Pure: takes the state before the message is applied.
  */
-import type { WireServerMsg } from '../protocol/codec';
+import type { ServerMsg, SessionInfo, SessionState } from '../protocol/types';
 import type { TranslateFn } from '../i18n/i18n';
-import type { SessionInfo, SessionState } from '../protocol/types';
 import type { AppState, Toast } from './reducer';
 import type { AlertCategory } from './settings';
 
@@ -51,7 +50,7 @@ function titleFor(category: AlertCategory, session: SessionInfo, t: TranslateFn)
 
 export function alertsFor(
   prev: AppState,
-  msg: WireServerMsg,
+  msg: ServerMsg,
   t: TranslateFn,
   now: number = Date.now(),
 ): Toast[] {
@@ -61,9 +60,7 @@ export function alertsFor(
     const category = categoryForTransition(before.state, msg.session.state);
     if (!category) return [];
     const body =
-      msg.session.state.type === 'error'
-        ? msg.session.state.message
-        : (prev.views[msg.session.id]?.preview ?? '');
+      msg.session.state.type === 'error' ? msg.session.state.message : (msg.session.preview ?? '');
     return [
       {
         id: `${msg.session.id}:${category}:${msg.session.last_activity}`,

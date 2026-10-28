@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { WireServerMsg } from './codec';
+import type { ServerMsg } from './types';
 import { MockTransport } from './mockTransport';
 import type { SessionEvent } from './types';
 
 function setup() {
   const t = new MockTransport({ latencyMs: 0, autoTick: false, now: () => 1_700_000_000_000 });
-  const pushed: WireServerMsg[] = [];
+  const pushed: ServerMsg[] = [];
   t.onMessage((e) => {
     expect(e.id).toBe(0);
     pushed.push(e.body);
@@ -16,7 +16,7 @@ function setup() {
   return { t, pushed, req };
 }
 
-const events = (pushed: WireServerMsg[], sid: string): SessionEvent[] =>
+const events = (pushed: ServerMsg[], sid: string): SessionEvent[] =>
   pushed.flatMap((m) => (m.type === 'event' && m.session_id === sid ? [m.event] : []));
 
 describe('MockTransport', () => {

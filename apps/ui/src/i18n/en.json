@@ -89,6 +89,7 @@
   "delivery.sending": "Sending…",
   "delivery.queued": "Queued: will be delivered when the session is free",
   "delivery.delivered": "Delivered",
+  "delivery.acknowledged": "Acknowledged by the agent",
   "delivery.failed": "Not delivered: {error}",
   "decision.title": "Decision needed",
   "decision.waiting": "Waiting for the decision details…",

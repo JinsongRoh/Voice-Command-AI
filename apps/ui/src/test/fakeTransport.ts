@@ -1,15 +1,14 @@
-import type { WireClientMsg, WireServerMsg } from '../protocol/codec';
+import type { ClientMsg, Envelope, ServerMsg } from '../protocol/types';
 import type { ConnectionState, Transport } from '../protocol/transport';
-import type { Envelope } from '../protocol/types';
 
 /** Scriptable transport for component tests: records requests, answers synchronously. */
 export class FakeTransport implements Transport {
   state: ConnectionState = 'disconnected';
-  readonly sent: Envelope<WireClientMsg>[] = [];
-  private readonly listeners = new Set<(e: Envelope<WireServerMsg>) => void>();
+  readonly sent: Envelope<ClientMsg>[] = [];
+  private readonly listeners = new Set<(e: Envelope<ServerMsg>) => void>();
   private readonly stateListeners = new Set<(s: ConnectionState) => void>();
 
-  constructor(private readonly respond: (msg: WireClientMsg) => WireServerMsg = defaultResponse) {}
+  constructor(private readonly respond: (msg: ClientMsg) => ServerMsg = defaultResponse) {}
 
   async connect() {
     this.setState('connected');
@@ -17,11 +16,11 @@ export class FakeTransport implements Transport {
   disconnect() {
     this.setState('disconnected');
   }
-  async send(envelope: Envelope<WireClientMsg>) {
+  async send(envelope: Envelope<ClientMsg>) {
     this.sent.push(envelope);
     return this.respond(envelope.body);
   }
-  onMessage(l: (e: Envelope<WireServerMsg>) => void) {
+  onMessage(l: (e: Envelope<ServerMsg>) => void) {
     this.listeners.add(l);
     return () => this.listeners.delete(l);
   }
@@ -29,10 +28,10 @@ export class FakeTransport implements Transport {
     this.stateListeners.add(l);
     return () => this.stateListeners.delete(l);
   }
-  push(body: WireServerMsg) {
+  push(body: ServerMsg) {
     for (const l of this.listeners) l({ id: 0, body });
   }
-  bodies(type: WireClientMsg['type']) {
+  bodies(type: ClientMsg['type']) {
     return this.sent.map((e) => e.body).filter((b) => b.type === type);
   }
   private setState(s: ConnectionState) {
@@ -41,7 +40,7 @@ export class FakeTransport implements Transport {
   }
 }
 
-export function defaultResponse(msg: WireClientMsg): WireServerMsg {
+export function defaultResponse(msg: ClientMsg): ServerMsg {
   switch (msg.type) {
     case 'hello':
       return { type: 'welcome', protocol_version: 1, server_version: 'test', server_name: 'test' };

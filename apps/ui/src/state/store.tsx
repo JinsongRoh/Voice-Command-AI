@@ -18,8 +18,7 @@ import {
 } from 'react';
 
 import { translate } from '../i18n/i18n';
-import type { WireClientMsg, WireServerMsg } from '../protocol/codec';
-import type { CloudLaunchRequest } from '../protocol/proposed';
+import type { ClientMsg, CloudLaunchRequest, ServerMsg } from '../protocol/types';
 import { Client, type Transport } from '../protocol/transport';
 import {
   PROTOCOL_VERSION,
@@ -111,8 +110,8 @@ export function AppProvider({
     if (persistSettings) saveSettings(settings);
   }, [settings, persistSettings]);
 
-  const request = useCallback(async (body: WireClientMsg): Promise<WireServerMsg> => {
-    let response: WireServerMsg;
+  const request = useCallback(async (body: ClientMsg): Promise<ServerMsg> => {
+    let response: ServerMsg;
     try {
       response = await clientRef.current.request(body);
     } catch (err) {
@@ -128,20 +127,32 @@ export function AppProvider({
     const client = new Client(transport);
     clientRef.current = client;
     store.dispatch({ type: 'reset' });
-    const subscribed = new Set<SessionId>();
     let active = true;
+    /** The one session whose event stream is subscribed: the selected one. */
+    let subscribed: SessionId | null = null;
+    let synced = false;
 
-    const subscribe = (id: SessionId) => {
-      if (subscribed.has(id)) return;
-      subscribed.add(id);
-      const fromSeq = store.getState().views[id]?.lastSeq ?? null;
-      client.request({ type: 'subscribe', session_id: id, from_seq: fromSeq }).catch(() => {
-        subscribed.delete(id);
+    // Cards use `SessionInfo.preview`, so only the selected session is streamed.
+    const followSelection = () => {
+      if (!synced || transport.state !== 'connected') return;
+      const selected = store.getState().selectedId;
+      if (selected === subscribed) return;
+      if (subscribed) {
+        client.request({ type: 'unsubscribe', session_id: subscribed }).catch(() => {});
+      }
+      subscribed = selected;
+      if (!selected) return;
+      // Resume from the last seen seq (CON-04); the server replays or sends stream_gap.
+      const fromSeq = store.getState().views[selected]?.lastSeq ?? null;
+      client.request({ type: 'subscribe', session_id: selected, from_seq: fromSeq }).catch(() => {
+        if (subscribed === selected) subscribed = null;
       });
     };
+    const offStore = store.subscribe(followSelection);
 
     const sync = async () => {
-      subscribed.clear();
+      synced = false;
+      subscribed = null;
       const welcome = await client.request({
         type: 'hello',
         protocol_version: PROTOCOL_VERSION,
@@ -152,11 +163,12 @@ export function AppProvider({
       const list = await client.request({ type: 'list_sessions' });
       if (!active) return;
       store.dispatch({ type: 'server', msg: list });
-      if (list.type === 'sessions') list.sessions.forEach((s) => subscribe(s.id));
+      synced = true;
+      followSelection();
       const resources = await client.request({ type: 'get_resources' });
       if (active && resources.type === 'resources')
         store.dispatch({ type: 'server', msg: resources });
-      // Optional (proposed) message: ignore servers that do not support it.
+      // Device management may be disabled on the server; ignore failures.
       const devices = await client.request({ type: 'list_devices' }).catch(() => null);
       if (active && devices?.type === 'devices') store.dispatch({ type: 'server', msg: devices });
     };
@@ -184,7 +196,6 @@ export function AppProvider({
         }
       }
       if (msg.type === 'session_updated' || msg.type === 'launched') {
-        subscribe(msg.session.id);
         if (msg.session.id === before.selectedId && msg.session.unread > 0) {
           client.request({ type: 'mark_read', session_id: msg.session.id }).catch(() => {});
         }
@@ -205,6 +216,7 @@ export function AppProvider({
 
     return () => {
       active = false;
+      offStore();
       offMessage();
       offState();
       transport.disconnect();
@@ -212,7 +224,7 @@ export function AppProvider({
   }, [machine, store]);
 
   const actions = useMemo<Actions>(() => {
-    const withAck = async (sessionId: SessionId, body: WireClientMsg) => {
+    const withAck = async (sessionId: SessionId, body: ClientMsg) => {
       store.dispatch({
         type: 'delivery',
         sessionId,

@@ -3,18 +3,18 @@
  * through `reducer` via the `server` action, which makes the protocol
  * handling easy to unit-test.
  */
-import type { WireServerMsg } from '../protocol/codec';
-import { decodeOutput, isCloud, needsAttention, stripAnsi } from '../protocol/helpers';
-import type { PairedDevice } from '../protocol/proposed';
-import type { ConnectionState } from '../protocol/transport';
 import type {
   Decision,
   DeliveryStatus,
+  PairedDevice,
   ResourceSnapshot,
+  ServerMsg,
   SessionEvent,
   SessionId,
   SessionInfo,
 } from '../protocol/types';
+import { isCloud, needsAttention } from '../protocol/helpers';
+import type { ConnectionState } from '../protocol/transport';
 import type { AlertCategory } from './settings';
 
 /** Events kept per session in the client (older ones are dropped). */
@@ -28,8 +28,6 @@ export interface SessionView {
   lastSeq: number | null;
   /** Set after a `stream_gap`: events before this seq are missing. */
   gapFrom: number | null;
-  /** Last line of output or last message, for the card preview. */
-  preview: string;
 }
 
 export interface Delivery {
@@ -82,7 +80,7 @@ export const initialState: AppState = {
 export type Action =
   | { type: 'reset' }
   | { type: 'connection'; state: ConnectionState }
-  | { type: 'server'; msg: WireServerMsg }
+  | { type: 'server'; msg: ServerMsg }
   | { type: 'select'; id: SessionId | null }
   | { type: 'filter'; filter: DeckFilter }
   | { type: 'delivery'; sessionId: SessionId; delivery: Delivery }
@@ -92,29 +90,7 @@ export type Action =
   | { type: 'error'; message: string | null };
 
 const MAX_TOASTS = 4;
-const emptyView: SessionView = { events: [], lastSeq: null, gapFrom: null, preview: '' };
-
-function previewOf(event: SessionEvent): string | null {
-  switch (event.type) {
-    case 'output': {
-      const lines = stripAnsi(decodeOutput(event.data))
-        .split(/\r?\n|\r/)
-        .map((l) => l.trim())
-        .filter(Boolean);
-      return lines[lines.length - 1] ?? null;
-    }
-    case 'message':
-      return event.text.split('\n')[0] ?? null;
-    case 'tool_call':
-      return `${event.name}: ${event.summary}`;
-    case 'decision_requested':
-      return event.decision.prompt.split('\n')[0] ?? null;
-    case 'notification':
-      return `${event.title}: ${event.body}`;
-    case 'state_changed':
-      return null;
-  }
-}
+const emptyView: SessionView = { events: [], lastSeq: null, gapFrom: null };
 
 function applyEvent(state: AppState, sessionId: SessionId, event: SessionEvent): AppState {
   const view = state.views[sessionId] ?? emptyView;
@@ -124,7 +100,6 @@ function applyEvent(state: AppState, sessionId: SessionId, event: SessionEvent):
     view.events.length >= MAX_EVENTS
       ? [...view.events.slice(view.events.length - MAX_EVENTS + 1), event]
       : [...view.events, event];
-  const preview = previewOf(event) ?? view.preview;
   let decisions = state.decisions;
   if (event.type === 'decision_requested') {
     decisions = { ...decisions, [sessionId]: event.decision };
@@ -139,7 +114,7 @@ function applyEvent(state: AppState, sessionId: SessionId, event: SessionEvent):
   return {
     ...state,
     decisions,
-    views: { ...state.views, [sessionId]: { ...view, events, lastSeq: event.seq, preview } },
+    views: { ...state.views, [sessionId]: { ...view, events, lastSeq: event.seq } },
   };
 }
 
@@ -176,7 +151,7 @@ function removeSession(state: AppState, id: SessionId): AppState {
   };
 }
 
-function applyServer(state: AppState, msg: WireServerMsg): AppState {
+function applyServer(state: AppState, msg: ServerMsg): AppState {
   switch (msg.type) {
     case 'welcome':
       return { ...state, serverName: msg.server_name };

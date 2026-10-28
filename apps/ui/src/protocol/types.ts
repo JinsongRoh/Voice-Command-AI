@@ -12,8 +12,7 @@
  * - `Output.data` (`Vec<u8>`) is a MessagePack `bin` on the wire, which
  *   decodes to `Uint8Array`; in JSON it is an array of numbers.
  *
- * Keep this file in sync with vca-core. Additions that are not (yet) part of
- * vca-core live in `proposed.ts`.
+ * Keep this file in sync with vca-core.
  */
 
 /** Must equal `vca_core::PROTOCOL_VERSION`. */
@@ -81,6 +80,11 @@ export interface SessionInfo {
   last_activity: UnixMillis;
   /** Number of unread notifications for this session. */
   unread: number;
+  /**
+   * Short excerpt of recent output for the session card (`#[serde(default)]`:
+   * older servers may omit it, which decodes as `undefined`).
+   */
+  preview: string | null;
 }
 
 export interface LaunchRequest {
@@ -91,6 +95,14 @@ export interface LaunchRequest {
   profile: string | null;
   /** `#[serde(default)]` on the Rust side; always sent by this client. */
   args: string[];
+  display_name: string | null;
+}
+
+/** Request to start a new cloud session (CLD-03). */
+export interface CloudLaunchRequest {
+  provider: CloudProvider;
+  repository: string;
+  prompt: string;
   display_name: string | null;
 }
 
@@ -196,12 +208,29 @@ export type ClientMsg =
   | { type: 'send_input'; session_id: SessionId; input: Input }
   | { type: 'control'; session_id: SessionId; action: SessionAction }
   | { type: 'launch'; request: LaunchRequest }
+  | { type: 'launch_cloud'; request: CloudLaunchRequest }
   | { type: 'get_resources' }
   | { type: 'reorder_queue'; job_id: string; position: number }
   | { type: 'cancel_queued'; job_id: string }
-  | { type: 'mark_read'; session_id: SessionId };
+  | { type: 'mark_read'; session_id: SessionId }
+  | { type: 'list_devices' }
+  | { type: 'revoke_device'; device_id: string }
+  /** Drop every remote connection and close the tunnel (SEC-09). */
+  | { type: 'kill_switch' };
 
-export type DeliveryStatus = 'queued' | 'delivered';
+/** A device paired with the server (SEC-10). */
+export interface PairedDevice {
+  id: string;
+  name: string;
+  platform: string;
+  paired_at: UnixMillis;
+  last_seen: UnixMillis;
+  /** True for the device that sent the request. */
+  current: boolean;
+}
+
+/** `acknowledged`: the agent visibly reacted to the input. */
+export type DeliveryStatus = 'queued' | 'delivered' | 'acknowledged';
 
 export type ServerMsg =
   | { type: 'welcome'; protocol_version: number; server_version: string; server_name: string }
@@ -215,4 +244,5 @@ export type ServerMsg =
   | { type: 'stream_gap'; session_id: SessionId; first_available_seq: number }
   | { type: 'input_ack'; session_id: SessionId; status: DeliveryStatus }
   | { type: 'launched'; session: SessionInfo }
-  | { type: 'resources'; snapshot: ResourceSnapshot };
+  | { type: 'resources'; snapshot: ResourceSnapshot }
+  | { type: 'devices'; devices: PairedDevice[] };
