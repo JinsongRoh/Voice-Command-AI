@@ -194,6 +194,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 | DSK-01 | Tray icon showing server status, connection status and alert count. | M |
 | DSK-02 | Local dashboard with sessions, resources, policies, devices and audit log. | M |
 | DSK-03 | Setup wizard covering agent detection, shell integration, connectivity provider, STT engine and pairing. | M |
+| DSK-04 | An unobtrusive "Support the project" link in the About and Settings screens (desktop and mobile). No nag screens, pop-ups or feature gating. | S |
 
 ### 3.13 Internationalization (I18N)
 
