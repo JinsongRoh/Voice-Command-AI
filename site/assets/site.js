@@ -48,6 +48,7 @@
     "g.to": "받는 세션",
     "g.text": "통합 테스트 돌리고 실패한 항목만 요약해 줘.",
     "g.send": "보내기",
+    "g.res": "통합 테스트 완료. 실패 2건을 요약했습니다.",
     "g.caption": "예시 화면입니다. 보내기 전에 어느 세션으로 갈지 먼저 보여 줍니다.",
 
     "why.eyebrow": "왜 VCA인가",
@@ -90,8 +91,8 @@
     "f10.d": "직접 운영하는 Whisper 서버 같은 OpenAI 호환 음성 서버, 또는 OpenAI와 Google Cloud를 연결할 수 있습니다.",
     "f11.t": "멀티 에이전트 오케스트레이션",
     "f11.d": "선택형 오케스트레이터 세션을 두고 여러 세션이 하나의 작업을 함께 처리합니다.",
-    "f12.t": "DNS Pilot 연결",
-    "f12.d": "DNS Pilot 터널 또는 P2P로 내 PC에 접속합니다. 여러 연결 방식 중 하나로, 선택 사항입니다.",
+    "f12.t": "DNSPilot 연결",
+    "f12.d": "DNSPilot 터널 또는 P2P로 내 PC에 접속합니다. 여러 연결 방식 중 하나로, 선택 사항입니다.",
 
     "how.eyebrow": "작동 방식",
     "how.title": "휴대폰은 오직 내 PC와만 통신합니다.",
@@ -139,7 +140,7 @@
     "m.c2": "실제 Claude Code 훅과 Codex 입력 검증",
     "m.c3": "실제 cargo 빌드로 실행 승인 제어 검증",
     "m.c4": "iPhone 음성 입력부터 받아쓰기까지 검증",
-    "m.note": "M0에서 아직 검증하지 않은 항목: Cloudflare Tunnel과 DNS Pilot 연결, Android 빌드, 클라우드 에이전트 API. <a href=\"" + REPORT + "\">M0 보고서 읽기 (영문)</a>",
+    "m.note": "M0에서 아직 검증하지 않은 항목: Cloudflare Tunnel과 DNSPilot 연결, Android 빌드, 클라우드 에이전트 API. <a href=\"" + REPORT + "\">M0 보고서 읽기 (영문)</a>",
 
     "p.eyebrow": "지원 범위",
     "p.title": "쓰던 에이전트를 그대로 쓰세요.",
@@ -173,7 +174,7 @@
     "o.c2.d": "코드, 에이전트 어댑터, 번역, 내 언어의 개발자 용어 사전까지. 이슈와 풀 리퀘스트를 환영합니다.",
     "o.c2.l": "이슈 열기",
     "o.c3.t": "프로젝트 후원",
-    "o.c3.d": "DNS Pilot은 VCA를 만드는 팀이 개발하며, 구독료는 VCA 개발에 쓰입니다. 연동이 출시되면 DNS Pilot을 연결 방식으로 고르는 것도 후원이 됩니다. 어디까지나 선택 사항이며, Tailscale, Cloudflare Tunnel, LAN, 사용자 지정 방식도 똑같이 지원합니다.",
+    "o.c3.d": "<a href=\"https://dnspilot.kr\">DNSPilot</a>은 VCA를 만드는 팀이 개발합니다. 유료 플랜이 열리면 구독료가 VCA 개발에 보탬이 됩니다. 어디까지나 선택 사항이며, Tailscale, Cloudflare Tunnel, LAN, 사용자 지정 방식도 똑같이 지원합니다.",
     "o.c3.l": "저장소에 별 달기",
 
     "footer.label": "푸터 메뉴",
@@ -265,6 +266,7 @@
       apply(lang);
       save(lang);
       syncUrl(lang);
+      if (onLang) onLang();
     });
   });
 
@@ -287,4 +289,186 @@
       }, function () { /* clipboard denied: leave the button as is */ });
     });
   });
+
+  /* ---------- Motion ----------
+     Brand motion (docs/brand/brand-definition.md §8): recording moves the waveform, sending is one
+     converging motion, an idle logo stays still, reduced motion is respected. Everything pauses
+     off-screen and in hidden tabs. Without JS the page is fully visible and static. */
+  var root = document.documentElement;
+  var mq = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  var hasIO = "IntersectionObserver" in window;
+  var STROKES = '<use href="#vs1"/><use href="#vs2"/><use href="#vs3"/><use href="#vs4"/><use href="#vs5"/>';
+  var onLang = null;
+  function still() { return !!(mq && mq.matches); }
+  function live() { return !document.hidden && !still(); }
+  // Calls cb(visible) whenever el enters or leaves the viewport (always visible without IntersectionObserver).
+  function watch(el, cb, threshold) {
+    if (!el) return;
+    if (!hasIO) { cb(true); return; }
+    new IntersectionObserver(function (es) { cb(es[es.length - 1].isIntersecting); }, { threshold: threshold || 0 }).observe(el);
+  }
+
+  // Hero entrance is pure CSS; afterwards freeze it so language swaps don't replay it.
+  setTimeout(function () { root.classList.add("intro-done"); }, still() ? 0 : 1300);
+
+  // The logo reacts like a voice on hover or tap (event-driven only, ~1.2 s, then the exact resting shape).
+  var sym = document.querySelector(".hero-symbol");
+  function talk() {
+    if (!sym || still() || !root.classList.contains("intro-done") || sym.classList.contains("is-talk")) return;
+    sym.classList.add("is-talk");
+    setTimeout(function () { sym.classList.remove("is-talk"); }, 1450);
+  }
+  if (sym) { sym.addEventListener("pointerenter", talk); sym.addEventListener("click", talk); }
+  // Keyboard users: focusing the header logo link makes the symbol listen too.
+  var brand = document.querySelector(".site-header .brand");
+  if (brand) brand.addEventListener("focus", talk);
+
+  var hero = document.querySelector(".hero");
+  var heroVis = true;
+  function heroUpdate() { if (hero) hero.classList.toggle("is-off", !(heroVis && live())); }
+  watch(hero, function (v) { heroVis = v; heroUpdate(); });
+
+  // Language toggle: one pill slides between the two buttons.
+  var toggle = document.querySelector(".lang-toggle");
+  function placePill() {
+    var b = toggle && toggle.querySelector('[aria-pressed="true"]');
+    if (!b) return;
+    toggle.style.setProperty("--px", b.offsetLeft + "px");
+    toggle.style.setProperty("--pw", b.offsetWidth + "px");
+    toggle.classList.add("has-pill");
+  }
+  if (toggle) {
+    placePill();
+    requestAnimationFrame(function () { requestAnimationFrame(function () { toggle.classList.add("pill-ready"); }); });
+    if (document.fonts) document.fonts.ready.then(placePill);
+    window.addEventListener("resize", placePill, { passive: true });
+  }
+
+  // Section labels carry a small five-stroke mark (re-added if a language swap rewrites the label).
+  function marks() {
+    document.querySelectorAll(".eyebrow").forEach(function (eb) {
+      if (eb.querySelector(".eb-mark")) return;
+      eb.insertAdjacentHTML("afterbegin", '<svg class="eb-mark" viewBox="168 168 842 737" fill="url(#heroGrad)" aria-hidden="true" focusable="false">' + STROKES + "</svg>");
+      eb.classList.add("has-mark");
+    });
+  }
+  marks();
+
+  // Illustration story (~9.5 s loop): dictation types in while the waveform moves, Send presses,
+  // the strokes converge, the target card lights up and turns Done, then everything resets.
+  var gl = document.querySelector(".glimpse");
+  var story = gl && (function () {
+    var text = gl.querySelector(".g-text"), send = gl.querySelector(".g-send"), card = gl.querySelector(".g-card.is-target");
+    var timers = [], running = false, vis = false, first = true;
+    function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+    function clear() { timers.forEach(clearTimeout); timers = []; }
+    function reset() {
+      gl.classList.remove("is-rec", "is-send", "is-sent", "is-live");
+      send.classList.remove("is-press");
+      card.classList.remove("is-hit", "is-done");
+      text.textContent = t("g.text");
+    }
+    function cycle() {
+      clear();
+      reset();
+      gl.classList.add("is-live");
+      var full = Array.from(t("g.text")), n = full.length, step = Math.min(70, 3400 / n);
+      text.innerHTML = '<span class="g-typed"></span><span class="g-rest"></span>';
+      var typed = text.firstChild, rest = text.lastChild;
+      rest.textContent = full.join("");
+      at(400, function () {
+        gl.classList.add("is-rec");
+        if (first) { first = false; talk(); }
+      });
+      full.forEach(function (_, i) {
+        at(650 + (i + 1) * step, function () {
+          typed.textContent = full.slice(0, i + 1).join("");
+          rest.textContent = full.slice(i + 1).join("");
+        });
+      });
+      var s = 650 + n * step + 450;
+      at(s, function () { send.classList.add("is-press"); });
+      at(s + 180, function () { send.classList.remove("is-press"); gl.classList.remove("is-rec"); gl.classList.add("is-send"); });
+      at(s + 750, function () { gl.classList.add("is-sent"); card.classList.add("is-hit"); });
+      at(s + 1050, function () { card.classList.add("is-done"); });
+      at(s + 2300, function () { card.classList.remove("is-hit"); });
+      at(s + 4300, function () { gl.classList.remove("is-send"); card.classList.remove("is-done"); });
+      at(s + 5000, cycle);
+    }
+    function update() {
+      var go = vis && live();
+      if (go && !running) { running = true; clear(); at(first ? 1000 : 300, cycle); }
+      else if (!go && running) { running = false; clear(); reset(); }
+    }
+    watch(gl, function (v) { vis = v; update(); }, 0.25);
+    return { update: update, lang: function () { if (running) cycle(); } };
+  })();
+
+  // Architecture diagram: data pulses and dashes only run while the diagram is on screen.
+  var dia = document.querySelector(".diagram"), diaVis = false;
+  function diaUpdate() {
+    if (!dia) return;
+    var go = diaVis && live();
+    dia.classList.toggle("is-paused", !go);
+    dia.querySelectorAll("svg").forEach(function (s) {
+      if (s.pauseAnimations) { if (go) s.unpauseAnimations(); else s.pauseAnimations(); }
+    });
+  }
+  diaUpdate();
+  watch(dia, function (v) { diaVis = v; diaUpdate(); });
+
+  function refresh() { heroUpdate(); diaUpdate(); if (story) story.update(); }
+  document.addEventListener("visibilitychange", refresh);
+  if (mq && mq.addEventListener) mq.addEventListener("change", refresh);
+
+  onLang = function () { marks(); placePill(); if (story) story.lang(); };
+
+  if (!hasIO || still()) return;
+
+  // Scroll reveals: once per element, small stagger inside grids. Classes are removed afterwards
+  // so hover transitions take over again.
+  var rvIO = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var el = e.target, m = el.querySelector(".eb-mark");
+      rvIO.unobserve(el);
+      el.classList.add("in");
+      if (m) m.classList.add("play");
+      setTimeout(function () { el.classList.remove("rv", "in"); el.style.removeProperty("--rv-d"); }, 1100);
+    });
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.1 });
+  document.querySelectorAll(".section-head, .glimpse-caption, .problem, .feature, .diagram, .step, .stat, .verified, .measured-note, .split > div, .code, .oss-card").forEach(function (el) {
+    if (el.tagName === "LI") el.style.setProperty("--rv-d", (Array.prototype.indexOf.call(el.parentNode.children, el) % 4) * 0.07 + "s");
+    el.classList.add("rv");
+    rvIO.observe(el);
+  });
+
+  // Measured numbers count up once from 0. Screen readers get the exact final text throughout.
+  var stats = document.querySelectorAll(".stat-value"), runs = [];
+  stats.forEach(function (el) {
+    var html = el.innerHTML, m = html.match(/^(~?)([\d,]+(?:\.\d+)?)/);
+    if (!m) return;
+    var dec = (m[2].split(".")[1] || "").length, comma = m[2].indexOf(",") > -1, target = parseFloat(m[2].replace(/,/g, ""));
+    var fmt = function (v) { var s = v.toFixed(dec); return comma ? s.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : s; };
+    var final = el.textContent;
+    el.innerHTML = '<span aria-hidden="true"><span class="cu"></span>' + html.slice(m[0].length) + '</span><span class="visually-hidden"></span>';
+    el.lastChild.textContent = final;
+    var cu = el.querySelector(".cu");
+    cu.textContent = m[1] + fmt(0);
+    runs.push(function () {
+      var t0 = performance.now();
+      requestAnimationFrame(function frame(now) {
+        var p = Math.min(1, (now - t0) / 1400), e = 1 - Math.pow(1 - p, 3);
+        cu.textContent = m[1] + fmt(target * e);
+        if (p < 1) requestAnimationFrame(frame);
+        else { var k = el.getAttribute("data-i18n"); el.innerHTML = k ? t(k) : html; }
+      });
+    });
+  });
+  var statsIO = new IntersectionObserver(function (es) {
+    if (!es[0].isIntersecting) return;
+    statsIO.disconnect();
+    runs.forEach(function (r) { r(); });
+  }, { threshold: 0.35 });
+  if (runs.length) statsIO.observe(document.querySelector(".stats"));
 })();
