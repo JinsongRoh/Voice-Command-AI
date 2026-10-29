@@ -8,6 +8,7 @@ import { AgentIcon } from './AgentIcon';
 import { ChatView } from './ChatView';
 import { Composer } from './Composer';
 import { DecisionSheet } from './DecisionSheet';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Icon } from './Icon';
 import { ConfirmDialog } from './Modal';
 import { StateChip } from './StateChip';
@@ -154,19 +155,38 @@ export function LiveView({ session, onBack }: { session: SessionInfo; onBack?: (
       )}
 
       <div className={styles.content}>
-        {effectiveMode === 'chat' ? (
-          <ChatView
-            events={events}
-            gapFrom={view?.gapFrom ?? null}
-            sent={sent}
-            outputFallback={!hasChatTranscript(session.origin)}
-            onShowTerminal={() => setMode('terminal')}
-          />
-        ) : (
-          <Suspense fallback={<p className="muted">…</p>}>
-            <TerminalView sessionId={session.id} events={events} />
-          </Suspense>
-        )}
+        <ErrorBoundary
+          resetKey={`${session.id}:${effectiveMode}`}
+          fallback={(err, retry) => (
+            <div role="alert" className={styles.viewError}>
+              <p>{t('live.viewFailed', { error: err.message })}</p>
+              <div className={styles.viewErrorActions}>
+                {effectiveMode === 'terminal' && (
+                  <button type="button" className="btn" onClick={() => setMode('chat')}>
+                    {t('live.backToChat')}
+                  </button>
+                )}
+                <button type="button" className="btn" onClick={retry}>
+                  {t('live.retry')}
+                </button>
+              </div>
+            </div>
+          )}
+        >
+          {effectiveMode === 'chat' ? (
+            <ChatView
+              events={events}
+              gapFrom={view?.gapFrom ?? null}
+              sent={sent}
+              outputFallback={!hasChatTranscript(session.origin)}
+              onShowTerminal={() => setMode('terminal')}
+            />
+          ) : (
+            <Suspense fallback={<p className="muted">…</p>}>
+              <TerminalView sessionId={session.id} events={events} />
+            </Suspense>
+          )}
+        </ErrorBoundary>
       </div>
 
       {(st === 'awaiting_decision' || decision) && (

@@ -80,5 +80,8 @@
   "correction.layer.base": "Vocabulario base",
   "correction.layer.project": "Vocabulario del proyecto",
   "correction.layer.personal": "Vocabulario personal",
-  "correction.layer.context": "Contexto (IA)"
+  "correction.layer.context": "Contexto (IA)",
+  "live.viewFailed": "No se pudo mostrar esta vista: {error}",
+  "live.backToChat": "Volver al chat",
+  "live.retry": "Reintentar"
 }

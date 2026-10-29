@@ -79,5 +79,8 @@
   "correction.layer.base": "기본 어휘",
   "correction.layer.project": "프로젝트 어휘",
   "correction.layer.personal": "개인 어휘",
-  "correction.layer.context": "문맥 (AI)"
+  "correction.layer.context": "문맥 (AI)",
+  "live.viewFailed": "이 화면을 표시하지 못했습니다: {error}",
+  "live.backToChat": "채팅으로 돌아가기",
+  "live.retry": "다시 시도"
 }

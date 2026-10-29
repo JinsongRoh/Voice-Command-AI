@@ -79,5 +79,8 @@
   "correction.layer.base": "基本語彙",
   "correction.layer.project": "プロジェクト語彙",
   "correction.layer.personal": "個人語彙",
-  "correction.layer.context": "文脈 (AI)"
+  "correction.layer.context": "文脈 (AI)",
+  "live.viewFailed": "この画面を表示できませんでした: {error}",
+  "live.backToChat": "チャットに戻る",
+  "live.retry": "再試行"
 }

@@ -30,7 +30,7 @@
         "base-uri": "'none'",
         "frame-ancestors": "'none'"
       },
-      "freezePrototype": true
+      "freezePrototype": false
     }
   },
   "bundle": {

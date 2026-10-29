@@ -255,5 +255,8 @@
   "correction.layer.base": "Built-in vocabulary",
   "correction.layer.project": "Project vocabulary",
   "correction.layer.personal": "Personal vocabulary",
-  "correction.layer.context": "Context (AI)"
+  "correction.layer.context": "Context (AI)",
+  "live.viewFailed": "This view could not be shown: {error}",
+  "live.backToChat": "Back to chat",
+  "live.retry": "Retry"
 }
