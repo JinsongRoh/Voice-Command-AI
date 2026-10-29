@@ -9,7 +9,8 @@ import { detectLocale, formatBytes, formatRelative, interpolate, translate } fro
 describe('i18n', () => {
   it('translates with English fallback', () => {
     expect(translate('ja', 'nav.settings')).toBe('設定');
-    expect(translate('ja', 'resources.queue')).toBe(en['resources.queue']);
+    expect(translate('ja', 'resources.queue')).toBe('実行待ちキュー');
+    expect(translate('ja', 'no.such.key' as never)).toBe('no.such.key');
     expect(translate('es', 'card.unread', { count: 3 })).toBe('3 sin leer');
   });
 
