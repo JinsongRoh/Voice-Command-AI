@@ -1,0 +1,23 @@
+[package]
+name = "vca-desktop"
+description = "Voice Command AI desktop app (Windows, macOS, Linux)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+tauri.workspace = true
+vca-shell.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Serve the embedded UI instead of the dev server (set by `tauri build`).
+custom-protocol = ["tauri/custom-protocol"]

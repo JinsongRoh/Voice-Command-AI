@@ -1,0 +1,27 @@
+[package]
+name = "vca-mobile"
+description = "Voice Command AI mobile app (Android, iOS)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "vca_mobile_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+tauri.workspace = true
+vca-shell.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Serve the embedded UI instead of the dev server (set by `tauri build`).
+custom-protocol = ["tauri/custom-protocol"]

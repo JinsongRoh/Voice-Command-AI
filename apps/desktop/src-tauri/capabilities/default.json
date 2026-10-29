@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: core defaults only. App commands (vca_*) are registered by vca-shell.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
