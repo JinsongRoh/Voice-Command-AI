@@ -33,23 +33,32 @@
 .symbol {
   display: block;
   flex: none;
-  height: 40px;
   width: auto;
 }
+/* The lockup (symbol + wordmark) shows on phones too. At 34 px the symbol
+   inside it stays at the 24 px minimum; only very narrow screens fall back
+   to the symbol alone. */
 .lockup {
-  display: none;
+  height: 34px;
   /* 4498 × 1073: fixed ratio, never stretched. */
   aspect-ratio: 4498 / 1073;
 }
 .symbol {
+  display: none;
+  height: 40px;
   aspect-ratio: 1178 / 1073;
+}
+@media (max-width: 339px) {
+  .lockup {
+    display: none;
+  }
+  .symbol {
+    display: block;
+  }
 }
 @media (min-width: 640px) {
   .lockup {
-    display: block;
-  }
-  .symbol {
-    display: none;
+    height: 40px;
   }
 }
 @media (min-width: 900px) {
@@ -73,7 +82,8 @@
 }
 .machine {
   min-height: 36px;
-  max-width: 44vw;
+  /* Whatever the logo and the status dot leave on a phone. */
+  max-width: min(44vw, calc(100vw - 215px));
   padding: 0 var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
