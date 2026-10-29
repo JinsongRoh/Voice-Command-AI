@@ -1,7 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="224" fill="#14161c"/>
-  <path d="M232 352l160 160-160 160" fill="none" stroke="#7dd3a8" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="560" y="232" width="176" height="336" rx="88" fill="#e8eaf0"/>
-  <path d="M488 488a160 160 0 0 0 320 0" fill="none" stroke="#e8eaf0" stroke-width="48" stroke-linecap="round"/>
-  <path d="M648 648v120M560 792h176" fill="none" stroke="#e8eaf0" stroke-width="48" stroke-linecap="round"/>
+  <title>Voice Command AI</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2433"/>
+      <stop offset="1" stop-color="#0b0f16"/>
+    </linearGradient>
+    <linearGradient id="voice" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.62" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#818cf8" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Tile (iOS and Android mask the corners; desktop shows them). -->
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#glow)"/>
+  <rect x="6" y="6" width="1012" height="1012" rx="222" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="12"/>
+  <!-- Terminal prompt: the agents VCA drives. -->
+  <path d="M214 360 L366 512 L214 664" fill="none" stroke="#e8ecf4" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Voice: a waveform where the cursor would be. -->
+  <g fill="url(#voice)">
+    <rect x="452" y="452" width="56" height="120" rx="28"/>
+    <rect x="548" y="372" width="56" height="280" rx="28"/>
+    <rect x="644" y="292" width="56" height="440" rx="28"/>
+    <rect x="740" y="402" width="56" height="220" rx="28"/>
+    <rect x="836" y="472" width="56" height="80" rx="28"/>
+  </g>
 </svg>
