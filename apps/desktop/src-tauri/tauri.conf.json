@@ -48,5 +48,14 @@
     "macOS": {
       "entitlements": "entitlements.plist"
     }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "vca"
+        ]
+      }
+    }
   }
 }

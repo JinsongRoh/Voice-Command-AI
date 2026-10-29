@@ -13,7 +13,7 @@ import { Toasts } from './components/Toasts';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { I18nProvider, useI18n } from './i18n/context';
 import type { MessageKey } from './i18n/i18n';
-import { NativeProvider, type NativeServices } from './native/context';
+import { NativeProvider, useNative, type NativeServices } from './native/context';
 import { useLinkStatus } from './native/useLinkStatus';
 import { SpeechProvider, type SpeechServices } from './speech/context';
 import { attentionCount } from './state/reducer';
@@ -42,11 +42,18 @@ function Shell() {
   const { machine, switchMachine } = useMachines();
   const link = useLinkStatus(machine);
   const wide = useMediaQuery('(min-width: 900px)');
-  const [view, setView] = useState<View>('sessions');
+  const native = useNative();
+  // A pending pairing link (it opened the app) starts on the pairing form.
+  const [view, setView] = useState<View>(() =>
+    native?.pairLinks?.hasPending ? 'pairing' : 'sessions',
+  );
   const [detailOpen, setDetailOpen] = useState(false);
   const [newSession, setNewSession] = useState(false);
   const selected = useAppState((s) => (s.selectedId ? s.sessions[s.selectedId] : undefined));
   const attention = useAppState(attentionCount);
+
+  // A pairing link opened the app: show the pairing form (it takes the link).
+  useEffect(() => native?.pairLinks?.subscribe(() => setView('pairing')), [native]);
 
   const showDetail = !wide && detailOpen && !!selected && view === 'sessions';
 

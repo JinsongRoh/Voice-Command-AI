@@ -47,5 +47,17 @@
     "android": {
       "minSdkVersion": 26
     }
+  },
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        {
+          "scheme": [
+            "vca"
+          ],
+          "appLink": false
+        }
+      ]
+    }
   }
 }

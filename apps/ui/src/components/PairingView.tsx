@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/context';
 import { useNative, type NativeServices } from '../native/context';
 import { describeNativeError } from '../native/errors';
 import { Icon } from './Icon';
+import { isPairingUri } from '../native/pairLinks';
 import styles from './PairingView.module.css';
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -15,9 +16,6 @@ const PLATFORM_NAMES: Record<string, string> = {
 };
 
 /** Pairing links look like `vca://pair?...`. */
-function isPairingUri(value: string): boolean {
-  return /^vca:\/\/pair(\?|\/\?)/i.test(value.trim());
-}
 
 /**
  * Device pairing (SEC-01/02). In the native shell the pairing link is pasted
@@ -82,6 +80,17 @@ function NativePairing({
 }) {
   const { t } = useI18n();
   const [uri, setUri] = useState('');
+  // A `vca://pair` link that opened the app only fills the field.
+  useEffect(() => {
+    const links = native.pairLinks;
+    if (!links) return;
+    const fill = () => {
+      const link = links.take();
+      if (link) setUri(link);
+    };
+    fill();
+    return links.subscribe(fill);
+  }, [native]);
   const [deviceName, setDeviceName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
   const [totp, setTotp] = useState('');

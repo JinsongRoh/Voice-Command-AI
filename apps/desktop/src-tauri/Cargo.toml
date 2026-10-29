@@ -12,7 +12,10 @@ publish = false
 tauri-build.workspace = true
 
 [dependencies]
+serde_json.workspace = true # used by generate_context! for plugin config
 tauri.workspace = true
+# Direct dependency so tauri-build sees its permissions (capabilities).
+tauri-plugin-deep-link.workspace = true
 vca-shell.workspace = true
 
 [lints]

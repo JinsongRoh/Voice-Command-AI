@@ -23,8 +23,10 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | `vca-speech` + `lexicon/` | Done (agent stopped during final review) | 68 | STT trait with OpenAI-compatible, Google and optional local Whisper engines (`whisper-local` feature not build-verified), VAD, layered developer vocabulary, multilingual intent router, filler cleanup. |
 | `vca-cloud` | Done | 38 | Cloud adapters. Copilot, Claude Managed Agents, Claude Code routines and Codex cloud were checked against official sources. **Jules, Cursor and Devin field names are unverified** (docs were blocked in the cloud session). |
 | `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNS Pilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNS Pilot JSON fields are placeholders in `dnspilot/contract.rs`. |
-| `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Tauri shells not created yet. |
+| `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Native mode (Tauri bridge, pairing, TOTP login, forget, server transcription) added in task 5. |
 | `vca-server` (`vcad`) | §4 steps 3 and 4 done | 63 (Windows) | Session manager, API, local control channel, hooks with admission, discovery, Job Objects (Windows), `vca-net` remote transport (pairing, TOTP, scopes, revoke, kill switch, audit), cloud sessions as cards (`[cloud]`, `vca cloud`), connectivity providers for pairing endpoints (`[remote.provider]`), server-side transcription (`[speech]`, `vca transcribe`). |
+| `vca-client` | Done | 13 | Device-side connection manager for the apps: pairing from `vca://pair` links, keys and rotating refresh tokens in a `KeyStore`, supervised reconnects with backoff, `LoginRequired`/`revoked`/`kill_switch` states. |
+| `apps/shell`, `apps/desktop`, `apps/mobile` | Desktop verified on Windows | 3 | Tauri 2 shells (separate Cargo workspace `apps/Cargo.toml`). See §3.6. |
 | `vca-cli` (`vca`) | Done | 28 | All §6 commands. Hooks fail open (checked against a missing vcad). |
 
 ## 3. Known issues
@@ -87,10 +89,26 @@ Verified later on the same machine (task 3 session):
   - Hidden-input `vca cloud login` on a real terminal.
   - Owner-only ACL of `data_dir/cloud/` on Windows (inherited from the per-user data directory, not checked).
 
+### 3.6 Task 5: Tauri shells and the native transport
+
+- **Layout:** `apps/Cargo.toml` is its own workspace (the main one excludes `apps`), so `cargo test --workspace` at the root needs no WebView libraries. `vca-shell` holds every command; `vca-desktop` and `vca-mobile` only call `vca_shell::run(generate_context!())`. Both embed `apps/ui/dist` (build the UI first; the `custom-protocol` feature serves it instead of the dev server).
+- **Boundary:** the webview never sees keys, tokens or Noise. It calls `vca_pair`, `vca_connect` (two channels: link status and raw MessagePack server envelopes), `vca_send` (raw MessagePack body, `vca-machine` header; a JSON number array on Android), `vca_login`, `vca_forget`, `vca_status`, `vca_disconnect`, `vca_mic_start/stop/cancel` and `vca_platform`. `vca-client` owns pairing, the server key pin, refresh-token rotation (stored before `Connected` is reported) and reconnects. CSP allows only `'self'` and IPC.
+- **Secrets:** OS keychain on desktop and iOS (probed at start; falls back to files in the app data directory), app-private files on Android.
+- **Microphone:** cpal capture on a dedicated thread, downmixed and resampled to 16 kHz mono WAV, 240 s cap. `NSMicrophoneUsageDescription` and the macOS audio-input entitlement are set.
+- **UI:** `TauriTransport`, a machine registry (dynamic machines, zero machines → pairing screen), pairing by pasted link, TOTP/backup-code login prompt, "Forget this machine", server transcription with the native recorder.
+- **Verified on this Windows 11 PC** (release-like build driven through WebView2 DevTools, against a test vcad on 127.0.0.1): pairing through the form, `Connected` over Noise, live resources, a session card appearing with its preview and alert, text sent from the composer echoed by the fake agent, native mic capture (16 kHz mono WAV with signal), push-to-talk → `Transcribe` → the server's "speech is off" error shown in the composer, `Reconnecting…` → `Connected` after a vcad restart, revoke → `Disconnected` without retries, `vca_forget` removing the keychain entries.
+- **Not done or unverified:**
+  - Mobile builds: `gen/android` and `gen/apple` are not generated (`pnpm android:init` / `ios:init` need the SDKs). CI only runs clippy on the Android library.
+  - Android microphone permission (`RECORD_AUDIO` runtime request) and an Android Keystore-backed secret store.
+  - QR camera scanning (the button is disabled; links are pasted).
+  - macOS/Linux desktop runs, signing and installers.
+  - The UI shows `Disconnected` after a revoke without naming the reason.
+  - Korean (and other) locale files translate only part of the UI; the rest falls back to English.
+
 Still unverified:
 - Codex `notify` installation: it only supports the global config.
 - iTerm2 and macOS on real hardware.
-- A real phone client (needs the Tauri shell, task 5).
+- A real phone client on Android or iOS hardware.
 
 ## 4. Next steps (in order)
 
@@ -116,6 +134,11 @@ cd apps/ui
 pnpm install --frozen-lockfile
 pnpm check     # lint, format, typecheck, tests, build
 pnpm dev       # mock-backed UI at http://localhost:5173
+
+# Desktop shell (after `pnpm build` in apps/ui)
+cd ../desktop
+pnpm install
+pnpm tauri dev  # or: cargo run --manifest-path ../Cargo.toml -p vca-desktop --features custom-protocol
 ```
 
 Linux tests use `tmux` and `bash` when available; they skip themselves otherwise.

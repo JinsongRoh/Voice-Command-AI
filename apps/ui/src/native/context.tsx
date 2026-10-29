@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 import type { MachineInfo } from './bridge';
+import type { PairLinks } from './pairLinks';
 
 /** Native-only services (pairing, forgetting machines). Absent in browser/mock mode. */
 export interface NativeServices {
@@ -8,6 +9,8 @@ export interface NativeServices {
   forget(machineId: string): Promise<void>;
   /** 'windows' | 'macos' | 'linux' | 'android' | 'ios' */
   platform(): Promise<string>;
+  /** `vca://pair` links that opened the app (pre-fill the pairing form). */
+  pairLinks?: PairLinks;
 }
 
 const NativeContext = createContext<NativeServices | null>(null);

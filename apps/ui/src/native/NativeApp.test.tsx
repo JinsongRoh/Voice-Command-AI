@@ -10,6 +10,20 @@ import { NativeApp } from './NativeApp';
 import { MachineRegistry } from './registry';
 
 vi.mock('@tauri-apps/api/core', () => import('../test/tauriMock'));
+vi.mock('@tauri-apps/plugin-deep-link', () => ({
+  getCurrent: async () => deepLink.launch,
+  onOpenUrl: async (cb: (urls: string[]) => void) => {
+    deepLink.open = cb;
+    return () => {
+      deepLink.open = null;
+    };
+  },
+}));
+
+const deepLink: { launch: string[] | null; open: ((urls: string[]) => void) | null } = {
+  launch: null,
+  open: null,
+};
 
 const speech: SpeechServices = {
   transcribe: async () => ({ text: '', corrections: [] }),
@@ -43,6 +57,8 @@ describe('NativeApp', () => {
 
   beforeEach(() => {
     tauri.reset();
+    deepLink.launch = null;
+    deepLink.open = null;
     machines = [];
     tauri.handlers.set('vca_machines', () => machines);
     tauri.handlers.set('vca_platform', () => 'android');
@@ -145,5 +161,23 @@ describe('NativeApp', () => {
     await user.click(screen.getByRole('button', { name: 'Forget' }));
     expect(await screen.findByText(/No machine is paired yet/)).toBeInTheDocument();
     expect(tauri.callsOf('vca_forget')[0]!.args).toEqual({ machineId: 'mach-1' });
+  });
+
+  it('fills the pairing form from a launch link but waits for the tap', async () => {
+    deepLink.launch = ['https://example.com/ignored', URI];
+    renderNative();
+    expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
+    expect(tauri.callsOf('vca_pair')).toHaveLength(0);
+  });
+
+  it('switches to the pairing form when a link arrives while connected', async () => {
+    fakeServer();
+    machines = [INFO];
+    renderNative();
+    await waitFor(() => expect(deepLink.open).not.toBeNull());
+    expect(await screen.findByText('studio-pc')).toBeInTheDocument();
+    deepLink.open!([URI]);
+    expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
+    expect(tauri.callsOf('vca_pair')).toHaveLength(0);
   });
 });

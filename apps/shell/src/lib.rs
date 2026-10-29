@@ -192,6 +192,10 @@ fn platform() -> &'static str {
 /// entry point with their own `tauri::generate_context!()`.
 pub fn run(context: tauri::Context<tauri::Wry>) {
     tauri::Builder::default()
+        // `vca://pair?...` links (the pairing QR code read by the phone's
+        // camera) open the app; the UI only pre-fills the pairing form, it
+        // never pairs without the user's tap.
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let secrets = secrets::open(&data_dir)?;
