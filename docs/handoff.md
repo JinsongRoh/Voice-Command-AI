@@ -97,8 +97,11 @@ Verified later on the same machine (task 3 session):
 - **Microphone:** cpal capture on a dedicated thread, downmixed and resampled to 16 kHz mono WAV, 240 s cap. `NSMicrophoneUsageDescription` and the macOS audio-input entitlement are set.
 - **UI:** `TauriTransport`, a machine registry (dynamic machines, zero machines → pairing screen), pairing by pasted link, TOTP/backup-code login prompt, "Forget this machine", server transcription with the native recorder.
 - **Verified on this Windows 11 PC** (release-like build driven through WebView2 DevTools, against a test vcad on 127.0.0.1): pairing through the form, `Connected` over Noise, live resources, a session card appearing with its preview and alert, text sent from the composer echoed by the fake agent, native mic capture (16 kHz mono WAV with signal), push-to-talk → `Transcribe` → the server's "speech is off" error shown in the composer, `Reconnecting…` → `Connected` after a vcad restart, revoke → `Disconnected` without retries, `vca_forget` removing the keychain entries.
+- **Verified on the user's Mac and iPhone** (over SSH, in `~/dev/voice-command-ai`, removed afterwards): the macOS `.app` bundle builds; the iOS app builds for the device (team signing through the build keychain, `--archive-only`; cpal needs the AudioToolbox/CoreAudio frameworks listed in `bundle.iOS.frameworks`), installs and starts on an iPhone 16 Pro Max (iOS 26.7) with the pairing screen inside the safe area; a `vca://pair` link sent to the running app fills the pairing form.
 - **Not done or unverified:**
-  - Mobile builds: `gen/android` and `gen/apple` are not generated (`pnpm android:init` / `ios:init` need the SDKs). CI only runs clippy on the Android library.
+  - Pairing from the iPhone end to end (needs a tap on the phone; the test vcad on the Mac's tailnet address was ready but the link expired).
+  - A `vca://pair` link that cold-starts the iOS app does not reach the form yet (the warm path works).
+  - `gen/android` and `gen/apple` are not committed (`pnpm android:init` / `ios:init`). CI only runs clippy on the Android library.
   - Android microphone permission (`RECORD_AUDIO` runtime request) and an Android Keystore-backed secret store.
   - QR camera scanning (the button is disabled; links are pasted).
   - macOS/Linux desktop runs, signing and installers.

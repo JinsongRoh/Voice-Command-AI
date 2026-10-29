@@ -4,6 +4,12 @@
   height: 100dvh;
   min-height: 0;
 }
+/* The setup screen has no header to take the notch / status bar inset. */
+.setup {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 .main {
   flex: 1;
   min-height: 0;

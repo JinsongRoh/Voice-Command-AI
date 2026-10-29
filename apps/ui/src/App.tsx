@@ -218,7 +218,7 @@ function Setup({ settings }: { settings?: Settings }) {
 function SetupContent() {
   const { t } = useI18n();
   return (
-    <div className={styles.app}>
+    <div className={`${styles.app} ${styles.setup}`}>
       <main id="main" className={styles.main} tabIndex={-1}>
         <div className={styles.page}>
           <PairingView intro={t('pairing.noMachines')} />
