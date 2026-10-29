@@ -23,7 +23,7 @@ Status of the seven M0 proofs of concept from the development plan (§4), what w
 | PoC-3 Agent signals | **Pass** for Claude Code and Codex input. **Partial** for Codex `notify`. | Real Claude Code hooks reached vcad (project-local install). Codex 0.153.4 launched and accepted input. Gemini CLI, Antigravity and Grok use the generic adapter with output heuristics. |
 | PoC-4 Admission control | **Pass** | Live vcad with the real `vca hook claude` CLI and real `cargo build` runs. 1 slot: two agents serialized. 2 slots: the third agent waits for a free slot. |
 | PoC-5 Connectivity | **Pass** for LAN and Tailscale (2 h each, with a server restart). Cloudflare and DNS Pilot not run. | 7199/7199 requests answered per path, reconnect 1.3–1.4 s. See §PoC-5. |
-| PoC-6 Mobile audio | **Pass on iOS**, Android not built | iPhone push-to-talk → vcad → faster-whisper large-v3-turbo on a GPU server GPU: Korean transcribed correctly, 9–14 s clips in about 0.3 s. |
+| PoC-6 Mobile audio | **Pass on iOS**, Android not built | iPhone push-to-talk → vcad → a self-hosted faster-whisper large-v3-turbo GPU server: Korean transcribed correctly, 9–14 s clips in about 0.3 s. |
 | PoC-7 Cloud APIs | **Not run** | Needs the user's real accounts and spends their quota. Adapters are tested against mock servers only. |
 
 ## PoC-1 Managed PTY and shell hook
@@ -119,7 +119,7 @@ Two slots, three agents:
 - **iOS (iPhone 16 Pro Max, iOS 26.7.1):**
   - The app builds for the device (team signing, `--archive-only`), installs and pairs with a vcad on the Mac over Tailscale. The pairing link reached the app through `vca://` while it was running.
   - Text typed on the phone reached a managed session, and the agent's reply came back.
-  - Push-to-talk recordings went through vcad to a faster-whisper server (`large-v3-turbo`, fp16, CUDA) that VCA runs on a GPU server (`~/vca`, token-protected, tailnet only). Korean speech came back correct; 9–14 s clips took 0.27–0.32 s on the GPU.
+  - Push-to-talk recordings went through vcad to a self-hosted faster-whisper server (`large-v3-turbo`, fp16, CUDA, token-protected). Korean speech came back correct; 9–14 s clips took 0.27–0.32 s on the GPU.
   - cpal needs AudioToolbox and CoreAudio in `bundle.iOS.frameworks`, and `NSMicrophoneUsageDescription` is set.
 - **Feedback from the phone test**, now implemented (`54fcc8b`, `6273347`):
   - Holding the button was tiring, so tap to start and tap to stop is now the default.
@@ -128,7 +128,7 @@ Two slots, three agents:
   - The original transcript can be shown and restored next to the corrected one.
   - Still to do: LLM-based contextual correction, and automatic topic or domain detection that switches vocabulary hints.
 - **Android:** not built (no SDK on the PC). CI type-checks the Android library. Runtime microphone permission (`RECORD_AUDIO`) still needs a small Kotlin plugin.
-- **Engines:** paid cloud engines (OpenAI, Google) were not called. The OpenAI-compatible engine was used against VCA's own Whisper server instead. Mixed Korean/English is reported to work with `language=ko` (another team's benchmark), but VCA hasn't measured it.
+- **Engines:** paid cloud engines (OpenAI, Google) were not called. The OpenAI-compatible engine was used against a self-hosted Whisper server instead. Mixed Korean/English speech has not been measured yet.
 
 ## PoC-7 Cloud APIs
 

@@ -1,8 +1,8 @@
-# Voice Command AI: User Guide (MetaVu staff)
+# Voice Command AI: User Guide
 
-This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside the office. A Korean edition is kept outside this repository.
+This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside your network.
 
-> **Status (M0, October 2026):** VCA is pre-release. There are no installers yet. You build the server from source, and IT installs the app on your phone. Items marked *coming soon* are not available yet.
+> **Status (M0, October 2026):** VCA is pre-release. There are no installers yet. You build the server and the apps from source. Items marked *coming soon* are not available yet.
 
 ## 1. What you get
 
@@ -11,7 +11,7 @@ This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the 
 | `vcad` (server) | your development PC | Owns your agent sessions (Claude Code, Codex, …), streams them, admits heavy builds, listens for paired devices. |
 | `vca` (CLI) | the same PC | Starts sessions (`vca run`), pairs devices (`vca pair`), shows status. |
 | VCA app | iPhone, Windows/macOS/Linux desktop (Android *coming soon*) | Session cards, live chat and terminal view, voice dictation, alerts. |
-| Speech service | GPU server (shared) | Whisper speech-to-text for everyone's `vcad`. Office: `http://stt-host:8790/v1`. Outside: `https://stt.example.com/v1`. |
+| Speech service | a server you choose | Speech-to-text for `vcad`: any OpenAI-compatible endpoint (a self-hosted Whisper server, OpenAI) or Google Cloud. |
 
 Your phone talks only to your own PC, over an end-to-end encrypted (Noise) channel, after a one-time pairing. Nothing goes through a VCA cloud.
 
@@ -85,15 +85,15 @@ Manage devices with `vca devices` and `vca revoke <device-id>`. `vca kill-switch
 
 ### Install the app
 
-- **iPhone:** IT installs internal test builds. App Store/TestFlight is *coming soon*.
-- **Windows/macOS/Linux desktop:** build it from the repository (`apps/ui`: `pnpm install && pnpm build`, then `apps/desktop`: `pnpm install && pnpm tauri build`), or ask IT for a build.
+- **iPhone:** build and install from `apps/mobile` with Xcode (developer signing). App Store/TestFlight is *coming soon*.
+- **Windows/macOS/Linux desktop:** build it from the repository (`apps/ui`: `pnpm install && pnpm build`, then `apps/desktop`: `pnpm install && pnpm tauri build`), 
 - **Android:** *coming soon*.
 
 ## 5. Reach your PC
 
 By default `vcad` listens only on `127.0.0.1:47800`, so nothing outside your PC can reach it. Choose one way in:
 
-**Office LAN.** Let devices in the office reach your PC directly:
+**LAN.** Let devices on your local network reach your PC directly:
 
 ```toml
 [remote]
@@ -102,7 +102,7 @@ bind = "0.0.0.0:47800"
 kind = "lan"
 ```
 
-**Tailscale (office VPN).** If your PC and phone are on the company tailnet:
+**Tailscale.** If your PC and phone are on the same tailnet:
 
 ```toml
 [remote.provider]
@@ -119,7 +119,7 @@ Create a new pairing code after changing the provider, so the QR code carries th
 
 ### Turn on speech recognition
 
-Ask IT for a personal speech token, put it in an environment variable, and add this to `config.toml`:
+Point `vcad` at an OpenAI-compatible speech-to-text endpoint, put its API key in an environment variable, and add this to `config.toml`:
 
 ```toml
 [speech]
@@ -127,12 +127,12 @@ engine = "openai"
 language = "ko"
 
 [speech.openai]
-base_url = "http://stt-host:8790/v1"   # office; outside: https://stt.example.com/v1
+base_url = "https://stt.example.com/v1"   # your Whisper server, or https://api.openai.com/v1
 model = "whisper-1"
 api_key_env = "VCA_STT_TOKEN"
 ```
 
-Set `VCA_STT_TOKEN` in the environment `vcad` starts from (Windows: System Properties → Environment Variables; macOS/Linux: your shell profile), restart `vcad`, and check with `vca transcribe sample.wav`. Never put the token in `config.toml` or share it; tell IT at once if it leaks, and they will revoke it.
+Set `VCA_STT_TOKEN` in the environment `vcad` starts from (Windows: System Properties → Environment Variables; macOS/Linux: your shell profile), restart `vcad`, and check with `vca transcribe sample.wav`. Never put the key in `config.toml` or share it.
 
 ### Dictate in the app
 
@@ -147,14 +147,14 @@ The Chat tab shows your messages and the agent's replies; the Terminal tab shows
 
 ## 7. Install the DNSPilot Agent (for outside access)
 
-Before you start: the org admin invites you to the MetaVu DNSPilot console. Turn on two-factor authentication there (an authenticator app or a passkey). Docs: https://dns.dnspilot.kr/docs/en/agent (Korean: `/docs/ko/agent`).
+Before you start: you need a DNSPilot console account (ask your organization's admin for an invite). Turn on two-factor authentication there (an authenticator app or a passkey). Docs: https://dns.dnspilot.kr/docs/en/agent (Korean: `/docs/ko/agent`).
 
 **Windows 10/11 (x64, arm64)**
 1. Sign in at https://dns.dnspilot.kr, open **Agent download**, and run the MSI. SmartScreen may warn until the code-signing certificate arrives; that is expected.
 2. It installs the `DNSPilotAgent` service, a tray icon and the `dnspilot` command. Updates are automatic and signature-checked.
 3. Choose **Sign in** in the tray icon (see "Sign in" below).
 
-**macOS:** *coming soon*. Ask IT.
+**macOS:** *coming soon*.
 
 **Linux (Ubuntu, Debian, Raspberry Pi OS; amd64, arm64, armv7; systemd)**
 
@@ -191,7 +191,7 @@ More: tunnels https://dns.dnspilot.kr/docs/en/tunnels, app mode https://dns.dnsp
 | App shows "Disconnected" and doesn't retry | The device was revoked or the kill switch is on (`vca devices`, `vca kill-switch --reset`). Pair again if revoked. |
 | Pairing link "not valid" | Links expire after 5 minutes and work once. Run `vca pair` again. |
 | "Speech recognition is turned off" | Section 6: `[speech]` in `config.toml`, and `VCA_STT_TOKEN` set where `vcad` starts. |
-| Speech errors 401 | The token is wrong or expired; ask IT for a new one. |
+| Speech errors 401 | The token is wrong or expired; get a new one from whoever runs the speech server. |
 | Speech errors 429 | Too many requests or failed attempts; wait a minute (10 minutes after repeated bad tokens). |
 
-Help: IT or the CEO (org admin); developer and integration questions: master@metavu.io.
+Help: open an issue at https://github.com/JinsongRoh/Voice-Command-AI/issues.
