@@ -11,6 +11,8 @@ const PATHS = {
   up: 'M18 15l-6-6-6 6',
   down: 'M6 9l6 6 6-6',
   close: 'M6 6l12 12M18 6L6 18',
+  expand: 'M14 4h6v6M20 4l-6 6M10 20H4v-6M4 20l6-6',
+  collapse: 'M20 10h-6V4M14 10l6-6M4 14h6v6M10 14l-6 6',
   cloud: 'M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9H7z',
   terminal: 'M4 5h16v14H4zM7 9l3 3-3 3M12 15h5',
   chat: 'M4 5h16v11H9l-5 4V5z',

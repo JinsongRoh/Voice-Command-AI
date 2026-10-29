@@ -226,15 +226,24 @@ export type ClientMsg =
       sample_rate: number | null;
       language: string | null;
       session_id: SessionId | null;
+      /**
+       * Text that precedes this audio (e.g. the last ~300 characters already
+       * dictated), used as a recognition prompt for continuity. Omitted when
+       * there is none.
+       */
+      context?: string | null;
     };
 
 export type AudioEncoding = 'wav' | 'pcm16' | 'webm' | 'ogg' | 'm4a';
 
-/** A term replaced by the developer vocabulary engine (VOC-05). */
+/**
+ * A term replaced by the developer vocabulary engine (VOC-05); `context` is
+ * reserved for a contextual (LLM-based) correction pass.
+ */
 export interface TranscriptCorrection {
   from: string;
   to: string;
-  layer: 'base' | 'project' | 'personal';
+  layer: 'base' | 'project' | 'personal' | 'context';
 }
 
 /** How the server routed a transcript (VOC-06). */

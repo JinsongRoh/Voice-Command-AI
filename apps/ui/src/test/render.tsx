@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 
 import { I18nProvider } from '../i18n/context';
 import { SpeechProvider, type SpeechServices } from '../speech/context';
-import { defaultSettings } from '../state/settings';
+import { defaultSettings, type Settings } from '../state/settings';
 import { AppProvider } from '../state/store';
 import { FakeTransport } from './fakeTransport';
 
@@ -12,7 +12,12 @@ export function renderWithApp(
   {
     transport = new FakeTransport(),
     speech,
-  }: { transport?: FakeTransport; speech?: Partial<SpeechServices> } = {},
+    settings,
+  }: {
+    transport?: FakeTransport;
+    speech?: Partial<SpeechServices>;
+    settings?: Partial<Settings>;
+  } = {},
 ) {
   const services: SpeechServices = {
     transcribe: async () => ({ text: '', corrections: [] }),
@@ -27,7 +32,7 @@ export function renderWithApp(
   const result = render(
     <AppProvider
       machines={[{ id: 'm', name: 'test machine', connectivity: 'LAN', transport }]}
-      settings={defaultSettings()}
+      settings={{ ...defaultSettings(), ...settings }}
       persistSettings={false}
     >
       <I18nProvider locale="en">

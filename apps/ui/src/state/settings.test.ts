@@ -51,4 +51,15 @@ describe('settings', () => {
     expect(parsed.sttEngine).toBe('openai');
     expect(parsed.notifications).toEqual({ ...d.notifications, activity: true });
   });
+
+  it('defaults to tap-to-toggle dictation and migrates old settings', () => {
+    const d = defaultSettings();
+    expect(d.micMode).toBe('toggle');
+    // Saved before micMode existed.
+    const old = JSON.stringify({ theme: 'dark', sttEngine: 'openai' });
+    expect(parseSettings(old, d).micMode).toBe('toggle');
+    expect(parseSettings(old, d).theme).toBe('dark');
+    expect(parseSettings(JSON.stringify({ micMode: 'bogus' }), d).micMode).toBe('toggle');
+    expect(parseSettings(JSON.stringify({ micMode: 'hold' }), d).micMode).toBe('hold');
+  });
 });

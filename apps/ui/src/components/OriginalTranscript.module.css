@@ -1,0 +1,82 @@
+.original {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.toggle:hover,
+.toggle[aria-expanded='true'] {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.raw {
+  width: 100%;
+  max-height: 30vh;
+  max-height: 30dvh;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.term {
+  position: relative;
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--st-input-bg);
+  border-bottom: 2px dotted var(--st-input);
+  color: inherit;
+  cursor: help;
+}
+.term[data-layer='context'] {
+  border-bottom-style: dashed;
+}
+.term:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+/* The replacement and its layer appear as a small tag on hover or tap (focus). */
+.tag {
+  display: none;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.term:hover .tag,
+.term:focus .tag {
+  display: inline;
+}

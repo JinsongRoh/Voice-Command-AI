@@ -46,6 +46,19 @@ describe('App (with MockTransport)', () => {
     expect(screen.queryByRole('region', { name: /Pending decision/ })).not.toBeInTheDocument();
   });
 
+  it('switches the microphone between tap-to-toggle and hold in settings', async () => {
+    renderApp();
+    await screen.findByTestId('session-card-wk-claude-api');
+    await userEvent.click(screen.getAllByRole('button', { name: 'Settings' })[0]!);
+    const group = await screen.findByRole('group', { name: 'Microphone button' });
+    const toggle = within(group).getByRole('button', { name: 'Tap to start / stop' });
+    const hold = within(group).getByRole('button', { name: 'Hold to talk' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(hold);
+    expect(hold).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('filters cloud sessions and switches machines', async () => {
     renderApp();
     await screen.findByTestId('session-card-wk-claude-api');

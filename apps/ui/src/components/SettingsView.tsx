@@ -6,6 +6,7 @@ import { useNative } from '../native/context';
 import { describeNativeError } from '../native/errors';
 import {
   ALERT_CATEGORIES,
+  MIC_MODES,
   STT_ENGINES,
   type SttEngine,
   type ThemeSetting,
@@ -160,6 +161,23 @@ export function SettingsView({ onPair }: { onPair: () => void }) {
               </option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <span className="label" id="set-mic-mode">
+            {t('settings.micMode')}
+          </span>
+          <div className="segmented" role="group" aria-labelledby="set-mic-mode">
+            {MIC_MODES.map((micMode) => (
+              <button
+                key={micMode}
+                type="button"
+                aria-pressed={settings.micMode === micMode}
+                onClick={() => updateSettings({ micMode })}
+              >
+                {t(`settings.micMode.${micMode}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

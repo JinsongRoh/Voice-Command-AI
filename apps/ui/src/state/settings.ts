@@ -4,6 +4,13 @@ export type ThemeSetting = 'system' | 'light' | 'dark';
 export type SttEngine = 'whisper_server' | 'whisper_device' | 'openai' | 'google';
 export const STT_ENGINES: SttEngine[] = ['whisper_server', 'whisper_device', 'openai', 'google'];
 
+/**
+ * How the microphone button records: `toggle` = tap to start dictating, tap
+ * again to stop (default; suits long dictation); `hold` = push-to-talk.
+ */
+export type MicMode = 'hold' | 'toggle';
+export const MIC_MODES: MicMode[] = ['toggle', 'hold'];
+
 /** Kinds of alerts the user can turn on or off individually (NTF-06). */
 export type AlertCategory = 'decision' | 'input' | 'error' | 'completed' | 'activity';
 export const ALERT_CATEGORIES: AlertCategory[] = [
@@ -28,6 +35,7 @@ export interface Settings {
   spokenAlerts: boolean;
   quietHours: QuietHours;
   sttEngine: SttEngine;
+  micMode: MicMode;
 }
 
 export function defaultSettings(languages: readonly string[] = []): Settings {
@@ -38,6 +46,7 @@ export function defaultSettings(languages: readonly string[] = []): Settings {
     spokenAlerts: false,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
     sttEngine: 'whisper_server',
+    micMode: 'toggle',
   };
 }
 
@@ -61,6 +70,8 @@ export function parseSettings(raw: string | null, defaults: Settings): Settings 
       sttEngine: STT_ENGINES.includes(v.sttEngine as SttEngine)
         ? (v.sttEngine as SttEngine)
         : defaults.sttEngine,
+      // Settings saved before `micMode` existed get the default.
+      micMode: MIC_MODES.includes(v.micMode as MicMode) ? (v.micMode as MicMode) : defaults.micMode,
     };
   } catch {
     return defaults;

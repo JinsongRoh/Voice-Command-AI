@@ -142,6 +142,26 @@ export const bridge = {
     return toBytes(await call<unknown>('vca_mic_stop'));
   },
 
+  /**
+   * WAV (16 kHz mono 16-bit) of the audio captured since the last split,
+   * without stopping the recording.
+   */
+  async micPeek(): Promise<Uint8Array<ArrayBuffer>> {
+    return toBytes(await call<unknown>('vca_mic_peek'));
+  },
+
+  /**
+   * Cuts the recording buffer at the quietest 100 ms of the last few seconds
+   * when at least `minSeconds` are buffered and returns the WAV of the part
+   * before the cut (recording continues). Returns empty bytes when there is
+   * not enough audio yet.
+   */
+  async micSplit(minSeconds: number): Promise<Uint8Array<ArrayBuffer>> {
+    const payload = await call<unknown>('vca_mic_split', { minSeconds });
+    // An empty body may surface as null on some IPC paths.
+    return payload == null ? new Uint8Array(0) : toBytes(payload);
+  },
+
   micCancel: () => call<void>('vca_mic_cancel'),
 
   platform: () => call<string>('vca_platform'),

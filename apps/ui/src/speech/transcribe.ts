@@ -4,17 +4,36 @@ import type { AudioEncoding, ServerMsg } from '../protocol/types';
 import { RequestError } from '../state/core';
 import type { SttEngine } from '../state/settings';
 
-/** A term replaced by the developer vocabulary engine (VOC-05). */
+/**
+ * Where a correction came from: the vocabulary layers of VOC-05 (`base`,
+ * `project`, `personal`) or a contextual (LLM-based) correction pass
+ * (`context`).
+ */
+export type CorrectionLayer = 'base' | 'project' | 'personal' | 'context';
+export const CORRECTION_LAYERS: readonly CorrectionLayer[] = [
+  'base',
+  'project',
+  'personal',
+  'context',
+];
+
+/** A term replaced by a correction layer (VOC-05). */
 export interface TranscriptCorrection {
-  /** What the recognizer heard. */
+  /** What the recognizer heard (appears in the raw text). */
   from: string;
-  /** The vocabulary term it was replaced with (appears in `text`). */
+  /** What it was replaced with (appears in `text`). */
   to: string;
-  layer: 'base' | 'project' | 'personal';
+  layer: CorrectionLayer;
 }
 
 export interface Transcript {
+  /** Corrected text. */
   text: string;
+  /**
+   * Recognizer output before filler removal and corrections (the server's
+   * `raw_text`); absent when the engine provides none.
+   */
+  rawText?: string;
   corrections: TranscriptCorrection[];
 }
 
@@ -22,6 +41,8 @@ export interface TranscribeOptions {
   engine: SttEngine;
   locale: Locale;
   sessionId: string | null;
+  /** Preceding text for continuity (sent as `context`; omitted when empty). */
+  context?: string | null;
 }
 
 /**
@@ -85,18 +106,56 @@ export function audioEncodingOf(mime: string): AudioEncoding | null {
   }
 }
 
-const LAYERS: readonly TranscriptCorrection['layer'][] = ['base', 'project', 'personal'];
-
 /** Maps the server's `transcript` message to the UI type (unknown layers become `base`). */
 export function toTranscript(msg: Extract<ServerMsg, { type: 'transcript' }>): Transcript {
   return {
     text: msg.text,
+    ...(typeof msg.raw_text === 'string' ? { rawText: msg.raw_text } : {}),
     corrections: (msg.corrections ?? []).map((c) => ({
       from: c.from,
       to: c.to,
-      layer: LAYERS.includes(c.layer) ? c.layer : 'base',
+      layer: CORRECTION_LAYERS.includes(c.layer) ? c.layer : 'base',
     })),
   };
+}
+
+/** A correction term located in a text. */
+export interface CorrectionSpan {
+  start: number;
+  end: number;
+  correction: TranscriptCorrection;
+}
+
+/**
+ * Locates correction terms in `text`: the replacements (`to`) in corrected
+ * text, or the originally heard words (`from`) in raw text. Overlaps are
+ * dropped; matching is literal (case-sensitive).
+ */
+export function correctionSpans(
+  text: string,
+  corrections: TranscriptCorrection[],
+  field: 'from' | 'to',
+): CorrectionSpan[] {
+  const spans: CorrectionSpan[] = [];
+  for (const c of corrections) {
+    const term = c[field];
+    if (!term) continue;
+    let from = 0;
+    for (;;) {
+      const idx = text.indexOf(term, from);
+      if (idx < 0) break;
+      spans.push({ start: idx, end: idx + term.length, correction: c });
+      from = idx + term.length;
+    }
+  }
+  spans.sort((a, b) => a.start - b.start);
+  const merged: CorrectionSpan[] = [];
+  for (const s of spans) {
+    const last = merged[merged.length - 1];
+    if (last && s.start < last.end) continue;
+    merged.push(s);
+  }
+  return merged;
 }
 
 async function blobBytes(blob: Blob): Promise<Uint8Array> {
@@ -126,6 +185,8 @@ export function createServerTranscriber(getClient: () => Client | null): Transcr
         sample_rate: null,
         language: options.locale,
         session_id: options.sessionId,
+        // Only sent when present, so servers without the field are unaffected.
+        ...(options.context ? { context: options.context } : {}),
       });
     } catch (err) {
       throw new RequestError('transport', (err as Error).message);

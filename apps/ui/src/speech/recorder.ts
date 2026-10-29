@@ -5,13 +5,28 @@ export interface Recorder {
   start(): Promise<void>;
   /** Stops capturing, releases the microphone and returns the audio. */
   stop(): Promise<Blob>;
+  /**
+   * Audio captured since the last `split` (or start), without stopping.
+   * Optional: without it there is no live interim transcript.
+   */
+  peek?(): Promise<Blob>;
+  /**
+   * When at least `minSeconds` are buffered, cuts the buffer at a quiet point
+   * and returns the audio before the cut (recording continues); otherwise
+   * returns an empty Blob. Optional: without it the whole recording is
+   * transcribed once on stop.
+   */
+  split?(minSeconds: number): Promise<Blob>;
   /** Stops without producing audio. */
   cancel(): void;
 }
 
 export type RecorderFactory = () => Recorder;
 
-/** MediaRecorder-based recorder. The microphone is released on stop/cancel. */
+/**
+ * MediaRecorder-based recorder. The microphone is released on stop/cancel.
+ * It has no `peek`/`split`, so dictation is transcribed once on stop.
+ */
 export function createMediaRecorder(): Recorder {
   let stream: MediaStream | null = null;
   let recorder: MediaRecorder | null = null;
@@ -71,6 +86,12 @@ export function createNativeRecorder(): Recorder {
     async stop() {
       const bytes = await bridge.micStop();
       return new Blob([bytes], { type: 'audio/wav' });
+    },
+    async peek() {
+      return new Blob([await bridge.micPeek()], { type: 'audio/wav' });
+    },
+    async split(minSeconds: number) {
+      return new Blob([await bridge.micSplit(minSeconds)], { type: 'audio/wav' });
     },
     cancel() {
       bridge.micCancel().catch(() => {});

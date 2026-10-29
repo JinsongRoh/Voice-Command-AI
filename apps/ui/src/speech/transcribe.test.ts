@@ -5,7 +5,7 @@ import type { ClientMsg, ServerMsg } from '../protocol/types';
 import { FakeTransport } from '../test/fakeTransport';
 import { tauri } from '../test/tauriMock';
 import { createNativeRecorder } from './recorder';
-import { audioEncodingOf, createServerTranscriber } from './transcribe';
+import { audioEncodingOf, correctionSpans, createServerTranscriber } from './transcribe';
 
 vi.mock('@tauri-apps/api/core', () => import('../test/tauriMock'));
 
@@ -35,6 +35,7 @@ describe('server transcriber', () => {
     const result = await transcribe(audio, OPTIONS);
     expect(result).toEqual({
       text: 'run pnpm test',
+      rawText: 'run p n p m test',
       corrections: [
         { from: 'p n p m', to: 'pnpm', layer: 'base' },
         { from: 'tst', to: 'test', layer: 'personal' },
@@ -50,6 +51,32 @@ describe('server transcriber', () => {
       session_id: 's1',
     });
     expect(Array.from((sent as { audio: Uint8Array }).audio)).toEqual([1, 2, 3]);
+    expect(sent).not.toHaveProperty('context');
+  });
+
+  it('locates correction terms in raw and corrected text', () => {
+    const c = [
+      { from: 'p n p m', to: 'pnpm', layer: 'base' as const },
+      { from: 'the bug', to: 'the race condition', layer: 'context' as const },
+    ];
+    expect(correctionSpans('run p n p m and fix the bug', c, 'from')).toEqual([
+      { start: 4, end: 11, correction: c[0] },
+      { start: 20, end: 27, correction: c[1] },
+    ]);
+    expect(correctionSpans('run pnpm, pnpm', c, 'to').map((s) => s.start)).toEqual([4, 10]);
+  });
+
+  it('sends preceding text as context only when present', async () => {
+    const transport = new FakeTransport((msg: ClientMsg) =>
+      msg.type === 'transcribe' ? TRANSCRIPT : { type: 'ok' },
+    );
+    const transcribe = createServerTranscriber(() => new Client(transport));
+    const audio = new Blob([new Uint8Array([1])], { type: 'audio/wav' });
+    await transcribe(audio, { ...OPTIONS, context: 'Fix the tests' });
+    await transcribe(audio, { ...OPTIONS, context: null });
+    const [withContext, withoutContext] = transport.bodies('transcribe');
+    expect(withContext).toMatchObject({ format: 'wav', context: 'Fix the tests' });
+    expect(withoutContext).not.toHaveProperty('context');
   });
 
   it('surfaces error responses and transport failures as readable errors', async () => {
@@ -93,6 +120,30 @@ describe('native recorder', () => {
     expect(blob.type).toBe('audio/wav');
     expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual([82, 73, 70, 70]);
     expect(tauri.calls.map((c) => c.cmd)).toEqual(['vca_mic_start', 'vca_mic_stop']);
+  });
+
+  it('peeks and splits through vca_mic_peek / vca_mic_split', async () => {
+    tauri.handlers.set('vca_mic_peek', () => new Uint8Array([82, 73]).buffer);
+    tauri.handlers.set('vca_mic_split', () => new Uint8Array(0).buffer); // not enough audio yet
+    const rec = createNativeRecorder();
+    const peeked = await rec.peek!();
+    expect(peeked.type).toBe('audio/wav');
+    expect(Array.from(new Uint8Array(await peeked.arrayBuffer()))).toEqual([82, 73]);
+    const empty = await rec.split!(15);
+    expect(empty.size).toBe(0);
+    tauri.handlers.set('vca_mic_split', () => [82, 73, 70, 70]); // number[] (Android IPC)
+    const chunk = await rec.split!(15);
+    expect(chunk.type).toBe('audio/wav');
+    expect(chunk.size).toBe(4);
+    tauri.handlers.set('vca_mic_split', () => null);
+    expect((await rec.split!(15)).size).toBe(0);
+    expect(tauri.callsOf('vca_mic_split')[0]!.args).toEqual({ minSeconds: 15 });
+    expect(tauri.calls.map((c) => c.cmd)).toEqual([
+      'vca_mic_peek',
+      'vca_mic_split',
+      'vca_mic_split',
+      'vca_mic_split',
+    ]);
   });
 
   it('cancels without throwing and propagates start failures', async () => {
