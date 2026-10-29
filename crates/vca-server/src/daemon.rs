@@ -137,6 +137,9 @@ impl Server {
             tracing::info!(engine = speech.engine_name(), "speech recognition on");
             api.set_speech(Arc::new(speech));
         }
+        let cloud = crate::cloud::Cloud::open(&config.cloud, &paths.data_dir)
+            .map_err(|e| anyhow::anyhow!("invalid [cloud] configuration: {e}"))?;
+        api.set_cloud(Arc::new(cloud));
         let remote_slot: crate::local::RemoteSlot = Arc::default();
         let local = LocalServer::bind(&control_endpoint, api.clone(), Arc::clone(&remote_slot))
             .await
@@ -199,6 +202,7 @@ impl Server {
         if let Some(d) = self.discovery.take() {
             d.abort();
         }
+        self.api.sessions().stop_cloud_polling();
         if self.config.shutdown.managed_sessions == ShutdownMode::Terminate {
             self.api
                 .sessions()

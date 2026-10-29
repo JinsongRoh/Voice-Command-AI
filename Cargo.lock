@@ -3529,6 +3529,7 @@ dependencies = [
  "uuid",
  "vca-adapters",
  "vca-broker",
+ "vca-cloud",
  "vca-core",
  "vca-net",
  "vca-providers",

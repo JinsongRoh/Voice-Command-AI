@@ -25,6 +25,7 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 vca-adapters.workspace = true
 vca-broker.workspace = true
+vca-cloud.workspace = true
 vca-net.workspace = true
 vca-providers.workspace = true
 vca-core.workspace = true

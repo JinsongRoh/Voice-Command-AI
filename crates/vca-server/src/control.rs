@@ -9,8 +9,9 @@
 //!
 //! Besides the transport-agnostic API ([`LocalRequest::Api`]), the local
 //! channel carries requests that only make sense on this machine: agent
-//! hook events, running an arbitrary command under management (`vca run`)
-//! and looking up a session's attach endpoint.
+//! hook events, running an arbitrary command under management (`vca run`),
+//! looking up a session's attach endpoint and storing cloud credentials.
+//! Remote devices only ever reach the [`ClientMsg`] API.
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -27,7 +28,9 @@ use tokio::io::{
 };
 use vca_adapters::{AgentHookEvent, HookDecision};
 use vca_core::error::ErrorCode;
-use vca_core::{AgentKind, ClientMsg, ServerMsg, SessionId, SessionInfo};
+use vca_core::{AgentKind, ClientMsg, CloudProvider, ServerMsg, SessionId, SessionInfo};
+
+use crate::cloud::Secret;
 
 /// Environment variable overriding the control endpoint. vcad sets it in
 /// managed sessions so that hooks reach the daemon that launched them.
@@ -102,6 +105,22 @@ pub enum LocalRequest {
     /// State of the remote transport. Answered with
     /// [`LocalResponse::RemoteStatus`].
     RemoteStatus { id: u64 },
+    /// Stores the secret of a configured cloud account (`vca cloud
+    /// login`). Local channel only. Answered with [`LocalResponse::Done`].
+    CloudCredentialSet {
+        id: u64,
+        provider: CloudProvider,
+        account: String,
+        #[serde(with = "crate::cloud::secret_serde")]
+        secret: Secret,
+    },
+    /// Deletes a stored cloud secret (`vca cloud logout`). Answered with
+    /// [`LocalResponse::Done`], or `NotFound` when none was stored.
+    CloudCredentialDelete {
+        id: u64,
+        provider: CloudProvider,
+        account: String,
+    },
 }
 
 impl LocalRequest {
@@ -115,7 +134,9 @@ impl LocalRequest {
             | Self::TotpBegin { id, .. }
             | Self::TotpConfirm { id, .. }
             | Self::KillSwitchReset { id }
-            | Self::RemoteStatus { id } => *id,
+            | Self::RemoteStatus { id }
+            | Self::CloudCredentialSet { id, .. }
+            | Self::CloudCredentialDelete { id, .. } => *id,
         }
     }
 }

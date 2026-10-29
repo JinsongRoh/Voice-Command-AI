@@ -293,6 +293,11 @@ async fn serve(stream: Stream, api: Api, remote: RemoteSlot) {
                 };
                 let _ = local_tx.send(resp).await;
             }
+            req @ (LocalRequest::CloudCredentialSet { .. }
+            | LocalRequest::CloudCredentialDelete { .. }) => {
+                let resp = crate::cloud::local_request(&api, req).await;
+                let _ = local_tx.send(resp).await;
+            }
             other => {
                 let resp = admin(&remote, other).await;
                 let _ = local_tx.send(resp).await;

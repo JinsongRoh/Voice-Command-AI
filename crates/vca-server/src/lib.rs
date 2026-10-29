@@ -5,9 +5,11 @@
 //! event log for resumable streams and exposes everything through a
 //! transport-agnostic [`api::Api`]. Transports: the owner-only local
 //! control channel used by the `vca` CLI and agent hooks ([`control`]),
-//! and an optional development WebSocket on 127.0.0.1 ([`devws`]).
+//! and an optional development WebSocket on 127.0.0.1 ([`devws`]). Cloud
+//! coding agents appear as session cards too ([`cloud`]).
 
 pub mod api;
+pub mod cloud;
 pub mod config;
 pub mod connectivity;
 pub mod control;

@@ -6,6 +6,7 @@
 //! installs hooks and shell integration.
 
 mod client;
+mod cloud_cmd;
 mod daemon;
 mod error;
 mod hook;
@@ -164,6 +165,11 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Cloud coding agents: providers, launch, login and logout.
+    Cloud {
+        #[command(subcommand)]
+        action: cloud_cmd::CloudCmd,
+    },
     /// Print version information.
     Version,
 }
@@ -300,6 +306,7 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
             session,
             json,
         } => speech_cmd::transcribe(endpoint, &file, language, session, json).await,
+        Cmd::Cloud { action } => cloud_cmd::run(endpoint, action).await,
         Cmd::Version => {
             println!(
                 "vca {} (protocol {PROTOCOL_VERSION})",
@@ -514,6 +521,65 @@ mod tests {
                 agent: HookAgent::All,
                 scope: ScopeArg::User,
                 ..
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_cloud_commands() {
+        let cli = parse(&[
+            "cloud",
+            "launch",
+            "--provider",
+            "cursor",
+            "--repo",
+            "octo/hello",
+            "--name",
+            "x",
+            "fix",
+            "-v",
+            "it",
+        ])
+        .unwrap();
+        match cli.command {
+            Cmd::Cloud {
+                action:
+                    cloud_cmd::CloudCmd::Launch {
+                        provider,
+                        repo,
+                        name,
+                        prompt,
+                    },
+            } => {
+                assert_eq!(provider, "cursor");
+                assert_eq!(repo, "octo/hello");
+                assert_eq!(name.as_deref(), Some("x"));
+                assert_eq!(prompt, ["fix", "-v", "it"]);
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(parse(&["cloud", "launch", "--provider", "cursor", "p"]).is_err());
+        match parse(&["cloud", "login", "jules"]).unwrap().command {
+            Cmd::Cloud {
+                action: cloud_cmd::CloudCmd::Login { provider, account },
+            } => {
+                assert_eq!(provider, "jules");
+                assert_eq!(account, "default");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            parse(&["cloud", "logout", "devin", "--account", "work"])
+                .unwrap()
+                .command,
+            Cmd::Cloud {
+                action: cloud_cmd::CloudCmd::Logout { .. }
+            }
+        ));
+        assert!(matches!(
+            parse(&["cloud", "providers", "--json"]).unwrap().command,
+            Cmd::Cloud {
+                action: cloud_cmd::CloudCmd::Providers { json: true }
             }
         ));
     }

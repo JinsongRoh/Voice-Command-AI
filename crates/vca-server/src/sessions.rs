@@ -20,6 +20,7 @@ use vca_core::{
 };
 use vca_pty::{AttachServer, PtySession, PtySize, SpawnOptions};
 
+use crate::cloud::CloudHandle;
 use crate::control::{CONTROL_ENV, RunRequest, SESSION_ENV};
 use crate::events::{EventLog, LogLimits};
 use crate::util::{lock, truncate_chars};
@@ -144,6 +145,8 @@ pub(crate) struct Observed {
 pub(crate) enum Kind {
     Managed(Box<Managed>),
     Observed(Observed),
+    /// A cloud coding agent session; no local process.
+    Cloud(Box<CloudHandle>),
 }
 
 /// One session card and everything behind it.
@@ -204,14 +207,21 @@ impl Session {
     pub fn attach_endpoint(&self) -> Option<&Path> {
         match &self.kind {
             Kind::Managed(m) => Some(&m.endpoint),
-            Kind::Observed(_) => None,
+            Kind::Observed(_) | Kind::Cloud(_) => None,
         }
     }
 
     pub(crate) fn managed(&self) -> Option<&Managed> {
         match &self.kind {
             Kind::Managed(m) => Some(m),
-            Kind::Observed(_) => None,
+            Kind::Observed(_) | Kind::Cloud(_) => None,
+        }
+    }
+
+    pub(crate) fn cloud(&self) -> Option<&CloudHandle> {
+        match &self.kind {
+            Kind::Cloud(c) => Some(c),
+            Kind::Managed(_) | Kind::Observed(_) => None,
         }
     }
 
@@ -219,7 +229,7 @@ impl Session {
         lock(&self.log).push(make)
     }
 
-    fn add_task(&self, task: JoinHandle<()>) {
+    pub(crate) fn add_task(&self, task: JoinHandle<()>) {
         let mut tasks = lock(&self.tasks);
         tasks.retain(|t| !t.is_finished());
         tasks.push(task);
@@ -411,7 +421,8 @@ impl SessionManager {
     pub(crate) fn remove(&self, id: &SessionId) {
         let removed = lock(&self.inner.sessions).remove(id);
         if let Some(session) = removed {
-            if let Some(broker) = &self.inner.broker {
+            // Cloud sessions were never registered with the broker.
+            if let (Some(broker), None) = (&self.inner.broker, session.cloud()) {
                 broker.unregister_session(id);
             }
             if let Some(m) = session.managed() {
@@ -721,6 +732,15 @@ impl SessionManager {
                     .await
                     .map_err(|e| api_error(ErrorCode::Unavailable, e.to_string()))?;
             }
+            Kind::Cloud(c) => {
+                let Input::Text { text, .. } = &input else {
+                    return Err(api_error(
+                        ErrorCode::Unsupported,
+                        "cloud sessions only accept text messages",
+                    ));
+                };
+                c.send_text(text).await?;
+            }
         }
         lock(&session.info).last_activity = now_millis();
         Ok(())
@@ -729,6 +749,15 @@ impl SessionManager {
     /// Pause, resume, stop or restart a session (SES-06).
     pub async fn control(&self, id: &SessionId, action: SessionAction) -> Result<(), Error> {
         let session = self.require(id)?;
+        if let Some(cloud) = session.cloud() {
+            // Cloud sessions run at the provider: no broker, no process.
+            return match action {
+                SessionAction::Stop => cloud.stop().await,
+                SessionAction::Pause | SessionAction::Resume | SessionAction::Restart => Err(
+                    api_error(ErrorCode::Unsupported, "cloud sessions can only be stopped"),
+                ),
+            };
+        }
         let broker_err =
             |e: vca_broker::BrokerError| api_error(ErrorCode::Unavailable, e.to_string());
         match action {
@@ -759,7 +788,7 @@ impl SessionManager {
                     Ok(())
                 }
                 // VCA never terminates processes it did not start.
-                Kind::Observed(_) => Err(api_error(
+                Kind::Observed(_) | Kind::Cloud(_) => Err(api_error(
                     ErrorCode::Unsupported,
                     "sessions VCA did not start cannot be stopped from VCA",
                 )),
@@ -865,6 +894,24 @@ impl SessionManager {
         let session = self.new_session(info.id.clone(), info, Kind::Observed(observed));
         self.insert(Arc::clone(&session));
         session
+    }
+
+    /// Inserts a cloud session card. Like observed sessions, it is not
+    /// registered with the broker.
+    pub(crate) fn insert_cloud(&self, info: SessionInfo, handle: CloudHandle) -> Arc<Session> {
+        let session = self.new_session(info.id.clone(), info, Kind::Cloud(Box::new(handle)));
+        self.insert(Arc::clone(&session));
+        session
+    }
+
+    /// Stops polling every cloud session (at shutdown). The remote
+    /// sessions keep running at their providers.
+    pub fn stop_cloud_polling(&self) {
+        for s in self.all().iter().filter(|s| s.cloud().is_some()) {
+            for t in lock(&s.tasks).drain(..) {
+                t.abort();
+            }
+        }
     }
 
     /// Applies an output heuristic result to a managed session.

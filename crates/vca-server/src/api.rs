@@ -16,6 +16,7 @@ use vca_core::{
 };
 use vca_net::Scope;
 
+use crate::cloud::Cloud;
 use crate::events::{EventStream, StreamItem};
 use crate::sessions::{SessionManager, Update};
 use crate::speech::{Speech, TranscribeRequest};
@@ -79,6 +80,7 @@ struct Inner {
     next_client: AtomicU64,
     devices: OnceLock<Arc<dyn DeviceAdmin>>,
     speech: OnceLock<Arc<Speech>>,
+    cloud: OnceLock<Arc<Cloud>>,
 }
 
 /// The API core shared by all transports. Cheap to clone.
@@ -98,6 +100,10 @@ fn remote_off() -> ServerMsg {
     error(ErrorCode::Unsupported, "the remote transport is off")
 }
 
+fn cloud_off() -> ServerMsg {
+    error(ErrorCode::Unsupported, "cloud sessions are off")
+}
+
 fn error(code: ErrorCode, message: impl Into<String>) -> ServerMsg {
     ServerMsg::Error {
         code,
@@ -115,6 +121,7 @@ impl Api {
                 next_client: AtomicU64::new(1),
                 devices: OnceLock::new(),
                 speech: OnceLock::new(),
+                cloud: OnceLock::new(),
             }),
         }
     }
@@ -129,6 +136,16 @@ impl Api {
     /// answers `Unsupported`.
     pub fn set_speech(&self, speech: Arc<Speech>) {
         let _ = self.inner.speech.set(speech);
+    }
+
+    /// Connects the cloud accounts. Without them, cloud messages answer
+    /// `Unsupported`.
+    pub fn set_cloud(&self, cloud: Arc<Cloud>) {
+        let _ = self.inner.cloud.set(cloud);
+    }
+
+    pub fn cloud(&self) -> Option<&Arc<Cloud>> {
+        self.inner.cloud.get()
     }
 
     pub fn sessions(&self) -> &SessionManager {
@@ -320,10 +337,19 @@ impl Api {
                 Ok(session) => ServerMsg::Launched { session },
                 Err(err) => error_msg(&err),
             },
-            ClientMsg::LaunchCloud { .. } | ClientMsg::ListCloudProviders => error(
-                ErrorCode::Unsupported,
-                "cloud sessions are not wired up yet",
-            ),
+            ClientMsg::LaunchCloud { request } => match self.cloud() {
+                Some(cloud) => match cloud.launch(mgr, &request).await {
+                    Ok(session) => ServerMsg::Launched { session },
+                    Err(err) => error_msg(&err),
+                },
+                None => cloud_off(),
+            },
+            ClientMsg::ListCloudProviders => match self.cloud() {
+                Some(cloud) => ServerMsg::CloudProviders {
+                    providers: cloud.providers().await,
+                },
+                None => cloud_off(),
+            },
             ClientMsg::Transcribe {
                 audio,
                 format,

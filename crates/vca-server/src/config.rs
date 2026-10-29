@@ -70,6 +70,13 @@
 //! project_id = "my-project"
 //! api_key_env = "GOOGLE_SPEECH_API_KEY"   # or access_token_env
 //!
+//! # Cloud coding agents (see `cloud.rs` for every account setting).
+//! # Secrets never go here: use `credential_env` or `vca cloud login`.
+//! [[cloud.accounts]]
+//! provider = "cursor_cloud"
+//! account = "default"
+//! credential_env = "CURSOR_API_KEY"
+//!
 //! # WebSocket on 127.0.0.1 for UI development, without device pairing.
 //! # Never enable this on a shared machine.
 //! [dev_ws]
@@ -431,6 +438,8 @@ pub struct Config {
     pub remote: RemoteConfig,
     pub speech: SpeechConfig,
     pub dev_ws: DevWsConfig,
+    /// Cloud coding agent accounts.
+    pub cloud: crate::cloud::CloudConfig,
     /// Log filter in `tracing_subscriber::EnvFilter` syntax; `RUST_LOG` wins.
     pub log: Option<String>,
 }

@@ -505,11 +505,12 @@ async fn run_attach_lookup_and_unsupported_messages() {
         })
         .await
         .unwrap();
+    // No cloud account is configured for the provider.
     assert!(
         matches!(
             resp,
             ServerMsg::Error {
-                code: ErrorCode::Unsupported,
+                code: ErrorCode::NotFound,
                 ..
             }
         ),
