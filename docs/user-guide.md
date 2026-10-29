@@ -154,7 +154,15 @@ Before you start: you need a DNSPilot console account (ask your organization's a
 2. It installs the `DNSPilotAgent` service, a tray icon and the `dnspilot` command. Updates are automatic and signature-checked.
 3. Choose **Sign in** in the tray icon (see "Sign in" below).
 
-**macOS:** *coming soon*.
+**macOS 12 or later (Apple silicon or Intel)**
+
+```bash
+curl -fsSL https://dns.dnspilot.kr/agent/install-macos.sh | sudo sh
+sudo dnspilot-agent login
+sudo dnspilot-agent status
+```
+
+The Agent is signed with Developer ID and notarized by Apple. It runs as a LaunchDaemon (no menu-bar app yet); the CLI is `/usr/local/bin/dnspilot-agent`.
 
 **Linux (Ubuntu, Debian, Raspberry Pi OS; amd64, arm64, armv7; systemd)**
 
