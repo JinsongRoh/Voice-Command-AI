@@ -131,6 +131,12 @@ impl Server {
             config.server_name(),
             Duration::from_secs(config.resources.push_interval_secs),
         );
+        if let Some(speech) = crate::speech::Speech::from_config(&config.speech, &paths.data_dir)
+            .context("starting server-side speech recognition")?
+        {
+            tracing::info!(engine = speech.engine_name(), "speech recognition on");
+            api.set_speech(Arc::new(speech));
+        }
         let remote_slot: crate::local::RemoteSlot = Arc::default();
         let local = LocalServer::bind(&control_endpoint, api.clone(), Arc::clone(&remote_slot))
             .await

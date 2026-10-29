@@ -18,6 +18,7 @@ use vca_net::Scope;
 
 use crate::events::{EventStream, StreamItem};
 use crate::sessions::{SessionManager, Update};
+use crate::speech::{Speech, TranscribeRequest};
 use crate::util::{error_text, lock};
 
 /// Outbound queue length per client. A client that falls this far behind
@@ -77,6 +78,7 @@ struct Inner {
     resources_interval: Duration,
     next_client: AtomicU64,
     devices: OnceLock<Arc<dyn DeviceAdmin>>,
+    speech: OnceLock<Arc<Speech>>,
 }
 
 /// The API core shared by all transports. Cheap to clone.
@@ -112,6 +114,7 @@ impl Api {
                 resources_interval,
                 next_client: AtomicU64::new(1),
                 devices: OnceLock::new(),
+                speech: OnceLock::new(),
             }),
         }
     }
@@ -120,6 +123,12 @@ impl Api {
     /// device messages answer `Unsupported`.
     pub fn set_device_admin(&self, admin: Arc<dyn DeviceAdmin>) {
         let _ = self.inner.devices.set(admin);
+    }
+
+    /// Connects the server-side speech pipeline. Without it, `Transcribe`
+    /// answers `Unsupported`.
+    pub fn set_speech(&self, speech: Arc<Speech>) {
+        let _ = self.inner.speech.set(speech);
     }
 
     pub fn sessions(&self) -> &SessionManager {
@@ -315,10 +324,52 @@ impl Api {
                 ErrorCode::Unsupported,
                 "cloud sessions are not wired up yet",
             ),
-            ClientMsg::Transcribe { .. } => error(
-                ErrorCode::Unsupported,
-                "server-side transcription is not wired up yet",
-            ),
+            ClientMsg::Transcribe {
+                audio,
+                format,
+                sample_rate,
+                language,
+                session_id,
+            } => {
+                let Some(speech) = self.inner.speech.get().cloned() else {
+                    let reply = error(
+                        ErrorCode::Unsupported,
+                        "server-side transcription is off (set [speech] engine in config.toml)",
+                    );
+                    client.send(id, reply).await;
+                    return;
+                };
+                let sessions = mgr.list();
+                let ctx = crate::speech::intent_context(&sessions, session_id.as_ref());
+                let project_dir = session_id
+                    .as_ref()
+                    .and_then(|sid| mgr.get(sid))
+                    .and_then(|s| s.project_dir());
+                let req = TranscribeRequest {
+                    audio,
+                    format,
+                    sample_rate,
+                    language,
+                    project_dir,
+                };
+                // Recognition takes seconds; keep serving the client meanwhile.
+                let client = Arc::clone(client);
+                tokio::spawn(async move {
+                    let reply = match speech.transcribe(req, &ctx).await {
+                        Ok(t) => ServerMsg::Transcript {
+                            text: t.text,
+                            raw_text: t.raw_text,
+                            language: t.language,
+                            corrections: t.corrections,
+                            intent: t.intent,
+                            engine: t.engine,
+                        },
+                        Err(err) => error_msg(&err),
+                    };
+                    client.send(id, reply).await;
+                });
+                return;
+            }
             ClientMsg::ListDevices => match devices.map(|d| d.list_devices(current)) {
                 Some(Ok(devices)) => ServerMsg::Devices { devices },
                 Some(Err(err)) => error_msg(&err),

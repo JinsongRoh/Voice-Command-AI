@@ -349,3 +349,12 @@ fn real_lexicon_corrections() {
         assert!(r.corrections.is_empty(), "{s:?} -> {:?}", r.corrections);
     }
 }
+
+#[test]
+fn builtin_lexicon_is_embedded() {
+    let all = Lexicon::builtin(None).unwrap();
+    assert!(all.get("kubectl").is_some());
+    let en_only = Lexicon::builtin(Some(&["en"])).unwrap();
+    assert!(en_only.len() <= all.len());
+    assert!(en_only.get("pnpm").is_some());
+}

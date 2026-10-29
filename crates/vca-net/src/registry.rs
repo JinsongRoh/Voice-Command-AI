@@ -410,6 +410,16 @@ mod tests {
         assert!(!Scope::View.permits(&input));
         assert!(Scope::Command.permits(&input));
         assert!(Scope::View.permits(&ClientMsg::ListSessions));
+        assert!(Scope::View.permits(&ClientMsg::ListCloudProviders));
+        let transcribe = ClientMsg::Transcribe {
+            audio: vec![0; 4],
+            format: vca_core::AudioEncoding::Wav,
+            sample_rate: None,
+            language: None,
+            session_id: None,
+        };
+        assert!(!Scope::View.permits(&transcribe));
+        assert!(Scope::Command.permits(&transcribe));
         assert_eq!(
             serde_json::to_string(&Scope::Command).unwrap(),
             "\"command\""

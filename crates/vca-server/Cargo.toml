@@ -28,6 +28,7 @@ vca-broker.workspace = true
 vca-net.workspace = true
 vca-core.workspace = true
 vca-pty.workspace = true
+vca-speech.workspace = true
 
 [lints]
 workspace = true
@@ -45,3 +46,4 @@ widestring = "1.2.1"
 [dev-dependencies]
 data-encoding = "2.11.1"
 tempfile = "3.27.0"
+wiremock = "0.6.5"

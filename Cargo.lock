@@ -3532,7 +3532,9 @@ dependencies = [
  "vca-core",
  "vca-net",
  "vca-pty",
+ "vca-speech",
  "widestring",
+ "wiremock",
 ]
 
 [[package]]

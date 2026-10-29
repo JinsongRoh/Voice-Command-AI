@@ -43,6 +43,20 @@
 //! # URLs written into pairing QR codes (default: ws://<bind>/v1/ws).
 //! # endpoints = ["wss://vca-k3x9q2.example.net/v1/ws"]
 //!
+//! # Server-side speech recognition (off by default). Keys come from the
+//! # environment variables named here, never from this file.
+//! [speech]
+//! engine = "off"                 # "openai" or "google"
+//! language = "en"                # primary language; omit to auto-detect
+//! secondary_languages = ["ko"]
+//! [speech.openai]
+//! base_url = "https://api.openai.com/v1"   # any OpenAI-compatible server
+//! model = "whisper-1"
+//! api_key_env = "OPENAI_API_KEY"
+//! [speech.google]
+//! project_id = "my-project"
+//! api_key_env = "GOOGLE_SPEECH_API_KEY"   # or access_token_env
+//!
 //! # WebSocket on 127.0.0.1 for UI development, without device pairing.
 //! # Never enable this on a shared machine.
 //! [dev_ws]
@@ -198,6 +212,107 @@ impl Default for RemoteConfig {
     }
 }
 
+/// Which speech-to-text engine the server runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpeechEngineKind {
+    /// No server-side recognition; devices transcribe on their own.
+    #[default]
+    Off,
+    /// An OpenAI-compatible transcription API (OpenAI or self-hosted).
+    Openai,
+    /// Google Cloud Speech-to-Text v2.
+    Google,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct OpenAiSpeechConfig {
+    pub base_url: String,
+    pub model: String,
+    /// Environment variable holding the API key (optional for self-hosted
+    /// servers).
+    pub api_key_env: Option<String>,
+    pub timeout_secs: u64,
+}
+
+impl Default for OpenAiSpeechConfig {
+    fn default() -> Self {
+        Self {
+            base_url: "https://api.openai.com/v1".into(),
+            model: "whisper-1".into(),
+            api_key_env: Some("OPENAI_API_KEY".into()),
+            timeout_secs: 60,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GoogleSpeechConfig {
+    pub project_id: String,
+    pub location: String,
+    pub model: String,
+    /// API root override (regional endpoints).
+    pub base_url: Option<String>,
+    /// Environment variable holding an API key.
+    pub api_key_env: Option<String>,
+    /// Environment variable holding an OAuth access token (used when no API
+    /// key is set).
+    pub access_token_env: Option<String>,
+}
+
+impl Default for GoogleSpeechConfig {
+    fn default() -> Self {
+        Self {
+            project_id: String::new(),
+            location: "global".into(),
+            model: "long".into(),
+            base_url: None,
+            api_key_env: Some("GOOGLE_SPEECH_API_KEY".into()),
+            access_token_env: None,
+        }
+    }
+}
+
+/// Server-side speech recognition (VOC-01).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SpeechConfig {
+    pub engine: SpeechEngineKind,
+    /// Primary language (BCP-47); `None` lets the engine detect it.
+    pub language: Option<String>,
+    pub secondary_languages: Vec<String>,
+    /// Base lexicon directory; the built-in lexicon when unset.
+    pub lexicon_dir: Option<PathBuf>,
+    /// Scan the selected session's folder for project terms.
+    pub project_vocabulary: bool,
+    pub remove_fillers: bool,
+    /// Largest accepted utterance.
+    pub max_audio_bytes: usize,
+    /// Recognitions running at the same time.
+    pub max_concurrent: usize,
+    pub openai: OpenAiSpeechConfig,
+    pub google: GoogleSpeechConfig,
+}
+
+impl Default for SpeechConfig {
+    fn default() -> Self {
+        Self {
+            engine: SpeechEngineKind::Off,
+            language: None,
+            secondary_languages: Vec::new(),
+            lexicon_dir: None,
+            project_vocabulary: true,
+            remove_fillers: true,
+            max_audio_bytes: 8 * 1024 * 1024,
+            max_concurrent: 2,
+            openai: OpenAiSpeechConfig::default(),
+            google: GoogleSpeechConfig::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct DevWsConfig {
@@ -232,6 +347,7 @@ pub struct Config {
     pub resources: ResourcesConfig,
     pub broker: BrokerSection,
     pub remote: RemoteConfig,
+    pub speech: SpeechConfig,
     pub dev_ws: DevWsConfig,
     /// Log filter in `tracing_subscriber::EnvFilter` syntax; `RUST_LOG` wins.
     pub log: Option<String>,

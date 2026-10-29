@@ -332,6 +332,24 @@ impl Lexicon {
         Ok(count)
     }
 
+    /// The base lexicon shipped with VCA (the repository's `lexicon/`
+    /// directory, embedded at build time). With `languages`, only those
+    /// language directories are used.
+    pub fn builtin(languages: Option<&[&str]>) -> Result<Lexicon> {
+        const FILES: &[(&str, &str, &str)] =
+            include!(concat!(env!("OUT_DIR"), "/builtin_lexicon.rs"));
+        let mut lex = Lexicon::new(Layer::Base);
+        for (lang, name, source) in FILES {
+            if let Some(filter) = languages
+                && !filter.iter().any(|l| l.eq_ignore_ascii_case(lang))
+            {
+                continue;
+            }
+            lex.parse_toml(source, Some(lang), &format!("builtin:{lang}/{name}"))?;
+        }
+        Ok(lex)
+    }
+
     /// Loads a base lexicon from `root/<lang>/*.toml`. With `languages`,
     /// only those language directories are read; English is always worth
     /// including because technical terms are mostly English.

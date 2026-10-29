@@ -13,6 +13,7 @@ mod hooks_cmd;
 mod output;
 mod remote_cmd;
 mod run;
+mod speech_cmd;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -150,6 +151,19 @@ enum Cmd {
     },
     /// Show the state of the remote transport.
     Remote,
+    /// Transcribe an audio file with the server's speech pipeline.
+    Transcribe {
+        /// WAV, WebM, Ogg or M4A file.
+        file: PathBuf,
+        /// Primary language (BCP-47); the server's setting by default.
+        #[arg(long)]
+        language: Option<String>,
+        /// Session whose project vocabulary and names are used.
+        #[arg(long)]
+        session: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// Print version information.
     Version,
 }
@@ -280,6 +294,12 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
         Cmd::Revoke { device_id } => remote_cmd::revoke(endpoint, &device_id).await,
         Cmd::KillSwitch { reset } => remote_cmd::kill_switch(endpoint, reset).await,
         Cmd::Remote => remote_cmd::status(endpoint).await,
+        Cmd::Transcribe {
+            file,
+            language,
+            session,
+            json,
+        } => speech_cmd::transcribe(endpoint, &file, language, session, json).await,
         Cmd::Version => {
             println!(
                 "vca {} (protocol {PROTOCOL_VERSION})",

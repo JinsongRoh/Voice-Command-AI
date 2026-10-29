@@ -18,5 +18,6 @@ mod hooks;
 mod local;
 pub mod remote;
 pub mod sessions;
+pub mod speech;
 mod util;
 pub mod workspace;
