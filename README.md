@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JinsongRoh/Voice-Command-AI/dev/m0-foundation/docs/brand/logo/02_lockups/horizontal/VCA_logo_horizontal_light.svg" alt="Voice Command AI" width="420">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/JinsongRoh/Voice-Command-AI/dev/m0-foundation/docs/brand/logo/02_lockups/horizontal/VCA_logo_horizontal_dark-transparent.svg">
+    <img src="https://raw.githubusercontent.com/JinsongRoh/Voice-Command-AI/dev/m0-foundation/docs/brand/logo/02_lockups/horizontal/VCA_logo_horizontal_light.svg" alt="Voice Command AI" width="420">
+  </picture>
 </p>
 
 <p align="center"><strong>Your voice. Every agent. One command center.</strong></p>
