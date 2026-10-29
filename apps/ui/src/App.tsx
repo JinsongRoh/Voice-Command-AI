@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Header } from './components/Header';
 import { Icon, type IconName } from './components/Icon';
 import { LiveEmpty, LiveView } from './components/LiveView';
+import { LoginView } from './components/LoginView';
 import { NewSessionDialog } from './components/NewSessionDialog';
 import { PairingView } from './components/PairingView';
 import { ResourcesPanel } from './components/ResourcesPanel';
@@ -12,6 +13,8 @@ import { Toasts } from './components/Toasts';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { I18nProvider, useI18n } from './i18n/context';
 import type { MessageKey } from './i18n/i18n';
+import { NativeProvider, type NativeServices } from './native/context';
+import { useLinkStatus } from './native/useLinkStatus';
 import { SpeechProvider, type SpeechServices } from './speech/context';
 import { attentionCount } from './state/reducer';
 import {
@@ -22,7 +25,7 @@ import {
   useSettings,
   type Machine,
 } from './state/store';
-import type { Settings } from './state/settings';
+import { loadSettings, type Settings } from './state/settings';
 import styles from './App.module.css';
 
 type View = 'sessions' | 'resources' | 'settings' | 'pairing';
@@ -36,7 +39,8 @@ const NAV: { view: Exclude<View, 'pairing'>; label: MessageKey; icon: IconName }
 function Shell() {
   const { t } = useI18n();
   const actions = useActions();
-  const { machine } = useMachines();
+  const { machine, switchMachine } = useMachines();
+  const link = useLinkStatus(machine);
   const wide = useMediaQuery('(min-width: 900px)');
   const [view, setView] = useState<View>('sessions');
   const [detailOpen, setDetailOpen] = useState(false);
@@ -53,7 +57,13 @@ function Shell() {
   };
 
   let main;
-  if (view === 'resources')
+  if (link?.state === 'login_required' && view !== 'settings' && view !== 'pairing')
+    main = (
+      <div className={styles.page}>
+        <LoginView machine={machine} />
+      </div>
+    );
+  else if (view === 'resources')
     main = (
       <div className={styles.page}>
         <ResourcesPanel />
@@ -68,7 +78,12 @@ function Shell() {
   else if (view === 'pairing')
     main = (
       <div className={styles.page}>
-        <PairingView />
+        <PairingView
+          onPaired={(id) => {
+            switchMachine(id);
+            setView('sessions');
+          }}
+        />
       </div>
     );
   else if (wide) {
@@ -163,11 +178,19 @@ function DocumentSettings() {
   return null;
 }
 
-function Localized({ speech }: { speech: SpeechServices }) {
+/** Speech services, or a factory that binds them to the selected machine. */
+export type SpeechConfig = SpeechServices | ((machine: Machine) => SpeechServices);
+
+function Localized({ speech }: { speech: SpeechConfig }) {
   const { settings } = useSettings();
+  const { machine } = useMachines();
+  const services = useMemo(
+    () => (typeof speech === 'function' ? speech(machine) : speech),
+    [speech, machine],
+  );
   return (
     <I18nProvider locale={settings.language}>
-      <SpeechProvider value={speech}>
+      <SpeechProvider value={services}>
         <DocumentSettings />
         <Shell />
       </SpeechProvider>
@@ -175,16 +198,48 @@ function Localized({ speech }: { speech: SpeechServices }) {
   );
 }
 
-export interface AppProps {
-  machines: Machine[];
-  speech: SpeechServices;
-  settings?: Settings;
+/** Shown in native mode while no machine is paired: only the pairing screen. */
+function Setup({ settings }: { settings?: Settings }) {
+  const [initial] = useState(() => settings ?? loadSettings());
+  return (
+    <I18nProvider locale={initial.language}>
+      <SetupContent />
+    </I18nProvider>
+  );
 }
 
-export function App({ machines, speech, settings }: AppProps) {
+function SetupContent() {
+  const { t } = useI18n();
   return (
-    <AppProvider machines={machines} settings={settings}>
-      <Localized speech={speech} />
-    </AppProvider>
+    <div className={styles.app}>
+      <main id="main" className={styles.main} tabIndex={-1}>
+        <div className={styles.page}>
+          <PairingView intro={t('pairing.noMachines')} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export interface AppProps {
+  /** May change over time (native mode); an empty list shows the pairing screen. */
+  machines: Machine[];
+  speech: SpeechConfig;
+  settings?: Settings;
+  /** Native shell services (pairing, forget); absent in browser/mock mode. */
+  native?: NativeServices;
+}
+
+export function App({ machines, speech, settings, native }: AppProps) {
+  return (
+    <NativeProvider value={native ?? null}>
+      {machines.length === 0 ? (
+        <Setup settings={settings} />
+      ) : (
+        <AppProvider machines={machines} settings={settings}>
+          <Localized speech={speech} />
+        </AppProvider>
+      )}
+    </NativeProvider>
   );
 }

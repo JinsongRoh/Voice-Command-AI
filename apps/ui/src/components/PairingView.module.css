@@ -28,3 +28,23 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+.form {
+  align-self: stretch;
+}
+.help {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.error {
+  margin: 0 0 12px;
+  color: var(--danger);
+}
+.success {
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

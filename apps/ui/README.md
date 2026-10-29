@@ -1,8 +1,9 @@
 # VCA UI (`apps/ui`)
 
-Shared front-end for Voice Command AI. It will be embedded in the Tauri 2 desktop
-and mobile apps; for now it runs as a standalone web app against a simulated
-server (`MockTransport`).
+Shared front-end for Voice Command AI, embedded in the Tauri 2 desktop and
+mobile apps. Inside the Tauri shell it talks to paired machines through the
+native bridge (`TauriTransport`); in a plain browser (`pnpm dev`, tests) it runs
+against simulated servers (`MockTransport`).
 
 Stack: Vite, React 19, TypeScript (strict), pnpm, CSS modules with CSS-variable
 themes, xterm.js for the raw terminal, `@msgpack/msgpack` for the wire codec,
@@ -68,8 +69,24 @@ interface Transport {
 The store sends `hello`, `list_sessions`, then `subscribe` for every session.
 After a `reconnecting → connected` transition it resubscribes with
 `from_seq = last seen seq`; a `stream_gap` clears the view and shows a notice.
-A Tauri implementation only has to move envelopes (MessagePack via `codec.ts`)
-over the Noise channel.
+`TauriTransport` only moves envelopes (MessagePack via `codec.ts`) to and from
+the native side, which owns the Noise channel, keys and tokens.
+
+## Native mode (Tauri)
+
+`main.tsx` checks `isTauri()`. In native mode:
+
+- `src/native/bridge.ts` is the only module that calls `invoke` (`vca_machines`,
+  `vca_pair`, `vca_connect`, `vca_send`, `vca_login`, `vca_forget`, `vca_mic_*`,
+  `vca_platform`, ...). Binary payloads may arrive as `ArrayBuffer`,
+  `Uint8Array` or `number[]` (Android IPC) and are normalized to `Uint8Array`.
+- `MachineRegistry` (`src/native/registry.ts`) loads the paired machines,
+  keeps one `TauriTransport` per machine and refreshes after pair/forget. With
+  no machine paired the app shows only the pairing screen.
+- `login_required` (expired device token) maps to `disconnected` plus a TOTP /
+  backup-code prompt that calls `vca_login` and reconnects.
+- Speech uses the shell's microphone (`createNativeRecorder`, WAV) and the
+  selected machine's `transcribe` request (`createServerTranscriber`).
 
 `main.tsx` wires two simulated machines (`workstation`, `build-server`). The
 Settings screen has developer buttons to simulate a connection drop, with or

@@ -7,8 +7,8 @@ export type Unsubscribe = () => void;
 /**
  * Abstract channel to one VCA Server.
  *
- * Implementations: `MockTransport` (in-memory simulation) and, later, the
- * Tauri bridge that forwards envelopes over the Noise channel.
+ * Implementations: `MockTransport` (in-memory simulation) and
+ * `TauriTransport` (the native shell forwards envelopes over the Noise channel).
  *
  * Contract:
  * - `send` resolves with the response body whose envelope `id` matches the
@@ -39,11 +39,24 @@ export class RequestIds {
   }
 }
 
-/** Convenience wrapper that assigns envelope ids. */
-export class Client {
-  private readonly ids = new RequestIds();
+/** One id sequence per transport, so that every `Client` on it allocates unique ids. */
+const idsByTransport = new WeakMap<Transport, RequestIds>();
 
-  constructor(readonly transport: Transport) {}
+/**
+ * Convenience wrapper that assigns envelope ids. Clients created for the same
+ * transport share the id sequence, so their requests never collide.
+ */
+export class Client {
+  private readonly ids: RequestIds;
+
+  constructor(readonly transport: Transport) {
+    let ids = idsByTransport.get(transport);
+    if (!ids) {
+      ids = new RequestIds();
+      idsByTransport.set(transport, ids);
+    }
+    this.ids = ids;
+  }
 
   request(body: ClientMsg): Promise<ServerMsg> {
     return this.transport.send({ id: this.ids.allocate(), body });

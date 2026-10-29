@@ -1,4 +1,7 @@
 import type { Locale } from '../i18n/i18n';
+import type { Client } from '../protocol/transport';
+import type { AudioEncoding, ServerMsg } from '../protocol/types';
+import { RequestError } from '../state/core';
 import type { SttEngine } from '../state/settings';
 
 /** A term replaced by the developer vocabulary engine (VOC-05). */
@@ -58,6 +61,81 @@ export function createMockTranscriber(delayMs = 900): TranscribeFn {
       i += 1;
       setTimeout(() => resolve(result), delayMs);
     });
+}
+
+/** Maps a Blob MIME type to the protocol's audio encoding (null when unsupported). */
+export function audioEncodingOf(mime: string): AudioEncoding | null {
+  const base = mime.split(';')[0]!.trim().toLowerCase();
+  switch (base) {
+    case 'audio/wav':
+    case 'audio/wave':
+    case 'audio/x-wav':
+    case 'audio/vnd.wave':
+      return 'wav';
+    case 'audio/webm':
+      return 'webm';
+    case 'audio/ogg':
+      return 'ogg';
+    case 'audio/mp4':
+    case 'audio/m4a':
+    case 'audio/x-m4a':
+      return 'm4a';
+    default:
+      return null;
+  }
+}
+
+const LAYERS: readonly TranscriptCorrection['layer'][] = ['base', 'project', 'personal'];
+
+/** Maps the server's `transcript` message to the UI type (unknown layers become `base`). */
+export function toTranscript(msg: Extract<ServerMsg, { type: 'transcript' }>): Transcript {
+  return {
+    text: msg.text,
+    corrections: (msg.corrections ?? []).map((c) => ({
+      from: c.from,
+      to: c.to,
+      layer: LAYERS.includes(c.layer) ? c.layer : 'base',
+    })),
+  };
+}
+
+async function blobBytes(blob: Blob): Promise<Uint8Array> {
+  if (typeof blob.arrayBuffer === 'function') return new Uint8Array(await blob.arrayBuffer());
+  return new Uint8Array(await new Response(blob).arrayBuffer());
+}
+
+/**
+ * Server-side speech recognition (VOC-01): sends `transcribe` through the
+ * selected machine's client. Error responses (e.g. speech disabled on the
+ * server) reject with a `RequestError` carrying the server's message.
+ */
+export function createServerTranscriber(getClient: () => Client | null): TranscribeFn {
+  return async (audio, options) => {
+    const client = getClient();
+    if (!client) throw new RequestError('transport', 'no machine is connected');
+    const format = audioEncodingOf(audio.type);
+    if (!format) {
+      throw new RequestError('unsupported', `unsupported audio format: ${audio.type || 'unknown'}`);
+    }
+    let response: ServerMsg;
+    try {
+      response = await client.request({
+        type: 'transcribe',
+        audio: await blobBytes(audio),
+        format,
+        sample_rate: null,
+        language: options.locale,
+        session_id: options.sessionId,
+      });
+    } catch (err) {
+      throw new RequestError('transport', (err as Error).message);
+    }
+    if (response.type === 'error') throw new RequestError(response.code, response.message);
+    if (response.type !== 'transcript') {
+      throw new RequestError('internal', `unexpected response: ${response.type}`);
+    }
+    return toTranscript(response);
+  };
 }
 
 /** Character ranges of correction terms in `text`, for highlighting. */

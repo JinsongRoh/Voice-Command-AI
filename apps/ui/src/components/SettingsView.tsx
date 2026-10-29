@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { useI18n } from '../i18n/context';
 import { LOCALES, isLocale } from '../i18n/i18n';
+import { useNative } from '../native/context';
+import { describeNativeError } from '../native/errors';
 import {
   ALERT_CATEGORIES,
   STT_ENGINES,
@@ -26,6 +28,8 @@ export function SettingsView({ onPair }: { onPair: () => void }) {
   const connection = useAppState((s) => s.connection);
   const [revoke, setRevoke] = useState<{ id: string; name: string } | null>(null);
   const [confirmKill, setConfirmKill] = useState(false);
+  const [confirmForget, setConfirmForget] = useState(false);
+  const native = useNative();
   const [error, setError] = useState<string | null>(null);
 
   const run = (p: Promise<void>) => {
@@ -169,6 +173,18 @@ export function SettingsView({ onPair }: { onPair: () => void }) {
           <dt>{t('settings.status')}</dt>
           <dd>{t(`conn.${connection}`)}</dd>
         </dl>
+        {native && machine.native && (
+          <>
+            <p className="muted">{t('settings.forgetHelp')}</p>
+            <button
+              type="button"
+              className="btn btn-sm btn-danger"
+              onClick={() => setConfirmForget(true)}
+            >
+              {t('settings.forget')}
+            </button>
+          </>
+        )}
       </section>
 
       <section className={`panel ${styles.section}`} aria-labelledby="set-devices">
@@ -262,6 +278,22 @@ export function SettingsView({ onPair }: { onPair: () => void }) {
           onConfirm={() => {
             run(actions.revokeDevice(revoke.id));
             setRevoke(null);
+          }}
+        />
+      )}
+      {confirmForget && native && (
+        <ConfirmDialog
+          title={t('settings.forget')}
+          message={t('settings.forgetConfirm', { machine: machine.name })}
+          confirmLabel={t('settings.forgetConfirmAction')}
+          danger
+          onCancel={() => setConfirmForget(false)}
+          onConfirm={() => {
+            setConfirmForget(false);
+            setError(null);
+            native
+              .forget(machine.id)
+              .catch((err: unknown) => setError(describeNativeError(t, err)));
           }}
         />
       )}

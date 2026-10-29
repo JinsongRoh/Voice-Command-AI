@@ -18,6 +18,7 @@ import {
 } from 'react';
 
 import { translate } from '../i18n/i18n';
+import type { LinkStatus, MachineInfo } from '../native/bridge';
 import type { ClientMsg, CloudLaunchRequest, ServerMsg } from '../protocol/types';
 import { Client, type Transport } from '../protocol/transport';
 import {
@@ -46,6 +47,18 @@ export interface Machine {
   projectDirs?: string[];
   /** Present on simulated machines only. */
   simulate?: { drop(durationMs: number, loseHistory: boolean): void };
+  /** Present on machines reached through the native shell (Tauri). */
+  native?: NativeMachine;
+}
+
+/** Native link details of a paired machine. */
+export interface NativeMachine {
+  info: MachineInfo;
+  /** Last native link status (`login_required` is not a ConnectionState). */
+  linkStatus(): LinkStatus | null;
+  onLinkStatus(listener: (status: LinkStatus) => void): () => void;
+  /** Re-authenticates the device with a TOTP or backup code. */
+  login(totp: string | null, backupCode: string | null): Promise<void>;
 }
 
 export interface Actions {

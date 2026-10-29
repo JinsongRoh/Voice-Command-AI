@@ -1,3 +1,5 @@
+import { bridge } from '../native/bridge';
+
 /** Push-to-talk audio capture (VOC-04). */
 export interface Recorder {
   start(): Promise<void>;
@@ -55,6 +57,23 @@ export function createMediaRecorder(): Recorder {
       if (recorder && recorder.state !== 'inactive') recorder.stop();
       release();
       chunks = [];
+    },
+  };
+}
+
+/**
+ * Recorder backed by the native shell's microphone (`vca_mic_*`). The native
+ * side returns 16-bit PCM mono WAV bytes.
+ */
+export function createNativeRecorder(): Recorder {
+  return {
+    start: () => bridge.micStart(),
+    async stop() {
+      const bytes = await bridge.micStop();
+      return new Blob([bytes], { type: 'audio/wav' });
+    },
+    cancel() {
+      bridge.micCancel().catch(() => {});
     },
   };
 }
