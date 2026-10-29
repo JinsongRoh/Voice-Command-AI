@@ -194,7 +194,7 @@ impl Server {
         self.local.take();
         self.dev_ws.take();
         if let Some(remote) = self.remote.take() {
-            remote.stop();
+            remote.shutdown().await;
         }
         if let Some(d) = self.discovery.take() {
             d.abort();

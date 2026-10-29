@@ -15,7 +15,7 @@ use vca_core::{
 use vca_net::{
     ClientAuth, ClientConfig, ClientConnection, NetError, PairingPayload, StaticKeypair,
 };
-use vca_server::config::Config;
+use vca_server::config::{Config, ProviderKind};
 use vca_server::control::{ControlClient, LocalRequest, LocalResponse};
 use vca_server::daemon::{Options, Server};
 
@@ -73,6 +73,10 @@ fn control_endpoint(dir: &Path) -> PathBuf {
 }
 
 async fn start(dir: &Path, require_totp: bool) -> Server {
+    start_with(dir, require_totp, |_| {}).await
+}
+
+async fn start_with(dir: &Path, require_totp: bool, edit: impl FnOnce(&mut Config)) -> Server {
     let workspace = dir.join("workspace");
     std::fs::create_dir_all(&workspace).unwrap();
     let mut config = Config {
@@ -84,6 +88,7 @@ async fn start(dir: &Path, require_totp: bool) -> Server {
     config.remote.require_totp = require_totp;
     config.remote.heartbeat_secs = 1;
     config.broker.policy_path = Some(dir.join("policies.toml"));
+    edit(&mut config);
     Server::start(
         Options {
             config_file: Some(dir.join("config.toml")),
@@ -409,4 +414,54 @@ async fn revoke_and_kill_switch_drop_connections() {
     let payload4 = pairing(&server, "command").await;
     assert!(pair(&payload4, "tablet", None).await.is_ok());
     server.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pairing_codes_carry_the_provider_endpoint() {
+    let dir = tempfile::tempdir().unwrap();
+    let server = start_with(dir.path(), false, |c| {
+        c.remote.provider.kind = ProviderKind::Custom;
+        c.remote.provider.url = Some("https://vca-k3x9q2.example.net".into());
+    })
+    .await;
+    let payload = pairing(&server, "command").await;
+    assert_eq!(
+        payload.endpoints,
+        vec!["wss://vca-k3x9q2.example.net/v1/ws"]
+    );
+    let status = local_call(&server, |id| LocalRequest::RemoteStatus { id }).await;
+    let LocalResponse::RemoteStatus {
+        provider,
+        provider_state,
+        ..
+    } = status
+    else {
+        panic!("unexpected {status:?}");
+    };
+    assert_eq!(provider.as_deref(), Some("Custom"));
+    assert!(provider_state.unwrap_or_default().starts_with("active"));
+    server.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn direct_providers_refuse_a_loopback_listener() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config = Config::default();
+    config.discovery.enabled = false;
+    config.remote.bind = "127.0.0.1:0".into();
+    config.remote.provider.kind = ProviderKind::Lan;
+    config.broker.policy_path = Some(dir.path().join("policies.toml"));
+    let err = Server::start(
+        Options {
+            config_file: Some(dir.path().join("config.toml")),
+            control: Some(control_endpoint(dir.path())),
+            data_dir: Some(dir.path().join("data")),
+            process_control: Some(Arc::new(NoProcessControl)),
+        },
+        Some(config),
+    )
+    .await
+    .err()
+    .expect("a LAN provider on a loopback listener must not start");
+    assert!(format!("{err:#}").contains("remote.bind"), "{err:#}");
 }

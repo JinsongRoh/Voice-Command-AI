@@ -23,7 +23,7 @@ use crate::util::error_text;
 pub type RemoteSlot = Arc<OnceLock<Arc<Remote>>>;
 
 /// Owner-only administration of the remote transport.
-fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
+async fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
     let id = req.id();
     let Some(remote) = remote.get() else {
         if let LocalRequest::RemoteStatus { id } = req {
@@ -37,6 +37,9 @@ fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
                 kill_switch_tripped: false,
                 paired_devices: 0,
                 connections: 0,
+                provider: None,
+                provider_state: None,
+                provider_diagnostics: Vec::new(),
             };
         }
         return LocalResponse::error(id, ErrorCode::Unsupported, "the remote transport is off");
@@ -45,7 +48,7 @@ fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
     match req {
         LocalRequest::Pair {
             scope, endpoints, ..
-        } => match remote.pair(&scope, endpoints) {
+        } => match remote.pair(&scope, endpoints).await {
             Ok(p) => LocalResponse::Pairing {
                 id,
                 uri: p.uri,
@@ -71,7 +74,8 @@ fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
             Err(err) => fail(err),
         },
         LocalRequest::RemoteStatus { .. } => {
-            let s = remote.status();
+            let s = remote.status().await;
+            let c = s.connectivity;
             LocalResponse::RemoteStatus {
                 id,
                 enabled: true,
@@ -82,6 +86,9 @@ fn admin(remote: &RemoteSlot, req: LocalRequest) -> LocalResponse {
                 kill_switch_tripped: s.kill_switch_tripped,
                 paired_devices: s.paired_devices,
                 connections: s.connections,
+                provider: c.as_ref().map(|c| c.provider.clone()),
+                provider_state: c.as_ref().map(|c| c.state.clone()),
+                provider_diagnostics: c.map(|c| c.diagnostics).unwrap_or_default(),
             }
         }
         _ => LocalResponse::error(id, ErrorCode::InvalidRequest, "unexpected request"),
@@ -287,7 +294,7 @@ async fn serve(stream: Stream, api: Api, remote: RemoteSlot) {
                 let _ = local_tx.send(resp).await;
             }
             other => {
-                let resp = admin(&remote, other);
+                let resp = admin(&remote, other).await;
                 let _ = local_tx.send(resp).await;
             }
         }

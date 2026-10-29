@@ -173,6 +173,13 @@ pub enum LocalResponse {
         kill_switch_tripped: bool,
         paired_devices: usize,
         connections: usize,
+        /// Connectivity provider name, when one is configured.
+        #[serde(default)]
+        provider: Option<String>,
+        #[serde(default)]
+        provider_state: Option<String>,
+        #[serde(default)]
+        provider_diagnostics: Vec<String>,
     },
     Done {
         id: u64,

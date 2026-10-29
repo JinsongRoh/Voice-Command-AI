@@ -3531,6 +3531,7 @@ dependencies = [
  "vca-broker",
  "vca-core",
  "vca-net",
+ "vca-providers",
  "vca-pty",
  "vca-speech",
  "widestring",

@@ -191,6 +191,9 @@ pub async fn status(endpoint: &Path) -> CliResult<i32> {
         kill_switch_tripped,
         paired_devices,
         connections,
+        provider,
+        provider_state,
+        provider_diagnostics,
         ..
     } = resp
     else {
@@ -229,5 +232,19 @@ pub async fn status(endpoint: &Path) -> CliResult<i32> {
     );
     println!("paired devices:   {paired_devices}");
     println!("connections:      {connections}");
+    match provider {
+        Some(p) => {
+            println!(
+                "provider:         {p} ({})",
+                provider_state.unwrap_or_default()
+            );
+            for d in provider_diagnostics {
+                println!("                  {d}");
+            }
+        }
+        None => println!(
+            "provider:         none (pairing codes use remote.endpoints or the listen address)"
+        ),
+    }
     Ok(0)
 }

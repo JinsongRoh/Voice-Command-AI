@@ -23,6 +23,7 @@ use vca_net::{
 
 use crate::api::{Api, DeviceAdmin, DeviceIdentity};
 use crate::config::RemoteConfig;
+use crate::connectivity::{Connectivity, ConnectivityStatus};
 use crate::util::lock;
 
 const SERVER_KEY: &str = "server-static";
@@ -42,6 +43,8 @@ pub struct RemoteStatus {
     pub kill_switch_tripped: bool,
     pub paired_devices: usize,
     pub connections: usize,
+    /// The connectivity provider, when one is configured.
+    pub connectivity: Option<ConnectivityStatus>,
 }
 
 /// A pairing code to show as a QR code.
@@ -57,7 +60,9 @@ pub struct Remote {
     net: NetServer,
     totp: Arc<TotpManager>,
     pending_totp: Mutex<Option<PendingEnrollment>>,
+    /// `remote.endpoints`; these win over the provider.
     endpoints: Vec<String>,
+    connectivity: Option<Arc<Connectivity>>,
     listen: SocketAddr,
     require_totp: bool,
     tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -115,16 +120,15 @@ impl Remote {
             .await
             .with_context(|| format!("listening on {}", cfg.bind))?;
         let listen = listener.local_addr()?;
-        let endpoints = if cfg.endpoints.is_empty() {
-            vec![format!("ws://{listen}{}", vca_net::DEFAULT_WS_PATH)]
-        } else {
-            cfg.endpoints.clone()
-        };
+        let connectivity = Connectivity::from_config(&cfg.provider, listen)
+            .context("connectivity provider")?
+            .map(Arc::new);
         let remote = Arc::new(Self {
             net: net.clone(),
             totp,
             pending_totp: Mutex::new(None),
-            endpoints,
+            endpoints: cfg.endpoints.clone(),
+            connectivity: connectivity.clone(),
             listen,
             require_totp: cfg.require_totp,
             tasks: Mutex::new(Vec::new()),
@@ -156,6 +160,16 @@ impl Remote {
             }
         });
         lock(&remote.tasks).extend([accept, task]);
+        if let Some(c) = connectivity {
+            // Tunnels take a while to come up; start now so the first
+            // pairing code does not wait.
+            let warm = tokio::spawn(async move {
+                if let Err(err) = c.ensure_urls().await {
+                    tracing::warn!(provider = c.provider_name(), %err, "endpoint setup failed");
+                }
+            });
+            lock(&remote.tasks).push(warm);
+        }
         tracing::info!(
             %listen,
             fingerprint = %remote.net.public_key().fingerprint().short(),
@@ -172,12 +186,42 @@ impl Remote {
         }
     }
 
+    /// [`stop`](Self::stop), then removes what the connectivity provider
+    /// set up (a `tailscale serve` rule, a tunnel process).
+    pub async fn shutdown(&self) {
+        self.stop();
+        if let Some(c) = &self.connectivity {
+            c.teardown().await;
+        }
+    }
+
+    /// URLs for pairing codes: `remote.endpoints`, else the provider's
+    /// endpoint, else the listen address.
+    async fn pairing_urls(&self) -> Result<Vec<String>, Error> {
+        if !self.endpoints.is_empty() {
+            return Ok(self.endpoints.clone());
+        }
+        match &self.connectivity {
+            Some(c) => c.ensure_urls().await.map_err(|e| {
+                Error::api(
+                    ErrorCode::Unavailable,
+                    format!("{} is not ready: {e}", c.provider_name()),
+                )
+            }),
+            None => Ok(vec![format!(
+                "ws://{}{}",
+                self.listen,
+                vca_net::DEFAULT_WS_PATH
+            )]),
+        }
+    }
+
     pub fn listen_addr(&self) -> SocketAddr {
         self.listen
     }
 
     /// Issues a single-use pairing code (SEC-01).
-    pub fn pair(&self, scope: &str, endpoints: Vec<String>) -> Result<Pairing, Error> {
+    pub async fn pair(&self, scope: &str, endpoints: Vec<String>) -> Result<Pairing, Error> {
         let scope = match scope {
             "view" => Scope::View,
             "command" => Scope::Command,
@@ -190,7 +234,7 @@ impl Remote {
             }
         };
         let endpoints = if endpoints.is_empty() {
-            self.endpoints.clone()
+            self.pairing_urls().await?
         } else {
             endpoints
         };
@@ -237,7 +281,11 @@ impl Remote {
         self.net.reset_kill_switch(by).map_err(net_err)
     }
 
-    pub fn status(&self) -> RemoteStatus {
+    pub async fn status(&self) -> RemoteStatus {
+        let connectivity = match &self.connectivity {
+            Some(c) => Some(c.status().await),
+            None => None,
+        };
         RemoteStatus {
             listen: self.listen,
             server_fingerprint: self.net.public_key().fingerprint().to_hex(),
@@ -251,6 +299,7 @@ impl Remote {
                 .map(|l| l.iter().filter(|d| d.is_active()).count())
                 .unwrap_or(0),
             connections: self.net.active_connections().len(),
+            connectivity,
         }
     }
 }

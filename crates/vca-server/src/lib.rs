@@ -9,6 +9,7 @@
 
 pub mod api;
 pub mod config;
+pub mod connectivity;
 pub mod control;
 pub mod daemon;
 pub mod devws;

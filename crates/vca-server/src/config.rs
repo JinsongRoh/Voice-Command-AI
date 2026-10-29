@@ -40,8 +40,21 @@
 //! enabled = true
 //! bind = "127.0.0.1:47800"
 //! require_totp = true
-//! # URLs written into pairing QR codes (default: ws://<bind>/v1/ws).
+//! # URLs written into pairing QR codes (default: from the provider below,
+//! # else ws://<bind>/v1/ws).
 //! # endpoints = ["wss://vca-k3x9q2.example.net/v1/ws"]
+//!
+//! # How devices reach the port. No provider is a default; pick one of
+//! # "lan", "tailscale", "cloudflare_tunnel" or "custom". "lan" and
+//! # tailscale "direct" need bind = "0.0.0.0:47800".
+//! [remote.provider]
+//! kind = "none"
+//! # url = "wss://vca.example.net"      # kind = "custom"
+//! [remote.provider.tailscale]
+//! mode = "serve"                       # or "direct"
+//! [remote.provider.cloudflare]
+//! mode = "quick"                       # or "named"
+//! # tunnel = "vca"; hostname = "vca-k3x9q2.example.com"; token_env = "CF_TUNNEL_TOKEN"
 //!
 //! # Server-side speech recognition (off by default). Keys come from the
 //! # environment variables named here, never from this file.
@@ -196,8 +209,76 @@ pub struct RemoteConfig {
     pub require_totp: bool,
     /// Heartbeat interval in seconds (at most 30).
     pub heartbeat_secs: u64,
-    /// Endpoints written into pairing QR codes. Empty: `ws://<bind>/v1/ws`.
+    /// Endpoints written into pairing QR codes. Empty: the provider's
+    /// endpoint, else `ws://<bind>/v1/ws`.
     pub endpoints: Vec<String>,
+    /// How devices reach the listen address.
+    pub provider: ProviderConfig,
+}
+
+/// Connectivity provider kinds (requirements §3.8). None is a default
+/// (CON-02).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderKind {
+    #[default]
+    None,
+    Lan,
+    Tailscale,
+    CloudflareTunnel,
+    Dnspilot,
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TailscaleKind {
+    /// `tailscale serve` publishes the loopback port inside the tailnet.
+    #[default]
+    Serve,
+    /// Devices connect to the tailnet address (needs a non-loopback bind).
+    Direct,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CloudflareKind {
+    /// A temporary `*.trycloudflare.com` tunnel.
+    #[default]
+    Quick,
+    /// A named tunnel with the user's hostname.
+    Named,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct TailscaleSection {
+    pub mode: TailscaleKind,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct CloudflareSection {
+    pub mode: CloudflareKind,
+    /// Tunnel name or UUID (locally managed named tunnels).
+    pub tunnel: Option<String>,
+    /// Public hostname of a named tunnel. Use a non-identifying label:
+    /// hostnames appear in Certificate Transparency logs.
+    pub hostname: Option<String>,
+    /// Environment variable holding a tunnel token (remotely managed).
+    pub token_env: Option<String>,
+    /// `cloudflared` location; `PATH` by default.
+    pub program: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ProviderConfig {
+    pub kind: ProviderKind,
+    /// Base URL for `kind = "custom"`.
+    pub url: Option<String>,
+    pub tailscale: TailscaleSection,
+    pub cloudflare: CloudflareSection,
 }
 
 impl Default for RemoteConfig {
@@ -208,6 +289,7 @@ impl Default for RemoteConfig {
             require_totp: true,
             heartbeat_secs: 20,
             endpoints: Vec::new(),
+            provider: ProviderConfig::default(),
         }
     }
 }
