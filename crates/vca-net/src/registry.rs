@@ -417,6 +417,7 @@ mod tests {
             sample_rate: None,
             language: None,
             session_id: None,
+            context: None,
         };
         assert!(!Scope::View.permits(&transcribe));
         assert!(Scope::Command.permits(&transcribe));

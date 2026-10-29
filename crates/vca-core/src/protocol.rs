@@ -93,6 +93,10 @@ pub enum ClientMsg {
         language: Option<String>,
         /// The selected session, for project vocabulary and intent routing.
         session_id: Option<SessionId>,
+        /// Text dictated just before this audio (live dictation sends audio
+        /// in chunks), so the recognizer continues it consistently.
+        #[serde(default)]
+        context: Option<String>,
     },
 }
 

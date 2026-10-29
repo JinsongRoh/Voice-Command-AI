@@ -8,7 +8,7 @@
 //! Commands (the contract mirrored by `apps/ui/src/native/bridge.ts`):
 //! `vca_machines`, `vca_pair`, `vca_connect`, `vca_send`, `vca_status`,
 //! `vca_login`, `vca_disconnect`, `vca_forget`, `vca_mic_start`,
-//! `vca_mic_stop`, `vca_mic_cancel` and `vca_platform`.
+//! `vca_mic_stop`, `vca_mic_peek`, `vca_mic_split`, `vca_mic_cancel` and `vca_platform`.
 
 mod mic;
 mod secrets;
@@ -166,6 +166,28 @@ async fn vca_mic_stop(mic: State<'_, Arc<Mic>>) -> CommandResult<Response> {
 }
 
 #[tauri::command]
+async fn vca_mic_peek(mic: State<'_, Arc<Mic>>) -> CommandResult<Response> {
+    let mic = mic.inner().clone();
+    let wav = tauri::async_runtime::spawn_blocking(move || mic.peek())
+        .await
+        .map_err(|e| CommandError::new("mic", e.to_string()))?
+        .map_err(|e| CommandError::new("mic", e))?;
+    Ok(Response::new(wav))
+}
+
+/// Hands over the audio before the last pause once `min_seconds` are
+/// buffered (empty body otherwise); recording continues.
+#[tauri::command]
+async fn vca_mic_split(mic: State<'_, Arc<Mic>>, min_seconds: f32) -> CommandResult<Response> {
+    let mic = mic.inner().clone();
+    let wav = tauri::async_runtime::spawn_blocking(move || mic.split(min_seconds))
+        .await
+        .map_err(|e| CommandError::new("mic", e.to_string()))?
+        .map_err(|e| CommandError::new("mic", e))?;
+    Ok(Response::new(wav))
+}
+
+#[tauri::command]
 async fn vca_mic_cancel(mic: State<'_, Arc<Mic>>) -> CommandResult<()> {
     let mic = mic.inner().clone();
     tauri::async_runtime::spawn_blocking(move || mic.cancel())
@@ -215,6 +237,8 @@ pub fn run(context: tauri::Context<tauri::Wry>) {
             vca_forget,
             vca_mic_start,
             vca_mic_stop,
+            vca_mic_peek,
+            vca_mic_split,
             vca_mic_cancel,
             vca_platform,
         ])

@@ -35,6 +35,9 @@ const PROJECT_TTL: Duration = Duration::from_secs(600);
 const HINT_CHARS: usize = 600;
 /// Phrase hints sent to phrase-boosting engines.
 const HINT_PHRASES: usize = 200;
+/// Characters of preceding dictation added to the prompt (Whisper reads
+/// about 224 prompt tokens, and the end of the prompt matters most).
+const CONTEXT_CHARS: usize = 300;
 const PERSONAL_FILE: &str = "personal.json";
 
 /// Vocabulary engines per project folder (`None`: no project), with the
@@ -50,6 +53,27 @@ pub struct TranscribeRequest {
     pub language: Option<String>,
     /// Folder of the selected session, for the project vocabulary.
     pub project_dir: Option<PathBuf>,
+    /// Preceding dictation text (see `ClientMsg::Transcribe::context`).
+    pub context: Option<String>,
+}
+
+/// Vocabulary hints followed by the tail of the preceding dictation, which
+/// Whisper-style engines treat as the text just before the audio.
+fn prompt_with_context(hints: String, context: Option<&str>) -> Option<String> {
+    let context: String = context
+        .unwrap_or_default()
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    let context = context.trim();
+    let skip = context.chars().count().saturating_sub(CONTEXT_CHARS);
+    let tail: String = context.chars().skip(skip).collect();
+    match (hints.is_empty(), tail.is_empty()) {
+        (true, true) => None,
+        (false, true) => Some(hints),
+        (true, false) => Some(tail),
+        (false, false) => Some(format!("{hints}\n{tail}")),
+    }
 }
 
 /// A reviewed-to-be transcript.
@@ -191,7 +215,7 @@ impl Speech {
         let options = TranscribeOptions {
             primary_language: language.clone(),
             secondary_languages: self.cfg.secondary_languages.clone(),
-            prompt_hint: Some(vocab.hint_prompt(HINT_CHARS)).filter(|h| !h.is_empty()),
+            prompt_hint: prompt_with_context(vocab.hint_prompt(HINT_CHARS), req.context.as_deref()),
             phrase_hints: vocab.hint_phrases(HINT_PHRASES),
         };
 
@@ -436,7 +460,21 @@ mod tests {
             sample_rate: None,
             language: None,
             project_dir: None,
+            context: None,
         }
+    }
+
+    #[test]
+    fn context_follows_the_hints_and_is_trimmed() {
+        assert_eq!(prompt_with_context(String::new(), None), None);
+        assert_eq!(prompt_with_context(String::new(), Some("  \n ")), None);
+        assert_eq!(
+            prompt_with_context("pnpm, useEffect".into(), Some("고쳐 줘\u{7}")).as_deref(),
+            Some("pnpm, useEffect\n고쳐 줘")
+        );
+        let long = "가".repeat(CONTEXT_CHARS + 50);
+        let p = prompt_with_context(String::new(), Some(&long)).unwrap();
+        assert_eq!(p.chars().count(), CONTEXT_CHARS);
     }
 
     #[tokio::test]

@@ -50,6 +50,7 @@ pub async fn transcribe(
             sample_rate: None,
             language,
             session_id,
+            context: None,
         })
         .await?;
     let ServerMsg::Transcript {

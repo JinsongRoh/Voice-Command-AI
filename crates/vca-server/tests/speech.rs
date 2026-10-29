@@ -94,6 +94,7 @@ fn transcribe(audio: Vec<u8>, format: AudioEncoding) -> ClientMsg {
         sample_rate: None,
         language: None,
         session_id: None,
+        context: None,
     }
 }
 

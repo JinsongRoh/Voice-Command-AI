@@ -1,10 +1,15 @@
-//! Push-to-talk microphone capture with cpal.
+//! Microphone capture with cpal for dictation.
 //!
 //! The webview's `getUserMedia` behaves differently in every WebView (and is
 //! missing on some), so the shells capture audio natively. The recording is
 //! downmixed to mono, resampled to 16 kHz and returned as a 16-bit PCM WAV,
 //! which every server speech engine accepts and which keeps a long dictation
 //! well under the server's audio size limit.
+//!
+//! Long dictation is streamed in chunks: [`Mic::peek`] returns the audio
+//! since the last cut (for live interim transcripts) and [`Mic::split`] cuts
+//! the buffer at a pause and hands the finished part over, so a recording
+//! can run far longer than one request may carry.
 
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
@@ -16,13 +21,21 @@ use cpal::{SampleFormat, SizedSample};
 
 /// Output sample rate (what speech engines expect).
 pub const OUTPUT_RATE: u32 = 16_000;
-/// A recording stops by itself after this long (about 7.7 MiB of WAV).
-pub const MAX_SECONDS: u32 = 240;
+/// Most audio kept between two splits (about 7.7 MiB of WAV once
+/// resampled); a caller that never splits gets this much.
+pub const MAX_BUFFER_SECONDS: u32 = 240;
+/// A recording stops by itself after this long.
+pub const MAX_RECORDING_SECONDS: u32 = 30 * 60;
+/// How far back from the end [`Mic::split`] looks for a pause.
+const SPLIT_SEARCH_SECONDS: f32 = 5.0;
 const START_TIMEOUT: Duration = Duration::from_secs(5);
 
 struct Capture {
     stop: mpsc::Sender<()>,
     thread: JoinHandle<Result<Recording, String>>,
+    /// Samples so far (mono, device rate) for interim transcripts.
+    buffer: Arc<Mutex<Vec<f32>>>,
+    rate: u32,
 }
 
 struct Recording {
@@ -48,15 +61,19 @@ impl Mic {
         }
         let (stop_tx, stop_rx) = mpsc::channel();
         let (ready_tx, ready_rx) = mpsc::channel();
+        let buffer = Arc::new(Mutex::new(Vec::<f32>::new()));
+        let shared = buffer.clone();
         let thread = std::thread::Builder::new()
             .name("vca-mic".into())
-            .spawn(move || capture(stop_rx, ready_tx))
+            .spawn(move || capture(stop_rx, ready_tx, shared))
             .map_err(|e| format!("cannot start the audio thread: {e}"))?;
         match ready_rx.recv_timeout(START_TIMEOUT) {
-            Ok(Ok(())) => {
+            Ok(Ok(rate)) => {
                 *active = Some(Capture {
                     stop: stop_tx,
                     thread,
+                    buffer,
+                    rate,
                 });
                 Ok(())
             }
@@ -88,6 +105,39 @@ impl Mic {
         Ok(wav_pcm16(&samples, OUTPUT_RATE))
     }
 
+    /// Returns the audio recorded so far as a WAV file, without stopping
+    /// (for interim transcripts while the user is still talking).
+    pub fn peek(&self) -> Result<Vec<u8>, String> {
+        let active = self.active.lock().expect("mic lock");
+        let capture = active
+            .as_ref()
+            .ok_or_else(|| "the microphone is not recording".to_owned())?;
+        let samples = capture.buffer.lock().expect("mic buffer").clone();
+        let samples = resample(&samples, capture.rate, OUTPUT_RATE);
+        Ok(wav_pcm16(&samples, OUTPUT_RATE))
+    }
+
+    /// Cuts the buffer at the quietest moment of its last few seconds and
+    /// returns the part before the cut as a WAV file; recording continues.
+    /// Returns an empty vector while less than `min_seconds` is buffered.
+    pub fn split(&self, min_seconds: f32) -> Result<Vec<u8>, String> {
+        let active = self.active.lock().expect("mic lock");
+        let capture = active
+            .as_ref()
+            .ok_or_else(|| "the microphone is not recording".to_owned())?;
+        let mut buffer = capture.buffer.lock().expect("mic buffer");
+        if (buffer.len() as f32) < min_seconds.max(0.5) * capture.rate as f32 {
+            return Ok(Vec::new());
+        }
+        let cut = quietest_cut(&buffer, capture.rate, SPLIT_SEARCH_SECONDS);
+        let head: Vec<f32> = buffer.drain(..cut).collect();
+        drop(buffer);
+        Ok(wav_pcm16(
+            &resample(&head, capture.rate, OUTPUT_RATE),
+            OUTPUT_RATE,
+        ))
+    }
+
     /// Stops recording and drops the audio.
     pub fn cancel(&self) {
         if let Some(capture) = self.active.lock().expect("mic lock").take() {
@@ -101,9 +151,10 @@ impl Mic {
 /// so the stream lives and dies here.
 fn capture(
     stop: mpsc::Receiver<()>,
-    ready: mpsc::Sender<Result<(), String>>,
+    ready: mpsc::Sender<Result<u32, String>>,
+    buffer: Arc<Mutex<Vec<f32>>>,
 ) -> Result<Recording, String> {
-    let fail = |ready: &mpsc::Sender<Result<(), String>>, msg: String| {
+    let fail = |ready: &mpsc::Sender<Result<u32, String>>, msg: String| {
         let _ = ready.send(Err(msg.clone()));
         Err(msg)
     };
@@ -117,8 +168,11 @@ fn capture(
     };
     let rate = config.sample_rate().0;
     let channels = usize::from(config.channels().max(1));
-    let limit = (MAX_SECONDS * rate) as usize;
-    let buffer = Arc::new(Mutex::new(Vec::<f32>::with_capacity(rate as usize * 10)));
+    let limit = (MAX_BUFFER_SECONDS * rate) as usize;
+    buffer
+        .lock()
+        .expect("mic buffer")
+        .reserve(rate as usize * 10);
     let stream = match config.sample_format() {
         SampleFormat::F32 => build::<f32>(&device, &config.into(), channels, limit, &buffer),
         SampleFormat::I16 => build::<i16>(&device, &config.into(), channels, limit, &buffer),
@@ -133,8 +187,8 @@ fn capture(
     if let Err(e) = stream.play() {
         return fail(&ready, format!("cannot start the microphone: {e}"));
     }
-    let _ = ready.send(Ok(()));
-    match stop.recv_timeout(Duration::from_secs(u64::from(MAX_SECONDS) + 1)) {
+    let _ = ready.send(Ok(rate));
+    match stop.recv_timeout(Duration::from_secs(u64::from(MAX_RECORDING_SECONDS))) {
         Ok(()) | Err(RecvTimeoutError::Timeout) | Err(RecvTimeoutError::Disconnected) => {}
     }
     drop(stream);
@@ -174,6 +228,28 @@ where
             None,
         )
         .map_err(|e| format!("cannot open the microphone: {e}"))
+}
+
+/// Index at which to cut `samples`: the middle of the quietest 100 ms window
+/// within the last `search_seconds` (but never in the first half), so a cut
+/// lands between words rather than inside one.
+pub fn quietest_cut(samples: &[f32], rate: u32, search_seconds: f32) -> usize {
+    let window = (rate as usize / 10).max(1);
+    if samples.len() < window * 2 {
+        return samples.len();
+    }
+    let search = (search_seconds * rate as f32) as usize;
+    let start = samples.len().saturating_sub(search).max(samples.len() / 2);
+    let mut best = (f32::INFINITY, samples.len());
+    let mut pos = start;
+    while pos + window <= samples.len() {
+        let energy: f32 = samples[pos..pos + window].iter().map(|s| s * s).sum();
+        if energy < best.0 {
+            best = (energy, pos + window / 2);
+        }
+        pos += window / 2;
+    }
+    best.1
 }
 
 /// Linear-interpolation resampler (speech only needs a few kHz of bandwidth,
@@ -237,6 +313,20 @@ mod tests {
     fn resampling_interpolates() {
         let out = resample(&[0.0, 1.0], 1, 2);
         assert_eq!(out, vec![0.0, 0.5, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn cuts_land_in_the_quietest_recent_window() {
+        let rate = 1000;
+        // 10 s of "speech" with a silent gap at 8.0-8.3 s and another at 1 s
+        // (too early to be considered).
+        let mut s = vec![0.5f32; 10 * rate as usize];
+        s[8000..8300].iter_mut().for_each(|x| *x = 0.0);
+        s[1000..1300].iter_mut().for_each(|x| *x = 0.0);
+        let cut = quietest_cut(&s, rate, 5.0);
+        assert!((8000..8300).contains(&cut), "{cut}");
+        // Tiny buffers are taken whole.
+        assert_eq!(quietest_cut(&[0.1; 10], rate, 5.0), 10);
     }
 
     #[test]

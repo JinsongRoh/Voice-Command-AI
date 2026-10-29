@@ -356,6 +356,7 @@ impl Api {
                 sample_rate,
                 language,
                 session_id,
+                context,
             } => {
                 let Some(speech) = self.inner.speech.get().cloned() else {
                     let reply = error(
@@ -377,6 +378,7 @@ impl Api {
                     sample_rate,
                     language,
                     project_dir,
+                    context,
                 };
                 // Recognition takes seconds; keep serving the client meanwhile.
                 let client = Arc::clone(client);
