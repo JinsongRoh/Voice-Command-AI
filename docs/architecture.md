@@ -10,12 +10,12 @@
 ┌──────────────┐  E2E    │  ┌────────────┐   ┌───────────────────────────────────────────┐ │
 │ VCA Mobile   │◄───────►│  │ Connectivity│◄─►│ VCA Server (vcad)                         │ │
 │ (Tauri 2)    │ channel │  │ provider    │   │                                           │ │
-└──────────────┘         │  │ DNS Pilot / │   │  api ──── auth ──── audit                 │ │
+└──────────────┘         │  │ DNSPilot / │   │  api ──── auth ──── audit                 │ │
        ▲                 │  │ Tailscale / │   │   │                                       │ │
        │ push (E2E)      │  │ Cloudflare /│   │  session manager ── adapters ── hooks     │ │
 ┌──────┴───────┐         │  │ LAN         │   │   │        │                              │ │
 │ Push relay   │◄────────┼──┤             │   │  pty host  resource broker   speech       │ │
-│ (DNS Pilot)  │         │  └────────────┘   └───┬───────────────┬───────────────────────┘ │
+│ (DNSPilot)  │         │  └────────────┘   └───┬───────────────┬───────────────────────┘ │
 └──────────────┘         │                       │               │                          │
                          │        ┌──────────────┴──┐   ┌────────┴────────┐                 │
                          │        │ Agent processes │   │ Terminal windows│ (attached views)│
@@ -192,7 +192,7 @@ Provider matrix (official APIs only; status as researched on 2026-10-29, re-veri
 | Authorization | Workspace allow-list, plus per-device permission scopes (view only / command / admin). |
 | Transport | Provider TLS is treated as an **untrusted transport**, because a provider may hold the TLS keys. Confidentiality and integrity come from the Noise channel between the paired device and the server, which is mandatory for every provider. |
 | Detection | Audit log, new-device and new-location alerts, and rate limiting with lockout. |
-| Response | Kill switch (local, mobile, DNS Pilot console) and device revocation. |
+| Response | Kill switch (local, mobile, DNSPilot console) and device revocation. |
 | Secrets | OS keychain (Windows Credential Manager, macOS Keychain, Secret Service), plus output masking in streams. |
 
 ## 9. Speech pipeline
@@ -215,4 +215,4 @@ mic (device) ─► VAD ─► audio chunks ─► STT engine ─► vocabulary 
 | Agents without hooks or native channels | Generic adapter using output heuristics. Contribute hook support upstream where possible. |
 | Pausing an agent mid-request causes API timeouts | Pause child processes only by default. Pause whole sessions only on explicit request. |
 | Tauri 2 mobile audio and background limits | Prototype microphone capture and VAD in M0. Fall back to a native plugin if needed. |
-| DNS Pilot gaps (app-token access, P2P SDK, push relay, relay regions) | Tracked in dnspilot-requirements.md. M0 validates connectivity through the provider abstraction with every built-in provider, so no single provider blocks progress. |
+| DNSPilot gaps (app-token access, P2P SDK, push relay, relay regions) | Tracked in dnspilot-requirements.md. M0 validates connectivity through the provider abstraction with every built-in provider, so no single provider blocks progress. |

@@ -1,10 +1,10 @@
-# DNS Pilot Integration
+# DNSPilot Integration
 
-> **Status:** Draft v0.7 (gap status updated 2026-10-29 from the DNS Pilot `vca-integration` development report; not yet deployed to production). Based on the DNS Pilot feature guide and the DNS Pilot team's answers to VCA's technical questionnaire (console 1.24.3, Agent 0.5.4 for Windows and 0.5.0 for Linux, 2026-10-29). Items marked *in progress* are being built by the DNS Pilot team and are not yet in production.
+> **Status:** Draft v0.7 (gap status updated 2026-10-29 from the DNSPilot `vca-integration` development report; not yet deployed to production). Based on the DNSPilot feature guide and the DNSPilot team's answers to VCA's technical questionnaire (console 1.24.3, Agent 0.5.4 for Windows and 0.5.0 for Linux, 2026-10-29). Items marked *in progress* are being built by the DNSPilot team and are not yet in production.
 
-DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tailscale, Cloudflare Tunnel, direct LAN and custom providers. This document covers four things:
+DNSPilot is one of VCA's interchangeable connectivity providers, alongside Tailscale, Cloudflare Tunnel, direct LAN and custom providers. This document covers four things:
 
-1. how DNS Pilot works, as far as it matters for VCA;
+1. how DNSPilot works, as far as it matters for VCA;
 2. what VCA's design must account for;
 3. the integration plan;
 4. the status of every gap.
@@ -18,7 +18,7 @@ DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tail
 | Topic | Behavior |
 |---|---|
 | Routing | The relay routes by TLS SNI and forwards bytes; it never terminates TLS. |
-| TLS termination | On the DNS Pilot Agent, on the user's machine. |
+| TLS termination | On the DNSPilot Agent, on the user's machine. |
 | Protocol to the local service | **HTTP/1.1 reverse proxy.** There is no HTTP/2, no HTTP/3 and no raw TCP mode. |
 | WebSocket | HTTP/1.1 Upgrade is supported. HTTP/2 Extended CONNECT is not. |
 | Local scheme | The target can be `http` or `https`. With `https`, the Agent does not verify the local certificate. |
@@ -28,7 +28,7 @@ DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tail
 | Relay restart | Drops all connections. Graceful drain with GoAway is *in progress*. Clients must always handle reconnection. |
 | Regions | Seoul (primary) and Tokyo (standby), with automatic failover after repeated failures. There is no latency-based selection and no latency measurements yet. |
 | Certificates | One Let's Encrypt certificate per tunnel hostname. **Every hostname appears in public Certificate Transparency logs.** |
-| Certificate keys | Generated and stored encrypted by the DNS Pilot console, then delivered to the Agent. The relay cannot decrypt traffic, but the console side theoretically could. |
+| Certificate keys | Generated and stored encrypted by the DNSPilot console, then delivered to the Agent. The relay cannot decrypt traffic, but the console side theoretically could. |
 | Forwarded headers | `X-Forwarded-For` (single visitor IP) is trustworthy. **`X-Real-IP` is passed through unmodified and can be spoofed.** There is no country header. |
 | Access modes | Public, password and organization login. Without a session cookie, password and organization-login modes return 401 (or a login page), which a native app cannot pass. |
 
@@ -37,7 +37,7 @@ DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tail
 - Direct QUIC with NAT traversal and relay fallback. There is no relay fallback on the Free plan.
 - Implemented in Go. A **gomobile binding already exists** (`NewClient`, `StartLogin`, `Start`, `Connect`, `NetworkChanged`, and so on).
 - An Android "viewer" client exists. There is no iOS client yet.
-- Both peers must currently belong to the same DNS Pilot organization.
+- Both peers must currently belong to the same DNSPilot organization.
 - Network changes (Wi-Fi ↔ cellular) are handled by re-detecting NAT, while the connection is carried over the relay in the meantime. This has not yet been validated on real devices.
 - Direct-connection success rates on cellular networks have not been measured.
 
@@ -60,7 +60,7 @@ DNS Pilot is one of VCA's interchangeable connectivity providers, alongside Tail
 
 ## 2. Design consequences for VCA
 
-These apply to VCA's own code regardless of DNS Pilot's roadmap.
+These apply to VCA's own code regardless of DNSPilot's roadmap.
 
 | # | Consequence | Where it lands in VCA |
 |---|---|---|
@@ -72,40 +72,40 @@ These apply to VCA's own code regardless of DNS Pilot's roadmap.
 | C6 | **Use non-identifying tunnel hostnames.** Certificate Transparency logs publish every hostname. VCA generates random labels (for example `vca-k3x9q2.<domain>`) and never includes user names, machine names or project names. | setup wizard |
 | C7 | **Trust only `X-Forwarded-For`** for the client IP shown in the audit log. Ignore `X-Real-IP`. Treat the forwarded IP as informational, since VCA authenticates by device key. | `vca-server` audit |
 | C9 | **Treat `X-DNSPilot-Client-Id` and `X-DNSPilot-Client-Key` as informational.** Any local process can reach the loopback port and set these headers. VCA authenticates every device itself, through pairing keys and the Noise channel, and uses the headers only to cross-check audit records. | `vca-server` audit |
-| C10 | **Handle Agent restarts in the event stream.** Every local API event and `/v1/status` carry the Agent's `boot_id`, and each SSE connection starts with `hello` (resume is valid) or `reset` (different Agent run). On `reset`, VCA resynchronizes its tunnel state from `/v1/status` and `/v1/tunnels`. | `vca-providers` DNS Pilot provider |
-| C8 | **The DNS Pilot P2P client is an optional, separately licensed component.** The default open-source build of VCA Mobile must compile and work without it. Release builds may include it through a feature flag, subject to a redistribution license from DNS Pilot. | `apps/mobile`, build system |
+| C10 | **Handle Agent restarts in the event stream.** Every local API event and `/v1/status` carry the Agent's `boot_id`, and each SSE connection starts with `hello` (resume is valid) or `reset` (different Agent run). On `reset`, VCA resynchronizes its tunnel state from `/v1/status` and `/v1/tunnels`. | `vca-providers` DNSPilot provider |
+| C8 | **The DNSPilot P2P client is an optional, separately licensed component.** The default open-source build of VCA Mobile must compile and work without it. Release builds may include it through a feature flag, subject to a redistribution license from DNSPilot. | `apps/mobile`, build system |
 
 ## 3. Integration plan
 
 ### 3.1 Track A: Tunnel with `app` access mode
 
 ```
-VCA Mobile ──HTTPS/WSS (HTTP/1.1, mTLS client key)──► relay ══► DNS Pilot Agent ──http──► 127.0.0.1:47800
+VCA Mobile ──HTTPS/WSS (HTTP/1.1, mTLS client key)──► relay ══► DNSPilot Agent ──http──► 127.0.0.1:47800
      └────────────────────── Noise channel (VCA pairing keys) ───────────────────────────────┘
 ```
 
-1. The setup wizard signs in to DNS Pilot through OAuth device flow (scope `tunnels:write`).
+1. The setup wizard signs in to DNSPilot through OAuth device flow (scope `tunnels:write`).
 2. It creates an `app`-mode tunnel with a random hostname (C6), local scheme `http`, and port 443.
 3. During pairing, the phone's client public key is registered with the tunnel through the Agent's local API.
 4. The hostname goes into the pairing QR code.
 
-*Depends on:* `app` mode, OAuth, the local REST API and the 24-hour front-proxy timeout. All are in progress at DNS Pilot.
+*Depends on:* `app` mode, OAuth, the local REST API and the 24-hour front-proxy timeout. All are in progress at DNSPilot.
 
 ### 3.2 Track B: P2P from the phone
 
 ```
-VCA Mobile ── Tauri plugin ── DNS Pilot P2P client (gomobile) ◄─QUIC / relay─► DNS Pilot Agent ──► 127.0.0.1:47800
+VCA Mobile ── Tauri plugin ── DNSPilot P2P client (gomobile) ◄─QUIC / relay─► DNSPilot Agent ──► 127.0.0.1:47800
 ```
 
 - **Step 1:** a Tauri 2 plugin (Kotlin / Swift) wraps the existing gomobile binding. This avoids waiting for a Rust port. The binding exposes a local forwarded port that the VCA client connects to.
-- **Step 2:** delegated access grants signed by the target Agent, so the phone needs no DNS Pilot account. This is planned on the DNS Pilot side.
-- Until delegated grants exist, the phone must sign in to the same DNS Pilot organization.
+- **Step 2:** delegated access grants signed by the target Agent, so the phone needs no DNSPilot account. This is planned on the DNSPilot side.
+- Until delegated grants exist, the phone must sign in to the same DNSPilot organization.
 
 Tracks A and B are developed in parallel. When both are available, the setup wizard prefers P2P and falls back to the tunnel.
 
 ### 3.3 Distribution as an Agent module
 
-A DNS Pilot Agent module installs, updates and supervises the same signed VCA build that the standalone installers ship, and wires it to the DNS Pilot provider. This is planned as a second-phase item.
+A DNSPilot Agent module installs, updates and supervises the same signed VCA build that the standalone installers ship, and wires it to the DNSPilot provider. This is planned as a second-phase item.
 
 ### 3.4 Other providers
 
@@ -113,11 +113,11 @@ Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on e
 
 ## 4. Gap status
 
-| # | Gap | Status at DNS Pilot | Needed by VCA |
+| # | Gap | Status at DNSPilot | Needed by VCA |
 |---|---|---|---|
 | G1 | `app` access mode (mTLS public-key pinning, optional bearer token) | **Done** (not yet deployed) | M2 |
 | G2a | Phone-side P2P client (gomobile binding for Android and iOS, redistributable) | Binding exists. Stability policy (semver, 30-day notice) in progress. iOS build needs a macOS build host. Redistribution license pending signature. | M2 |
-| G2b | Delegated P2P grants (phone without a DNS Pilot account) | Planned (second phase) | M3 |
+| G2b | Delegated P2P grants (phone without a DNSPilot account) | Planned (second phase) | M3 |
 | G3 | 24-hour front-proxy timeout, always-flush streaming, graceful relay drain | **Done** (not yet deployed) | M2 |
 | G4 | Push notification relay (APNs/FCM, end-to-end encrypted payloads) | Server done (not yet deployed). Needs APNs and FCM credentials and real-device tests. | M2 |
 | G5 | Relay regions in North America and Europe, latency-based selection, latency measurements | Not started | M4 (global launch) |
@@ -127,7 +127,7 @@ Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on e
 | G9 | Plans for open-source users and international payments | Paddle proposed as merchant of record. Contract and plan decision pending. | M4 |
 | G10 | Public English landing page and public API documentation (currently 404 and login-only, respectively) | Public help pages and a public OpenAPI subset (OAuth, tunnels, P2P, push) in progress. Landing page waits on pricing. | M4 |
 | G11 | OAuth device flow with `tunnels:*` and `p2p:*` scopes, so that `app`-mode tunnels can be created without interactive re-authentication | **Done** (not yet deployed) | M2 |
-| G12 | API usage policy and brand guidelines for third-party open-source clients | Drafts written, legal review pending | Before DNS Pilot provider ships |
+| G12 | API usage policy and brand guidelines for third-party open-source clients | Drafts written, legal review pending | Before DNSPilot provider ships |
 | G13 | Strip client-supplied `X-Real-IP` | **Done** (not yet deployed) | — (VCA ignores it, see C7) |
 | G14 | Agent-generated certificate keys (CSR on the Agent), so the console never holds tunnel private keys | Planned (after the first batch) | Nice to have (VCA relies on Noise, see C1) |
 | G15 | Relay and P2P fields in the public status API | **Done** (not yet deployed) | M2 (provider failover) |

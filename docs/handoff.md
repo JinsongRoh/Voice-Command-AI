@@ -6,7 +6,7 @@
 
 | Branch | PR | Content |
 |---|---|---|
-| `docs/planning` | #1 (draft) | Planning documents: requirements, architecture, development plan, DNS Pilot integration. |
+| `docs/planning` | #1 (draft) | Planning documents: requirements, architecture, development plan, DNSPilot integration. |
 | `dev/m0-foundation` | #2 (draft, stacked on #1) | Cargo workspace, all crates below and the shared UI. **Continue here.** |
 
 CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --workspace --all-targets` and `cargo test --workspace` on Linux, macOS and Windows with `RUSTFLAGS=-D warnings`. A separate UI job runs `pnpm check`.
@@ -22,7 +22,7 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | `vca-net` | Done (agent stopped during final review) | 95 | Keys, Noise XX with chunking, QR pairing, device registry, TOTP, rotating tokens, WebSocket transport with heartbeat, replay buffers, audit log, kill switch. Re-review it against the new `ClientMsg` variants before wiring. |
 | `vca-speech` + `lexicon/` | Done (agent stopped during final review) | 68 | STT trait with OpenAI-compatible, Google and optional local Whisper engines (`whisper-local` feature not build-verified), VAD, layered developer vocabulary, multilingual intent router, filler cleanup. |
 | `vca-cloud` | Done | 38 | Cloud adapters. Copilot, Claude Managed Agents, Claude Code routines and Codex cloud were checked against official sources. **Jules, Cursor and Devin field names are unverified** (docs were blocked in the cloud session). |
-| `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNS Pilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNS Pilot JSON fields are placeholders in `dnspilot/contract.rs`. |
+| `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNSPilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNSPilot JSON fields are placeholders in `dnspilot/contract.rs`. |
 | `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Native mode (Tauri bridge, pairing, TOTP login, forget, server transcription) added in task 5. |
 | `vca-server` (`vcad`) | §4 steps 3 and 4 done | 63 (Windows) | Session manager, API, local control channel, hooks with admission, discovery, Job Objects (Windows), `vca-net` remote transport (pairing, TOTP, scopes, revoke, kill switch, audit), cloud sessions as cards (`[cloud]`, `vca cloud`), connectivity providers for pairing endpoints (`[remote.provider]`), server-side transcription (`[speech]`, `vca transcribe`). |
 | `vca-client` | Done | 13 | Device-side connection manager for the apps: pairing from `vca://pair` links, keys and rotating refresh tokens in a `KeyStore`, supervised reconnects with backoff, `LoginRequired`/`revoked`/`kill_switch` states. |
@@ -51,7 +51,7 @@ Windows keeps a process's parent pid after the parent exits and reuses pids, and
 ### 3.3 Other items
 - `vca-adapters`: WezTerm, kitty, iTerm2 and Windows console injection are unverified on real machines.
 - `vca-cloud`: confirm Jules, Cursor and Devin request/response shapes against their official docs (PoC-7).
-- `vca-providers`: align `dnspilot/contract.rs` with the DNS Pilot VCA contract (`VCA-contract.md` in the DNS Pilot repository).
+- `vca-providers`: align `dnspilot/contract.rs` with the DNSPilot VCA contract (`VCA-contract.md` in the DNSPilot repository).
 - macOS and Windows behavior of every crate has only been compile-checked or CI-tested; run the M0 PoCs on real machines.
 
 ### 3.4 Verified on a real Windows 11 machine (task 2)
@@ -78,7 +78,7 @@ Verified later on the same machine (task 3 session):
 
 - **Protocol:** `Transcribe`/`Transcript` (command scope, because server engines spend the owner's speech quota) and `ListCloudProviders`/`CloudProviders` (view scope). The UI types and mock transport mirror them.
 - **Speech (`[speech]`, off by default):** OpenAI-compatible or Google engine → filler clean-up → vocabulary correction (built-in base lexicon embedded at build time, the selected session's project terms, `data_dir/speech/personal.json`) → intent router. Results go back for review only. API keys come only from environment variables named in the config, and HTTP errors drop the URL (Google keys travel in the query string).
-- **Providers (`[remote.provider]`, none by default):** LAN, Tailscale (serve or direct), Cloudflare (quick or named) and custom URLs. The provider's endpoint goes into pairing codes, `vca remote` shows it, and it is torn down at shutdown. LAN and Tailscale direct are refused while `remote.bind` is loopback, so exposure is always an explicit choice. **DNS Pilot is refused** until its API contract is public (no undocumented APIs).
+- **Providers (`[remote.provider]`, none by default):** LAN, Tailscale (serve or direct), Cloudflare (quick or named) and custom URLs. The provider's endpoint goes into pairing codes, `vca remote` shows it, and it is torn down at shutdown. LAN and Tailscale direct are refused while `remote.bind` is loopback, so exposure is always an explicit choice. **DNSPilot is refused** until its API contract is public (no undocumented APIs).
 - **Cloud (`[[cloud.accounts]]`):** `Kind::Cloud` sessions with an `ActivityPoller`. Supported actions: follow-up text, Stop, and the provider capability list. Credentials come from `credential_env` or a file store in `data_dir/cloud/`, written only through the local-only `CloudCredentialSet`/`CloudCredentialDelete` requests (`vca cloud login/logout`). Config rejects secret keys.
 - **Tests:** wiremock only. No real speech, cloud or tunnel service was called, and no `tailscale` or `cloudflared` process was started on this machine.
 - **Not done:**

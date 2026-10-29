@@ -39,7 +39,7 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 - **Multi-agent orchestration** *(coming soon)*. Coordinate several sessions on one task through an optional orchestrator session.
 - **Multiple machines.** Pair your home, office and server machines with one app.
 - **Secure remote access.** Device pairing via QR code, TOTP two-factor authentication, short-lived tokens, end-to-end encryption, audit log and a kill switch.
-- **Your choice of connectivity.** Pluggable providers: Tailscale, Cloudflare Tunnel, direct LAN, or bring your own; DNS Pilot (tunnel or P2P) *coming soon*.
+- **Your choice of connectivity.** Pluggable providers: Tailscale, Cloudflare Tunnel, direct LAN, or bring your own; DNSPilot (tunnel or P2P) *coming soon*.
 - **Pluggable speech-to-text.** Use any OpenAI-compatible server (for example a self-hosted Whisper server), OpenAI or Google Cloud; live dictation streams as you speak.
 - **Account profiles.** Keep several legitimately owned agent accounts or API keys side by side, see usage at a glance, and choose which profile a session uses.
 
@@ -48,7 +48,7 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 ```
 ┌────────────────┐     encrypted tunnel      ┌──────────────────────────────┐
 │  VCA Mobile    │◄─────────────────────────►│  VCA Server (your machine)   │
-│  (Tauri 2)     │   (DNS Pilot / Tailscale  │  ├─ Session manager (PTY)    │
+│  (Tauri 2)     │   (DNSPilot / Tailscale  │  ├─ Session manager (PTY)    │
 │  cards · voice │    / Cloudflare / LAN)    │  ├─ Agent adapters           │
 │  live view     │                           │  ├─ Resource broker          │
 └────────────────┘                           │  ├─ Speech pipeline          │
@@ -68,13 +68,13 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 - [Product requirements](docs/requirements.md)
 - [Architecture](docs/architecture.md)
 - [Development plan](docs/development-plan.md)
-- [DNS Pilot integration requirements](docs/dnspilot-requirements.md)
+- [DNSPilot integration requirements](docs/dnspilot-requirements.md)
 
 ## Supporting the project
 
 Voice Command AI is free and open source, and every feature works without paying anyone. If you want to support its development, you can:
 
-- **Use DNS Pilot as your connectivity provider.** DNS Pilot is developed by the same team that maintains VCA, and its subscriptions help fund VCA's development. It is entirely optional: Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on equal footing.
+- **Consider [DNSPilot](https://dnspilot.kr) for connectivity** once VCA's DNSPilot integration ships (console: [dns.dnspilot.kr](https://dns.dnspilot.kr)). DNSPilot is developed by the same team that maintains VCA; once its paid plans open, subscriptions will help fund VCA's development. It is entirely optional: Tailscale, Cloudflare Tunnel, direct LAN and custom providers are supported on equal footing.
 - **Contribute** code, agent adapters, translations or vocabulary for your language.
 - **Star the repository** and share it with other developers.
 

@@ -22,7 +22,7 @@ Status of the seven M0 proofs of concept from the development plan (§4), what w
 | PoC-2 Existing-terminal injection | **Partial** | tmux works (WSL2, CI). WezTerm, kitty, iTerm2 and Windows console are implemented but unverified. Windows Terminal has no focus-free path. |
 | PoC-3 Agent signals | **Pass** for Claude Code and Codex input. **Partial** for Codex `notify`. | Real Claude Code hooks reached vcad (project-local install). Codex 0.153.4 launched and accepted input. Gemini CLI, Antigravity and Grok use the generic adapter with output heuristics. |
 | PoC-4 Admission control | **Pass** | Live vcad with the real `vca hook claude` CLI and real `cargo build` runs. 1 slot: two agents serialized. 2 slots: the third agent waits for a free slot. |
-| PoC-5 Connectivity | **Pass** for LAN and Tailscale (2 h each, with a server restart). Cloudflare and DNS Pilot not run. | 7199/7199 requests answered per path, reconnect 1.3–1.4 s. See §PoC-5. |
+| PoC-5 Connectivity | **Pass** for LAN and Tailscale (2 h each, with a server restart). Cloudflare and DNSPilot not run. | 7199/7199 requests answered per path, reconnect 1.3–1.4 s. See §PoC-5. |
 | PoC-6 Mobile audio | **Pass on iOS**, Android not built | iPhone push-to-talk → vcad → a self-hosted faster-whisper large-v3-turbo GPU server: Korean transcribed correctly, 9–14 s clips in about 0.3 s. |
 | PoC-7 Cloud APIs | **Not run** | Needs the user's real accounts and spends their quota. Adapters are tested against mock servers only. |
 
@@ -109,7 +109,7 @@ Two slots, three agents:
 
 **Not run**
 - **Cloudflare Tunnel:** a quick tunnel would publish this PC on the internet. That needs an explicit decision by the owner, who can run the same probe against a named tunnel.
-- **DNS Pilot:** its API contract is still unpublished, and undocumented APIs are not used.
+- **DNSPilot:** its API contract is still unpublished, and undocumented APIs are not used.
 
 ## PoC-6 Mobile audio
 
@@ -148,7 +148,7 @@ Not run. `vca-cloud` has adapters for Copilot, Claude Managed Agents, Claude Cod
 6. **Still open:**
    - PoC-7 with real accounts.
    - Android build and microphone permission (PoC-6).
-   - Cloudflare and DNS Pilot runs of PoC-5.
+   - Cloudflare and DNSPilot runs of PoC-5.
 
 ## Estimates
 
