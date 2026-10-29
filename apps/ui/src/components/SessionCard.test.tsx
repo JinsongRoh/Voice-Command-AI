@@ -69,4 +69,21 @@ describe('SessionCard', () => {
     expect(screen.getByText('En ejecución')).toBeInTheDocument();
     expect(screen.getByText('2 sin leer')).toBeInTheDocument();
   });
+
+  it('shows the executable name of a generic agent launched by path', () => {
+    const path = '/Users/x/dev/voice-command-ai/target/debug/vca-fake-agent';
+    renderCard({
+      session: localSession({
+        origin: {
+          type: 'local',
+          agent: { type: 'generic', name: path },
+          project_dir: '/Users/x/dev/demo',
+          pid: 1,
+        },
+      }),
+    });
+    expect(screen.getByText('vca-fake-agent')).toHaveAttribute('title', path);
+    expect(screen.getByRole('img', { name: 'vca-fake-agent' })).toHaveTextContent('VF');
+    expect(screen.queryByText(path)).not.toBeInTheDocument();
+  });
 });

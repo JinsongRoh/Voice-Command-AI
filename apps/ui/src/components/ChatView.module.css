@@ -83,6 +83,53 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+.outgoing .text {
+  margin-top: 0;
+}
+.status {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: end;
+  color: var(--text-muted);
+}
+.outgoing[data-status='failed'] {
+  border-color: var(--danger);
+}
+.outgoing[data-status='failed'] .status {
+  color: var(--danger);
+}
+.output {
+  align-self: flex-start;
+  width: min(100%, 680px);
+  max-width: 100%;
+  background: var(--surface-2);
+}
+.outputText {
+  margin: 4px 0 0;
+  max-height: 50vh;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.hintText {
+  flex: 1 1 12em;
+  min-width: 0;
+}
 .gap {
   padding: 8px 10px;
   border-radius: var(--radius-sm);

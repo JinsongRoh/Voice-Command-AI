@@ -102,6 +102,16 @@
 .error {
   color: var(--danger);
 }
+.info {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+}
+.info svg {
+  flex: none;
+  margin-top: 2px;
+}
 .keys {
   display: flex;
   gap: 6px;

@@ -90,6 +90,14 @@ interface StoreContextValue {
   updateSettings(patch: Partial<Settings>): void;
 }
 
+let promptCounter = 0;
+
+/** Unique id for a locally echoed prompt. */
+function nextPromptId(): string {
+  promptCounter += 1;
+  return `p${promptCounter}`;
+}
+
 const StoreContext = createContext<StoreContextValue | null>(null);
 
 export interface AppProviderProps {
@@ -266,12 +274,27 @@ export function AppProvider({
       setFilter(filter) {
         store.dispatch({ type: 'filter', filter });
       },
-      sendText: (sessionId, text) =>
-        withAck(sessionId, {
-          type: 'send_input',
-          session_id: sessionId,
-          input: { type: 'text', text, submit: true },
-        }),
+      async sendText(sessionId, text) {
+        // Local echo for the chat view: the protocol has no event for user input.
+        const id = nextPromptId();
+        store.dispatch({ type: 'prompt_sent', sessionId, id, text, at: Date.now() });
+        try {
+          await withAck(sessionId, {
+            type: 'send_input',
+            session_id: sessionId,
+            input: { type: 'text', text, submit: true },
+          });
+        } catch (err) {
+          store.dispatch({
+            type: 'prompt_status',
+            sessionId,
+            id,
+            status: 'failed',
+            error: (err as Error).message,
+          });
+          throw err;
+        }
+      },
       sendKey: (sessionId, key) =>
         withAck(sessionId, {
           type: 'send_input',

@@ -138,6 +138,18 @@ export function createServerTranscriber(getClient: () => Client | null): Transcr
   };
 }
 
+/**
+ * Whether a transcription failure means server-side speech recognition is
+ * turned off on that machine (vca-server answers `transcribe` with
+ * `unsupported: server-side transcription is off (set [speech] engine in
+ * config.toml)`). The audio reached the server, so this is not an error the
+ * user caused; the UI shows a neutral notice instead.
+ */
+export function isSpeechDisabledError(err: unknown): boolean {
+  if (!(err instanceof RequestError) || err.code !== 'unsupported') return false;
+  return /transcription is off|\[speech\]/i.test(err.message);
+}
+
 /** Character ranges of correction terms in `text`, for highlighting. */
 export function correctionRanges(
   text: string,

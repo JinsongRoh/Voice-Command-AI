@@ -140,4 +140,38 @@ describe('reducer', () => {
     expect(canSendInput(localSession({ control: 'observe_only' }))).toBe(false);
     expect(canSendInput(localSession({ state: { type: 'exited', code: 0 } }))).toBe(false);
   });
+
+  it('keeps sent prompts with their anchor seq and delivery status', () => {
+    let s = ev(withSessions(), { type: 'output', seq: 4, at: 1, data: enc.encode('hi') });
+    s = reducer(s, { type: 'prompt_sent', sessionId: 's1', id: 'p1', text: 'run', at: 10 });
+    expect(s.sent.s1).toEqual([{ id: 'p1', text: 'run', at: 10, afterSeq: 4, status: 'sending' }]);
+    s = server(s, { type: 'input_ack', session_id: 's1', status: 'delivered' });
+    expect(s.sent.s1?.[0]?.status).toBe('delivered');
+    // Late or duplicate acks never move a prompt back.
+    s = server(s, { type: 'input_ack', session_id: 's1', status: 'queued' });
+    expect(s.sent.s1?.[0]?.status).toBe('delivered');
+    s = server(s, { type: 'input_ack', session_id: 's1', status: 'acknowledged' });
+    expect(s.sent.s1?.[0]?.status).toBe('acknowledged');
+  });
+
+  it('marks a failed prompt and drops prompts of removed sessions', () => {
+    let s = reducer(withSessions(), {
+      type: 'prompt_sent',
+      sessionId: 's2',
+      id: 'p1',
+      text: 'x',
+      at: 1,
+    });
+    expect(s.sent.s2?.[0]?.afterSeq).toBeNull();
+    s = reducer(s, {
+      type: 'prompt_status',
+      sessionId: 's2',
+      id: 'p1',
+      status: 'failed',
+      error: 'boom',
+    });
+    expect(s.sent.s2?.[0]).toMatchObject({ status: 'failed', error: 'boom' });
+    s = server(s, { type: 'session_removed', session_id: 's2' });
+    expect(s.sent.s2).toBeUndefined();
+  });
 });

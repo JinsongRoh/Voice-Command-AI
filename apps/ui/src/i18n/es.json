@@ -51,5 +51,14 @@
   "native.error.rejected": "El servidor rechazó la solicitud.",
   "native.error.already_paired": "Este dispositivo ya está emparejado con esa máquina.",
   "native.error.locked": "Demasiados intentos fallidos. Espera un momento e inténtalo de nuevo.",
-  "native.error.generic": "Algo salió mal: {error}"
+  "native.error.generic": "Algo salió mal: {error}",
+  "chat.sending": "Enviando…",
+  "chat.queued": "En cola",
+  "chat.delivered": "Entregado",
+  "chat.acknowledged": "Visto por el agente",
+  "chat.failed": "No entregado",
+  "chat.agentOutput": "Salida del agente",
+  "chat.noTranscript": "Este agente no tiene transcripción de chat. Sus respuestas se muestran aquí como salida de terminal en texto plano; la pestaña Terminal ofrece la vista completa.",
+  "chat.openTerminal": "Abrir terminal",
+  "composer.speechOff": "La entrada de voz llegó al servidor, pero el reconocimiento de voz está desactivado en esa máquina ([speech] en config.toml)."
 }

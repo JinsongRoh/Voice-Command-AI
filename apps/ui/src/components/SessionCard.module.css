@@ -69,6 +69,12 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+.agent {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 20ch;
+}
 .location {
   overflow: hidden;
   text-overflow: ellipsis;

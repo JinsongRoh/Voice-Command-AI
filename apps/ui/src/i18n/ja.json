@@ -50,5 +50,14 @@
   "native.error.rejected": "サーバーがリクエストを拒否しました。",
   "native.error.already_paired": "このデバイスはすでにそのマシンとペアリングされています。",
   "native.error.locked": "失敗が多すぎます。しばらく待ってからもう一度お試しください。",
-  "native.error.generic": "問題が発生しました: {error}"
+  "native.error.generic": "問題が発生しました: {error}",
+  "chat.sending": "送信中…",
+  "chat.queued": "待機中",
+  "chat.delivered": "配信済み",
+  "chat.acknowledged": "エージェントが確認済み",
+  "chat.failed": "未配信",
+  "chat.agentOutput": "エージェントの出力",
+  "chat.noTranscript": "このエージェントにはチャット記録がありません。応答はここにターミナル出力のテキストとして表示されます。全体はターミナルタブで確認できます。",
+  "chat.openTerminal": "ターミナルを開く",
+  "composer.speechOff": "音声入力はサーバーに届きましたが、そのマシンでは音声認識がオフになっています（config.toml の [speech]）。"
 }

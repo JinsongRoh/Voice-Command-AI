@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { cloudSession, localSession } from '../test/fixtures';
 import { FakeTransport, defaultResponse } from '../test/fakeTransport';
 import { renderWithApp } from '../test/render';
+import { RequestError } from '../state/core';
 import { Composer } from './Composer';
 
 describe('Composer', () => {
@@ -118,6 +119,40 @@ describe('Composer', () => {
       fireEvent.pointerUp(mic, { pointerId: 1 });
     });
     expect(transcribe).not.toHaveBeenCalled();
+  });
+
+  async function talk(error: Error) {
+    const transcribe = vi.fn(async () => {
+      throw error;
+    });
+    renderWithApp(<Composer session={localSession()} />, { speech: { transcribe } });
+    const mic = screen.getByRole('button', { name: 'Hold to talk' });
+    await act(async () => {
+      fireEvent.pointerDown(mic, { pointerId: 1 });
+    });
+    await act(async () => {
+      fireEvent.pointerUp(mic, { pointerId: 1 });
+    });
+    await waitFor(() => expect(transcribe).toHaveBeenCalled());
+  }
+
+  it('shows a neutral notice when speech recognition is off on the server', async () => {
+    await talk(
+      new RequestError(
+        'unsupported',
+        'server-side transcription is off (set [speech] engine in config.toml)',
+      ),
+    );
+    expect(
+      await screen.findByText(/speech recognition is turned off on that machine/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps other transcription failures as errors', async () => {
+    await talk(new RequestError('unavailable', 'speech is shutting down'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('speech is shutting down');
+    expect(screen.queryByText(/turned off on that machine/)).not.toBeInTheDocument();
   });
 
   it('hides terminal keys for cloud sessions and disables input for exited ones', () => {

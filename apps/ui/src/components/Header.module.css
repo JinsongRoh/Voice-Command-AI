@@ -3,11 +3,18 @@
   top: 0;
   z-index: 30;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
-  height: var(--header-h);
-  padding: 0 12px;
-  padding-top: env(safe-area-inset-top);
+  /*
+   * The notch / status bar inset is added on top of the bar height. With
+   * border-box sizing a plain `height: var(--header-h)` let the inset eat the
+   * bar, so its content overflowed onto the screen below (the session detail
+   * header on phones).
+   */
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0
+    max(12px, env(safe-area-inset-left));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }

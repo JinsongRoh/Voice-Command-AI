@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 
 import { useI18n } from '../i18n/context';
-import { isCloud, providerLabel, sessionLocation } from '../protocol/helpers';
+import { hasChatTranscript, isCloud, providerLabel, sessionLocation } from '../protocol/helpers';
 import type { SessionAction, SessionInfo } from '../protocol/types';
 import { useActions, useAppState } from '../state/store';
 import { AgentIcon } from './AgentIcon';
@@ -22,6 +22,7 @@ export function LiveView({ session, onBack }: { session: SessionInfo; onBack?: (
   const actions = useActions();
   const view = useAppState((s) => s.views[session.id]);
   const decision = useAppState((s) => s.decisions[session.id]);
+  const sent = useAppState((s) => s.sent[session.id]);
   const [mode, setMode] = useState<Mode>('chat');
   const [confirmStop, setConfirmStop] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,9 @@ export function LiveView({ session, onBack }: { session: SessionInfo; onBack?: (
           </h2>
           <span className={styles.sub}>
             <StateChip state={session.state} />
-            <span className={styles.location}>{sessionLocation(session)}</span>
+            <span className={styles.location} title={sessionLocation(session)}>
+              {sessionLocation(session)}
+            </span>
             <span className={styles.tier}>{t(`tier.${session.control}`)}</span>
           </span>
         </div>
@@ -152,7 +155,13 @@ export function LiveView({ session, onBack }: { session: SessionInfo; onBack?: (
 
       <div className={styles.content}>
         {effectiveMode === 'chat' ? (
-          <ChatView events={events} gapFrom={view?.gapFrom ?? null} />
+          <ChatView
+            events={events}
+            gapFrom={view?.gapFrom ?? null}
+            sent={sent}
+            outputFallback={!hasChatTranscript(session.origin)}
+            onShowTerminal={() => setMode('terminal')}
+          />
         ) : (
           <Suspense fallback={<p className="muted">…</p>}>
             <TerminalView sessionId={session.id} events={events} />

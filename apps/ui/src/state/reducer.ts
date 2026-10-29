@@ -36,6 +36,28 @@ export interface Delivery {
   error?: string;
 }
 
+/** Status of a prompt sent from this client (`sending`/`failed` are client-side). */
+export type SentStatus = Delivery['status'];
+
+/**
+ * A prompt this client sent to a session, kept locally so the chat view can
+ * echo it (the protocol has no event for user input).
+ */
+export interface SentPrompt {
+  /** Client-generated, unique within the store. */
+  id: string;
+  text: string;
+  /** Client clock (ms) when the prompt was sent. */
+  at: number;
+  /** Highest event seq seen when the prompt was sent: it belongs after that event. */
+  afterSeq: number | null;
+  status: SentStatus;
+  error?: string;
+}
+
+/** Sent prompts kept per session (older ones are dropped). */
+export const MAX_SENT = 100;
+
 export interface Toast {
   id: string;
   category: AlertCategory;
@@ -55,6 +77,8 @@ export interface AppState {
   views: Record<SessionId, SessionView>;
   decisions: Record<SessionId, Decision>;
   delivery: Record<SessionId, Delivery>;
+  /** Prompts sent from this client, per session, oldest first. */
+  sent: Record<SessionId, SentPrompt[]>;
   resources: ResourceSnapshot | null;
   devices: PairedDevice[] | null;
   toasts: Toast[];
@@ -71,6 +95,7 @@ export const initialState: AppState = {
   views: {},
   decisions: {},
   delivery: {},
+  sent: {},
   resources: null,
   devices: null,
   toasts: [],
@@ -84,12 +109,58 @@ export type Action =
   | { type: 'select'; id: SessionId | null }
   | { type: 'filter'; filter: DeckFilter }
   | { type: 'delivery'; sessionId: SessionId; delivery: Delivery }
+  | { type: 'prompt_sent'; sessionId: SessionId; id: string; text: string; at: number }
+  | {
+      type: 'prompt_status';
+      sessionId: SessionId;
+      id: string;
+      status: SentStatus;
+      error?: string;
+    }
   | { type: 'decision_answered'; sessionId: SessionId }
   | { type: 'toast'; toast: Toast }
   | { type: 'dismiss_toast'; id: string }
   | { type: 'error'; message: string | null };
 
 const MAX_TOASTS = 4;
+
+/** Later delivery states never go back to earlier ones (acks may arrive out of order). */
+const STATUS_RANK: Record<SentStatus, number> = {
+  sending: 0,
+  queued: 1,
+  delivered: 2,
+  acknowledged: 3,
+  failed: 4,
+};
+
+function updatePrompt(
+  state: AppState,
+  sessionId: SessionId,
+  pick: (list: SentPrompt[]) => number,
+  status: SentStatus,
+  error?: string,
+): AppState {
+  const list = state.sent[sessionId];
+  if (!list || list.length === 0) return state;
+  const index = pick(list);
+  const prompt = list[index];
+  if (!prompt) return state;
+  // `failed` only replaces client-side `sending`; server acks only move forward.
+  if (
+    status === 'failed'
+      ? prompt.status !== 'sending'
+      : STATUS_RANK[status] <= STATUS_RANK[prompt.status]
+  )
+    return state;
+  const next = [...list];
+  next[index] = { ...prompt, status, ...(error === undefined ? {} : { error }) };
+  return { ...state, sent: { ...state.sent, [sessionId]: next } };
+}
+
+function lastPending(list: SentPrompt[]): number {
+  for (let i = list.length - 1; i >= 0; i--) if (list[i]!.status !== 'failed') return i;
+  return -1;
+}
 const emptyView: SessionView = { events: [], lastSeq: null, gapFrom: null };
 
 function applyEvent(state: AppState, sessionId: SessionId, event: SessionEvent): AppState {
@@ -141,11 +212,14 @@ function removeSession(state: AppState, id: SessionId): AppState {
   delete views[id];
   const decisions = { ...state.decisions };
   delete decisions[id];
+  const sent = { ...state.sent };
+  delete sent[id];
   return {
     ...state,
     sessions,
     views,
     decisions,
+    sent,
     order: state.order.filter((x) => x !== id),
     selectedId: state.selectedId === id ? null : state.selectedId,
   };
@@ -165,11 +239,14 @@ function applyServer(state: AppState, msg: ServerMsg): AppState {
       ];
       const views: Record<SessionId, SessionView> = {};
       for (const id of order) views[id] = state.views[id] ?? emptyView;
+      const sent: Record<SessionId, SentPrompt[]> = {};
+      for (const id of order) if (state.sent[id]) sent[id] = state.sent[id];
       return {
         ...state,
         sessions,
         order,
         views,
+        sent,
         selectedId: state.selectedId && sessions[state.selectedId] ? state.selectedId : null,
       };
     }
@@ -196,11 +273,14 @@ function applyServer(state: AppState, msg: ServerMsg): AppState {
         },
       };
     }
-    case 'input_ack':
-      return {
+    case 'input_ack': {
+      const next = {
         ...state,
         delivery: { ...state.delivery, [msg.session_id]: { status: msg.status, at: Date.now() } },
       };
+      // Acks are not correlated with a prompt; they refer to the latest input.
+      return updatePrompt(next, msg.session_id, lastPending, msg.status);
+    }
     case 'resources':
       return { ...state, resources: msg.snapshot };
     case 'devices':
@@ -230,6 +310,25 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, filter: action.filter };
     case 'delivery':
       return { ...state, delivery: { ...state.delivery, [action.sessionId]: action.delivery } };
+    case 'prompt_sent': {
+      const prompt: SentPrompt = {
+        id: action.id,
+        text: action.text,
+        at: action.at,
+        afterSeq: state.views[action.sessionId]?.lastSeq ?? null,
+        status: 'sending',
+      };
+      const list = [...(state.sent[action.sessionId] ?? []), prompt].slice(-MAX_SENT);
+      return { ...state, sent: { ...state.sent, [action.sessionId]: list } };
+    }
+    case 'prompt_status':
+      return updatePrompt(
+        state,
+        action.sessionId,
+        (list) => list.findIndex((p) => p.id === action.id),
+        action.status,
+        action.error,
+      );
     case 'decision_answered': {
       if (!state.decisions[action.sessionId]) return state;
       const decisions = { ...state.decisions };

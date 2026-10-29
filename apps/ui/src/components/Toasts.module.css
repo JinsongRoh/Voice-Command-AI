@@ -2,7 +2,7 @@
   position: fixed;
   z-index: 40;
   inset-inline: 0;
-  top: calc(var(--header-h) + 8px);
+  top: calc(var(--header-h) + env(safe-area-inset-top) + 8px);
   display: flex;
   justify-content: center;
   pointer-events: none;

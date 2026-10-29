@@ -50,5 +50,14 @@
   "native.error.rejected": "서버가 요청을 거부했습니다.",
   "native.error.already_paired": "이 기기는 이미 해당 머신과 페어링되어 있습니다.",
   "native.error.locked": "실패 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.",
-  "native.error.generic": "문제가 발생했습니다: {error}"
+  "native.error.generic": "문제가 발생했습니다: {error}",
+  "chat.sending": "보내는 중…",
+  "chat.queued": "대기 중",
+  "chat.delivered": "전달됨",
+  "chat.acknowledged": "에이전트가 확인함",
+  "chat.failed": "전달 실패",
+  "chat.agentOutput": "에이전트 출력",
+  "chat.noTranscript": "이 에이전트는 채팅 기록을 제공하지 않습니다. 응답은 여기에 일반 터미널 출력으로 표시되며, 전체 화면은 터미널 탭에서 볼 수 있습니다.",
+  "chat.openTerminal": "터미널 열기",
+  "composer.speechOff": "음성 입력은 서버에 전달되었지만, 해당 컴퓨터에서 음성 인식이 꺼져 있습니다(config.toml의 [speech])."
 }

@@ -226,5 +226,14 @@
   "native.error.rejected": "The server rejected the request.",
   "native.error.already_paired": "This device is already paired with that machine.",
   "native.error.locked": "Too many failed attempts. Wait a moment and try again.",
-  "native.error.generic": "Something went wrong: {error}"
+  "native.error.generic": "Something went wrong: {error}",
+  "chat.sending": "Sending…",
+  "chat.queued": "Queued",
+  "chat.delivered": "Delivered",
+  "chat.acknowledged": "Seen by the agent",
+  "chat.failed": "Not delivered",
+  "chat.agentOutput": "Agent output",
+  "chat.noTranscript": "This agent has no chat transcript. Its replies are shown here as plain terminal output; the Terminal tab has the full view.",
+  "chat.openTerminal": "Open Terminal",
+  "composer.speechOff": "Voice input reached the server, but speech recognition is turned off on that machine ([speech] in config.toml)."
 }

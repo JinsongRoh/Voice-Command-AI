@@ -6,6 +6,7 @@ import {
   isCloud,
   needsAttention,
   originLabel,
+  originTitle,
   providerLabel,
 } from '../protocol/helpers';
 import type { SessionInfo } from '../protocol/types';
@@ -57,7 +58,9 @@ export function SessionCard({ session, preview, selected, index, onSelect }: Ses
               {session.display_name}
             </span>
             <span className={styles.meta} id={detailsId}>
-              <span>{originLabel(session.origin)}</span>
+              <span className={styles.agent} title={originTitle(session.origin)}>
+                {originLabel(session.origin)}
+              </span>
               <span aria-hidden="true">·</span>
               <span
                 className={styles.location}

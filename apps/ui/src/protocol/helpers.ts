@@ -38,9 +38,35 @@ const AGENT_LABELS: Record<Exclude<AgentKind['type'], 'generic'>, string> = {
   qwen_code: 'Qwen Code',
 };
 
+/**
+ * Display name of a generic agent: generic agents are often launched by path
+ * (`/…/target/debug/vca-fake-agent`, `E:\…\tool.exe`), so show the
+ * executable's basename without its extension.
+ */
+export function executableName(command: string): string {
+  const base = folderName(command.trim());
+  const stem = base.replace(/\.(exe|cmd|bat|com|ps1|sh|py|js|mjs|cjs)$/i, '');
+  return stem || base;
+}
+
 /** Product names are not translated. */
 export function agentLabel(agent: AgentKind): string {
-  return agent.type === 'generic' ? agent.name : AGENT_LABELS[agent.type];
+  return agent.type === 'generic' ? executableName(agent.name) : AGENT_LABELS[agent.type];
+}
+
+/** Full agent command or provider id for tooltips (generic agents keep their path). */
+export function originTitle(origin: SessionOrigin): string {
+  if (origin.type === 'local' && origin.agent.type === 'generic') return origin.agent.name;
+  return originLabel(origin);
+}
+
+/**
+ * Whether the server derives chat messages for this origin (Claude Code and
+ * Codex transcripts, cloud provider APIs). Other agents only stream terminal output.
+ */
+export function hasChatTranscript(origin: SessionOrigin): boolean {
+  if (origin.type === 'cloud') return true;
+  return origin.agent.type === 'claude_code' || origin.agent.type === 'codex';
 }
 
 export const LOCAL_AGENT_TYPES = Object.keys(AGENT_LABELS) as Exclude<
@@ -72,7 +98,12 @@ export function originLabel(origin: SessionOrigin): string {
 /** Short monogram used as a brand-neutral agent icon. */
 export function originMonogram(origin: SessionOrigin): string {
   const label = originLabel(origin);
-  const words = label.split(/[\s-]+/).filter(Boolean);
+  // Split on separators and drop punctuation so names like `vca-fake-agent`
+  // or `my_tool` give letters, never a stray `/` or `.`.
+  const words = label
+    .split(/[\s\-_.]+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean);
   const first = words[0] ?? '?';
   if (words.length >= 2) return (first[0]! + words[1]![0]!).toUpperCase();
   return first.slice(0, 2).toUpperCase();

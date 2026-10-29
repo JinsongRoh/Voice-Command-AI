@@ -6,7 +6,7 @@ import { isCloud } from '../protocol/helpers';
 import type { ControlKey, SessionInfo } from '../protocol/types';
 import { useSpeech } from '../speech/context';
 import type { Recorder } from '../speech/recorder';
-import type { TranscriptCorrection } from '../speech/transcribe';
+import { isSpeechDisabledError, type TranscriptCorrection } from '../speech/transcribe';
 import { canSendInput } from '../state/reducer';
 import { useActions, useAppState, useSettings } from '../state/store';
 import { Icon, type IconName } from './Icon';
@@ -45,6 +45,8 @@ export function Composer({ session }: { session: SessionInfo }) {
   const [corrections, setCorrections] = useState<TranscriptCorrection[]>([]);
   const [phase, setPhase] = useState<Phase>('idle');
   const [micError, setMicError] = useState<string | null>(null);
+  /** Neutral information about voice input (not an error the user caused). */
+  const [micNotice, setMicNotice] = useState<string | null>(null);
   const phaseRef = useRef<Phase>('idle');
   const recorderRef = useRef<Recorder | null>(null);
   const startingRef = useRef<Promise<void> | null>(null);
@@ -78,6 +80,7 @@ export function Composer({ session }: { session: SessionInfo }) {
   const startRecording = () => {
     if (phaseRef.current !== 'idle' || !enabled) return;
     setMicError(null);
+    setMicNotice(null);
     setPhaseBoth('recording');
     const recorder = speech.createRecorder();
     recorderRef.current = recorder;
@@ -112,7 +115,8 @@ export function Composer({ session }: { session: SessionInfo }) {
       setText((prev) => (prev.trim() ? `${prev.trimEnd()} ${transcript.text}` : transcript.text));
       setCorrections((prev) => [...prev, ...transcript.corrections]);
     } catch (err) {
-      setMicError((err as Error).message);
+      if (isSpeechDisabledError(err)) setMicNotice(t('composer.speechOff'));
+      else setMicError((err as Error).message);
     } finally {
       setPhaseBoth('idle');
     }
@@ -243,6 +247,12 @@ export function Composer({ session }: { session: SessionInfo }) {
           {micError && (
             <span className={styles.error} role="alert">
               {micError}
+            </span>
+          )}
+          {micNotice && (
+            <span className={styles.info} role="status">
+              <Icon name="info" size={14} />
+              {micNotice}
             </span>
           )}
         </div>
