@@ -24,7 +24,7 @@ CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy --worksp
 | `vca-cloud` | Done | 38 | Cloud adapters. Copilot, Claude Managed Agents, Claude Code routines and Codex cloud were checked against official sources. **Jules, Cursor and Devin field names are unverified** (docs were blocked in the cloud session). |
 | `vca-providers` | Done | 33 | LAN, Tailscale, Cloudflare Tunnel, DNS Pilot (local Agent API, OAuth device flow, `app`-mode tunnels, `boot_id` event tracking) and custom providers. DNS Pilot JSON fields are placeholders in `dnspilot/contract.rs`. |
 | `apps/ui` | Done (protocol sync just finished) | 65 | React + TypeScript shared UI with a mock transport. Verify the "subscribe only to the selected session" change end to end. Tauri shells not created yet. |
-| `vca-server` (`vcad`) | §6 done; remote transport wired (§4 step 3) | 28 (Windows) | Session manager, API, local control channel, hooks with admission, discovery, Job Objects (Windows), `vca-net` remote transport (pairing, TOTP, scopes, revoke, kill switch, audit). Cloud, providers and speech are not wired yet (§4 step 4). |
+| `vca-server` (`vcad`) | §4 steps 3 and 4 done | 63 (Windows) | Session manager, API, local control channel, hooks with admission, discovery, Job Objects (Windows), `vca-net` remote transport (pairing, TOTP, scopes, revoke, kill switch, audit), cloud sessions as cards (`[cloud]`, `vca cloud`), connectivity providers for pairing endpoints (`[remote.provider]`), server-side transcription (`[speech]`, `vca transcribe`). |
 | `vca-cli` (`vca`) | Done | 28 | All §6 commands. Hooks fail open (checked against a missing vcad). |
 
 ## 3. Known issues
@@ -71,6 +71,21 @@ Verified later on the same machine (task 3 session):
   - The trust dialog was not answered, because answering writes to the global `~/.codex/config.toml`.
 - **Remote transport against a live vcad**: `vca remote`, `vca pair` (terminal QR), `vca devices` and `vca kill-switch [--reset]` work; the listener is bound to 127.0.0.1 only.
 - **Linux tests** run in WSL2 Ubuntu 24.04, isolated from Windows processes. They found Windows-only lookup tests running on Linux (fixed).
+
+### 3.5 Task 4: cloud, providers and speech in the server
+
+- **Protocol:** `Transcribe`/`Transcript` (command scope, because server engines spend the owner's speech quota) and `ListCloudProviders`/`CloudProviders` (view scope). The UI types and mock transport mirror them.
+- **Speech (`[speech]`, off by default):** OpenAI-compatible or Google engine → filler clean-up → vocabulary correction (built-in base lexicon embedded at build time, the selected session's project terms, `data_dir/speech/personal.json`) → intent router. Results go back for review only. API keys come only from environment variables named in the config, and HTTP errors drop the URL (Google keys travel in the query string).
+- **Providers (`[remote.provider]`, none by default):** LAN, Tailscale (serve or direct), Cloudflare (quick or named) and custom URLs. The provider's endpoint goes into pairing codes, `vca remote` shows it, and it is torn down at shutdown. LAN and Tailscale direct are refused while `remote.bind` is loopback, so exposure is always an explicit choice. **DNS Pilot is refused** until its API contract is public (no undocumented APIs).
+- **Cloud (`[[cloud.accounts]]`):** `Kind::Cloud` sessions with an `ActivityPoller`. Supported actions: follow-up text, Stop, and the provider capability list. Credentials come from `credential_env` or a file store in `data_dir/cloud/`, written only through the local-only `CloudCredentialSet`/`CloudCredentialDelete` requests (`vca cloud login/logout`). Config rejects secret keys.
+- **Tests:** wiremock only. No real speech, cloud or tunnel service was called, and no `tailscale` or `cloudflared` process was started on this machine.
+- **Not done:**
+  - Learning the personal lexicon from transcript edits (no protocol message yet).
+  - Mapping plan approval to `Input::Choose`.
+  - Persisting cloud sessions across restarts.
+  - Whisper-local engine wiring.
+  - Hidden-input `vca cloud login` on a real terminal.
+  - Owner-only ACL of `data_dir/cloud/` on Windows (inherited from the per-user data directory, not checked).
 
 Still unverified:
 - Codex `notify` installation: it only supports the global config.
