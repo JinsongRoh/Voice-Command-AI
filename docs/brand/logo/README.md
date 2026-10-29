@@ -5,7 +5,7 @@ Based on the [VCA brand definition v1.0](../brand-definition.md).
 | Folder | Contents |
 |---|---|
 | `01_symbol` | The symbol alone (transparent background, 0.20S clear space on every side) |
-| `02_lockups` | Horizontal, vertical and abbreviated (VCA) lockups × 7 color combinations: dark-gradient, light, on-navy-white, on-blue-white, white-transparent, mono-black, mono-navy |
+| `02_lockups` | Horizontal, vertical and abbreviated (VCA) lockups × 7 color combinations: dark-gradient, light, on-navy-white, on-blue-white, white-transparent, mono-black, mono-navy. `horizontal/VCA_logo_horizontal_dark-transparent.svg` is dark-gradient without its navy background, for dark pages (GitHub dark mode) |
 | `03_background_variants` | Background variants 01–06 (1200 × 750) |
 | `04_app_icon` | 1024 master (full square; the OS applies the mask) and a solid version |
 | `04_app_icon/android_adaptive` | Foreground (108 dp canvas, inside the 66 dp safe zone), background and monochrome layers |
