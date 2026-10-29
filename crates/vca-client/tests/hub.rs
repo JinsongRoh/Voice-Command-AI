@@ -45,7 +45,9 @@ fn control_endpoint(dir: &Path) -> PathBuf {
             uuid::Uuid::new_v4().simple()
         ))
     } else {
-        dir.join(format!("control-{}.sock", uuid::Uuid::new_v4().simple()))
+        // Unix socket paths are limited to ~104 bytes (macOS temp dirs are long).
+        let id = uuid::Uuid::new_v4().simple().to_string();
+        dir.join(format!("c{}.sock", &id[..8]))
     }
 }
 
