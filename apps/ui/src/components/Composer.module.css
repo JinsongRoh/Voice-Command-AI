@@ -62,10 +62,40 @@
   font-size: 12px;
   color: var(--st-input);
 }
+/* Target of the command: session first, then agent and project (brand §8). */
+.target {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.targetTo {
+  flex: none;
+  color: var(--text-muted);
+}
+.targetName {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.targetMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .mic {
   flex: none;
@@ -78,26 +108,36 @@
   border: 0;
   background: var(--accent);
   color: var(--accent-text);
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 6px 16px rgb(3 97 247 / 28%),
+    0 1px 3px rgb(16 27 53 / 18%);
   cursor: pointer;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  transition: transform 0.1s;
+  transition:
+    transform 0.12s ease-out,
+    background-color 0.15s;
+}
+.mic:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 .mic:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.recording {
-  background: var(--danger);
-  color: #fff;
-  transform: scale(1.08);
-  animation: ring 1.2s ease-out infinite;
+/* Recording: the voice accent. The symbol's cyan-to-blue gradient with a
+   Deep Navy icon (contrast >= 3:1 across the gradient) and a cyan ring. */
+.recording,
+.recording:hover:not(:disabled) {
+  background: var(--voice-gradient);
+  color: var(--brand-navy);
+  transform: scale(1.06);
+  animation: ring 1.4s ease-out infinite;
 }
 @keyframes ring {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-cyan) 55%, transparent);
   }
   100% {
     box-shadow: 0 0 0 16px transparent;
@@ -114,33 +154,21 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
+  gap: var(--space-2);
+  font-weight: var(--fw-semibold);
 }
+/* Recording indicator: five-stroke waveform + timer. */
 .live {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--danger);
-}
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--danger);
-  animation: pulse 1s ease-in-out infinite alternate;
-}
-@keyframes pulse {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0.35;
-    transform: scale(0.75);
-  }
+  gap: var(--space-2);
+  padding: 2px 10px 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .timer {
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
 }
 .cancel {
@@ -161,9 +189,9 @@
   color: var(--danger);
 }
 @media (prefers-reduced-motion: reduce) {
-  .dot,
   .recording {
     animation: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 45%, transparent);
   }
 }
 .delivery {
@@ -171,7 +199,7 @@
 }
 .delivery[data-status='delivered'],
 .delivery[data-status='acknowledged'] {
-  color: var(--st-running);
+  color: var(--st-done);
 }
 .delivery[data-status='queued'] {
   color: var(--st-input);

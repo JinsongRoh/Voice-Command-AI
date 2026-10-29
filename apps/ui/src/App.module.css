@@ -52,11 +52,11 @@
   background: transparent;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 .navItem[aria-current='page'] {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .navIcon {
   position: relative;

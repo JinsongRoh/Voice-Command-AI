@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEve
 
 import { useI18n } from '../i18n/context';
 import type { MessageKey } from '../i18n/i18n';
-import { isCloud } from '../protocol/helpers';
+import { folderName, isCloud, originLabel, providerLabel } from '../protocol/helpers';
 import type { ControlKey, SessionInfo } from '../protocol/types';
 import { useSpeech } from '../speech/context';
 import {
@@ -19,6 +19,7 @@ import { useActions, useAppState, useSettings } from '../state/store';
 import { Icon, type IconName } from './Icon';
 import { OriginalTranscript } from './OriginalTranscript';
 import { TranscriptEditor } from './TranscriptEditor';
+import { VoiceWave } from './VoiceWave';
 import styles from './Composer.module.css';
 
 type Phase = 'idle' | 'recording' | 'transcribing';
@@ -89,6 +90,8 @@ export function Composer({ session }: { session: SessionInfo }) {
   const [expanded, setExpanded] = useState(false);
   /** The last completed dictation, for the "Original" view. */
   const [lastRun, setLastRun] = useState<LastRun | null>(null);
+  /** Bumped on every successful send to play the converging motion once. */
+  const [sentPulse, setSentPulse] = useState(0);
   const phaseRef = useRef<Phase>('idle');
   const recorderRef = useRef<Recorder | null>(null);
   const startingRef = useRef<Promise<void> | null>(null);
@@ -317,6 +320,7 @@ export function Composer({ session }: { session: SessionInfo }) {
     if (!value || !enabled || phaseRef.current !== 'idle') return;
     try {
       await actions.sendText(session.id, value);
+      setSentPulse((n) => n + 1);
       setText('');
       setCorrections([]);
       setLastRun(null);
@@ -375,6 +379,11 @@ export function Composer({ session }: { session: SessionInfo }) {
     setLastRun(null);
   };
 
+  const location =
+    session.origin.type === 'local'
+      ? folderName(session.origin.project_dir)
+      : providerLabel(session.origin.provider);
+
   const describedBy = [corrections.length ? correctionsId : '', statusId].filter(Boolean).join(' ');
 
   return (
@@ -415,6 +424,16 @@ export function Composer({ session }: { session: SessionInfo }) {
       <label htmlFor={inputId} className="visually-hidden">
         {t('composer.label', { name: session.display_name })}
       </label>
+      {/* Brand promise: the target session and project are visible before sending. */}
+      <p className={styles.target}>
+        <span className={styles.targetTo}>{t('composer.to')}</span>{' '}
+        <span className={styles.targetName}>{session.display_name}</span>{' '}
+        <span className={styles.targetMeta}>
+          {originLabel(session.origin)}
+          <span aria-hidden="true"> · </span>
+          {location}
+        </span>
+      </p>
       <TranscriptEditor
         id={inputId}
         value={text}
@@ -460,11 +479,14 @@ export function Composer({ session }: { session: SessionInfo }) {
           <span className={styles.phase}>
             {phase === 'recording' && (
               <span className={styles.live}>
-                <span className={styles.dot} aria-hidden="true" />
+                <VoiceWave mode="live" />
                 <span role="timer" aria-label={t('composer.elapsed')} className={styles.timer}>
                   {formatElapsed(elapsedMs)}
                 </span>
               </span>
+            )}
+            {phase === 'idle' && sentPulse > 0 && (
+              <VoiceWave key={sentPulse} mode="converge" onDone={() => setSentPulse(0)} />
             )}
             {micLabel}
           </span>

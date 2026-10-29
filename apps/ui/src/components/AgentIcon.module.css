@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  font-weight: 800;
+  font-weight: var(--fw-semibold);
   font-size: 14px;
   letter-spacing: 0.02em;
   color: hsl(var(--hue) 70% 22%);

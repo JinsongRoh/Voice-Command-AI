@@ -20,7 +20,7 @@
   stroke: var(--surface-2);
 }
 .bar {
-  stroke: var(--st-running);
+  stroke: var(--st-done);
   transition: stroke-dasharray 0.4s ease;
 }
 .gauge[data-level='mid'] .bar {
@@ -32,7 +32,7 @@
 .value {
   fill: var(--text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: var(--fw-medium);
 }
 .caption {
   display: flex;
@@ -41,7 +41,7 @@
   text-align: center;
 }
 .label {
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
 }
 .detail {
   font-size: 12px;

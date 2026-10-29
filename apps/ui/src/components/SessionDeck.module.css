@@ -16,7 +16,7 @@
 }
 .attention {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--fw-medium);
   color: var(--st-decision);
 }
 .list {

@@ -8,14 +8,14 @@
 }
 .title {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--st-decision);
 }
 .prompt {
   margin: 6px 0;
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
 }
 .detail {
   margin: 0 0 8px;

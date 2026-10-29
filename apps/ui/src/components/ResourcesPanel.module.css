@@ -39,7 +39,7 @@
 }
 .usageName {
   grid-area: name;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -101,7 +101,7 @@
   border-radius: 50%;
   background: var(--surface-2);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: var(--fw-semibold);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,15 +130,15 @@
 .cls {
   padding: 0 6px;
   border-radius: 4px;
-  font-weight: 700;
+  font-weight: var(--fw-medium);
 }
 .heavy {
   color: var(--st-error);
   background: var(--st-error-bg);
 }
 .light {
-  color: var(--st-running);
-  background: var(--st-running-bg);
+  color: var(--st-done);
+  background: var(--st-done-bg);
 }
 .jobActions {
   display: flex;

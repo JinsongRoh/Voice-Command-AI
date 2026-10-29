@@ -68,4 +68,45 @@ describe('App (with MockTransport)', () => {
     expect(await screen.findByTestId('session-card-bs-codex-mono')).toBeInTheDocument();
     expect(screen.queryByTestId('session-card-wk-claude-api')).not.toBeInTheDocument();
   });
+
+  it('shows the brand lockup in the header with the machine and connection state', async () => {
+    renderApp();
+    await screen.findByTestId('session-card-wk-claude-api');
+    const banner = screen.getByRole('banner');
+    const heading = within(banner).getByRole('heading', { level: 1, name: 'Voice Command AI' });
+    // Horizontal lockup (wide) and the symbol alone (narrow), both decorative.
+    const lockup = heading.querySelector('svg[data-logo="horizontal"]');
+    const symbol = heading.querySelector('svg[data-logo="symbol"]');
+    expect(lockup).toHaveAttribute('aria-hidden', 'true');
+    expect(lockup?.querySelectorAll('[data-part="symbol"] path')).toHaveLength(5);
+    expect(lockup?.querySelector('[data-part="wordmark"]')).not.toBeNull();
+    expect(symbol?.querySelector('[data-part="wordmark"]')).toBeNull();
+    // The old text badge is gone.
+    expect(within(banner).queryByText('VCA')).not.toBeInTheDocument();
+    expect(within(banner).getByRole('combobox', { name: 'Machine' })).toHaveValue('m1');
+    expect(within(banner).getByRole('status')).toHaveTextContent(/Connect/);
+  });
+});
+
+describe('App setup (no machine paired)', () => {
+  it('shows the brand hero with the slogan on the pairing screen', () => {
+    render(
+      <App
+        machines={[]}
+        speech={{
+          transcribe: async () => ({ text: '', corrections: [] }),
+          createRecorder: () => ({
+            start: async () => {},
+            stop: async () => new Blob(),
+            cancel: () => {},
+          }),
+          fallbackWithoutMic: false,
+        }}
+        settings={{ ...defaultSettings(), language: 'ko' }}
+      />,
+    );
+    const logo = screen.getByRole('img', { name: 'Voice Command AI' });
+    expect(logo).toHaveAttribute('data-logo', 'vertical');
+    expect(screen.getByText('말로 지휘하고, 흐름을 관리하다.')).toBeInTheDocument();
+  });
 });

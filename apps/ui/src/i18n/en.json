@@ -258,5 +258,7 @@
   "correction.layer.context": "Context (AI)",
   "live.viewFailed": "This view could not be shown: {error}",
   "live.backToChat": "Back to chat",
-  "live.retry": "Retry"
+  "live.retry": "Retry",
+  "brand.slogan": "Your voice. Every agent. One command center.",
+  "composer.to": "To"
 }

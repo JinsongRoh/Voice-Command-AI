@@ -27,15 +27,20 @@ export default function TerminalView({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const rootStyle = getComputedStyle(document.documentElement);
+    const cssVar = (name: string) => rootStyle.getPropertyValue(name).trim();
+    const fontFamily = cssVar('--mono') || 'monospace';
     const term = new Terminal({
       disableStdin: true,
       cursorBlink: false,
       convertEol: false,
-      fontFamily:
-        getComputedStyle(document.documentElement).getPropertyValue('--mono') || 'monospace',
+      fontFamily,
       fontSize: 13,
       scrollback: 5000,
-      theme: { background: '#10141a', foreground: '#e6e9ee' },
+      theme: {
+        background: cssVar('--term-bg') || '#0b1430',
+        foreground: cssVar('--term-fg') || '#e6ebf5',
+      },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -48,11 +53,24 @@ export default function TerminalView({
       }
     };
     refit();
+    // xterm caches the cell size: measure again once the bundled JetBrains
+    // Mono has loaded (it is fetched lazily, on first use).
+    let disposed = false;
+    document.fonts
+      ?.load(`13px ${fontFamily}`)
+      .then(() => {
+        if (disposed) return;
+        term.options.fontFamily = 'monospace';
+        term.options.fontFamily = fontFamily;
+        refit();
+      })
+      .catch(() => {});
     const observer = new ResizeObserver(refit);
     observer.observe(host);
     termRef.current = term;
     writtenSeq.current = -1;
     return () => {
+      disposed = true;
       observer.disconnect();
       term.dispose();
       termRef.current = null;

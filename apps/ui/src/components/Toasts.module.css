@@ -46,7 +46,7 @@
   border-inline-start-color: var(--st-error);
 }
 .completed {
-  border-inline-start-color: var(--st-running);
+  border-inline-start-color: var(--st-done);
 }
 .text {
   display: flex;

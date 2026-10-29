@@ -5,7 +5,7 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   /*
    * The notch / status bar inset is added on top of the bar height. With
    * border-box sizing a plain `height: var(--header-h)` let the inset eat the
@@ -13,70 +13,104 @@
    * header on phones).
    */
   height: calc(var(--header-h) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0
-    max(12px, env(safe-area-inset-left));
+  padding: env(safe-area-inset-top) max(var(--space-3), env(safe-area-inset-right)) 0
+    max(var(--space-2), env(safe-area-inset-left));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+
+/* Logo. The lockup's viewBox carries the 0.20S clear space, so no extra
+   padding is added; the height keeps the symbol above the 24 px minimum. */
 .brand {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 8px;
   margin-inline-end: auto;
-  font-size: 16px;
   min-width: 0;
+  line-height: 0;
 }
-.logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 6px;
-  border-radius: 6px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+.lockup,
+.symbol {
+  display: block;
+  flex: none;
+  height: 40px;
+  width: auto;
 }
-.brandText {
+.lockup {
   display: none;
+  /* 4498 × 1073: fixed ratio, never stretched. */
+  aspect-ratio: 4498 / 1073;
+}
+.symbol {
+  aspect-ratio: 1178 / 1073;
 }
 @media (min-width: 640px) {
-  .brandText {
-    display: inline;
+  .lockup {
+    display: block;
+  }
+  .symbol {
+    display: none;
+  }
+}
+@media (min-width: 900px) {
+  .lockup {
+    height: 44px;
+  }
+}
+
+/* Machine and connection state, next to the logo. */
+.context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .context {
+    padding-inline-start: var(--space-3);
+    border-inline-start: 1px solid var(--border);
   }
 }
 .machine {
   min-height: 36px;
   max-width: 44vw;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  font-weight: 600;
+  font-weight: var(--fw-medium);
 }
 .conn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 28px;
+  padding: 0 var(--space-1);
   font-size: 12px;
+  font-weight: var(--fw-medium);
   color: var(--text-muted);
+  white-space: nowrap;
 }
 .dot {
-  width: 10px;
-  height: 10px;
+  flex: none;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--st-idle);
+  box-shadow: 0 0 0 3px var(--st-idle-bg);
 }
 .conn[data-state='connected'] .dot {
-  background: var(--st-running);
+  background: var(--st-done);
+  box-shadow: 0 0 0 3px var(--st-done-bg);
 }
 .conn[data-state='connecting'] .dot,
 .conn[data-state='reconnecting'] .dot {
   background: var(--st-input);
+  box-shadow: 0 0 0 3px var(--st-input-bg);
 }
 .conn[data-state='disconnected'] .dot {
   background: var(--st-error);
+  box-shadow: 0 0 0 3px var(--st-error-bg);
 }
 .connText {
   position: absolute;
@@ -86,6 +120,11 @@
   clip: rect(0 0 0 0);
 }
 @media (min-width: 480px) {
+  .conn {
+    padding: 0 10px 0 var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+  }
   .connText {
     position: static;
     width: auto;

@@ -82,5 +82,7 @@
   "correction.layer.context": "文脈 (AI)",
   "live.viewFailed": "この画面を表示できませんでした: {error}",
   "live.backToChat": "チャットに戻る",
-  "live.retry": "再試行"
+  "live.retry": "再試行",
+  "brand.slogan": "声で指揮し、流れを管理する。",
+  "composer.to": "送信先"
 }

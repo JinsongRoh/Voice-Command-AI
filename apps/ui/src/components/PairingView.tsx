@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useI18n } from '../i18n/context';
 import { useNative, type NativeServices } from '../native/context';
 import { describeNativeError } from '../native/errors';
+import { BrandLogo } from './BrandLogo';
 import { Icon } from './Icon';
 import { isPairingUri } from '../native/pairLinks';
 import styles from './PairingView.module.css';
@@ -31,10 +32,31 @@ export function PairingView({
   intro?: string;
 }) {
   const native = useNative();
-  return native ? (
-    <NativePairing native={native} onPaired={onPaired} intro={intro} />
-  ) : (
-    <PairingPlaceholder intro={intro} />
+  return (
+    <div className={styles.screen}>
+      <PairingHero />
+      {native ? (
+        <NativePairing native={native} onPaired={onPaired} intro={intro} />
+      ) : (
+        <PairingPlaceholder intro={intro} />
+      )}
+    </div>
+  );
+}
+
+/** Brand hero: the vertical lockup with the slogan. */
+function PairingHero() {
+  const { t } = useI18n();
+  return (
+    <div className={styles.hero}>
+      <BrandLogo
+        variant="vertical"
+        tone="gradient"
+        title={t('app.title')}
+        className={styles.heroLogo}
+      />
+      <p className={styles.slogan}>{t('brand.slogan')}</p>
+    </div>
   );
 }
 

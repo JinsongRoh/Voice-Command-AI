@@ -82,5 +82,7 @@
   "correction.layer.context": "문맥 (AI)",
   "live.viewFailed": "이 화면을 표시하지 못했습니다: {error}",
   "live.backToChat": "채팅으로 돌아가기",
-  "live.retry": "다시 시도"
+  "live.retry": "다시 시도",
+  "brand.slogan": "말로 지휘하고, 흐름을 관리하다.",
+  "composer.to": "대상"
 }

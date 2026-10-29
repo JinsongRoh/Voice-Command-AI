@@ -30,7 +30,7 @@
 }
 .dl dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 .devices {
   margin: 0 0 10px;
@@ -56,8 +56,8 @@
   padding: 0 6px;
   border-radius: 4px;
   font-size: 11px;
-  color: var(--st-running);
-  background: var(--st-running-bg);
+  color: var(--st-done);
+  background: var(--st-done-bg);
 }
 .error {
   margin: 0;

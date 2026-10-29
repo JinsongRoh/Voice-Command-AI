@@ -83,5 +83,7 @@
   "correction.layer.context": "Contexto (IA)",
   "live.viewFailed": "No se pudo mostrar esta vista: {error}",
   "live.backToChat": "Volver al chat",
-  "live.retry": "Reintentar"
+  "live.retry": "Reintentar",
+  "brand.slogan": "Tu voz. Todos los agentes. Un solo centro de mando.",
+  "composer.to": "Para"
 }

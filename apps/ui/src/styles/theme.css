@@ -1,118 +1,204 @@
-/* Design tokens, base styles and a few shared primitives.
-   Colors are chosen for WCAG AA contrast (4.5:1 text, 3:1 UI) in both themes. */
+/*
+ * Design tokens, base styles and a few shared primitives.
+ *
+ * Brand palette (docs/brand/brand-definition.md §5): Command Blue, Deep Navy,
+ * Voice Cyan, Cloud White, plus Light Blue from the logo package. Keep roughly
+ * 80% navy/white surfaces, 15% blue (actions, links, focus) and 5% cyan
+ * (waveform and voice-input accents only; never text).
+ *
+ * Every text/background pair below meets WCAG AA (4.5:1 for text, 3:1 for
+ * control borders and focus rings) in both themes.
+ *
+ * State colors (§8, HEX not fixed by the brand): running = blue, done = green,
+ * input needed = amber, error / emergency stop = red. Color is always paired
+ * with a text label or an icon, and the logo is never recolored by state.
+ */
 
 :root {
-  color-scheme: light;
-  --bg: #f4f6f9;
-  --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --text: #14171c;
-  --text-muted: #4a5361;
-  --border: #cfd5de;
-  --border-strong: #8a94a3;
-  --accent: #2250d0;
-  --accent-text: #ffffff;
-  --accent-soft: #e3eaff;
-  --focus: #2250d0;
-  --danger: #b42318;
-  --danger-soft: #fde8e6;
+  /* Brand constants (theme independent). */
+  --brand-blue: #0361f7;
+  --brand-navy: #101b35;
+  --brand-cyan: #00cfe8;
+  --brand-cloud: #f5f7fb;
+  --brand-light-blue: #dce6f7;
+  /* Voice accent: the symbol's gradient, top cyan to bottom blue. */
+  --voice-gradient: linear-gradient(180deg, var(--brand-cyan) 0%, var(--brand-blue) 100%);
 
-  --st-running: #11703a;
-  --st-running-bg: #e1f5e8;
-  --st-idle: #4a5361;
-  --st-idle-bg: #eceff3;
-  --st-input: #8a4b00;
-  --st-input-bg: #fff1d6;
-  --st-decision: #6a2bbd;
-  --st-decision-bg: #f1e8ff;
-  --st-error: #b42318;
-  --st-error-bg: #fde8e6;
-  --st-paused: #3e4a5c;
-  --st-paused-bg: #e3e8ef;
-  --st-starting: #1d55b8;
-  --st-starting-bg: #e3edff;
+  /* Spacing scale (4 px base). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
 
-  --term-bg: #10141a;
-  --term-fg: #e6e9ee;
-
-  --radius: 12px;
+  /* Radii. */
+  --radius-xs: 6px;
   --radius-sm: 8px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
-  --shadow-lg: 0 12px 32px rgb(16 24 40 / 18%);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Type. Inter for Latin, Pretendard for Hangul, platform fonts for Japanese. */
   --font:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans JP', 'Noto Sans KR',
-    sans-serif;
-  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+    'Inter Variable', 'Pretendard', system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo',
+    'Malgun Gothic', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo,
+    'Noto Sans KR', 'Noto Sans JP', Roboto, 'Noto Sans', sans-serif;
+  /* Read by the xterm terminal (TerminalView), so keep it a plain font stack. */
+  --mono:
+    'JetBrains Mono Variable', ui-monospace, 'SF Mono', 'Cascadia Mono', 'Cascadia Code', Menlo,
+    Consolas, 'D2Coding', monospace;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
   --header-h: 56px;
   --nav-h: 60px;
+
+  /* ---- Light theme (Cloud White based) ---- */
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f9;
+  --text: #101b35;
+  --text-muted: #4a5674;
+  --border: #d5ddea;
+  --border-strong: #7a86a1;
+  /* Fill color of primary actions (white text on it: 5.2:1). */
+  --accent: #0361f7;
+  --accent-hover: #0250d4;
+  --accent-text: #ffffff;
+  /* Blue used as text or a thin line on surfaces (links, current nav item). */
+  --accent-ink: #0257e0;
+  --accent-soft: #dce6f7;
+  --focus: #0361f7;
+  --danger: #c4232f;
+  --danger-text: #ffffff;
+  --danger-soft: #fdebec;
+
+  /* Session / connection states. */
+  --st-running: #0250d4;
+  --st-running-bg: #e2ebfd;
+  --st-starting: #0250d4;
+  --st-starting-bg: #eef3fe;
+  --st-done: #0b7343;
+  --st-done-bg: #e0f3e9;
+  --st-input: #8a5100;
+  --st-input-bg: #fff0d2;
+  /* A decision is input needed too: amber, told apart by its label and icon. */
+  --st-decision: #8a5100;
+  --st-decision-bg: #fff0d2;
+  --st-error: #be1f2c;
+  --st-error-bg: #fde8ea;
+  --st-idle: #4a5674;
+  --st-idle-bg: #e8ecf4;
+  --st-paused: #3f4b68;
+  --st-paused-bg: #e1e7f1;
+
+  /* Terminal is always dark (navy), in both themes. */
+  --term-bg: #0b1430;
+  --term-fg: #e6ebf5;
+
+  /* Logo variants: light = single-color blue symbol + navy wordmark. */
+  --logo-grad-top: var(--brand-blue);
+  --logo-grad-bottom: var(--brand-blue);
+  --logo-wordmark: var(--brand-navy);
+
+  /* Elevation, tinted with Deep Navy. */
+  --shadow-sm: 0 1px 2px rgb(16 27 53 / 6%);
+  --shadow: 0 1px 2px rgb(16 27 53 / 6%), 0 2px 6px rgb(16 27 53 / 8%);
+  --shadow-lg: 0 12px 32px rgb(16 27 53 / 16%), 0 2px 6px rgb(16 27 53 / 8%);
 }
 
+/* ---- Dark theme (Deep Navy based) ----
+   Declared twice: for "system" when the OS prefers dark, and for an explicit
+   dark choice. Keep both blocks identical. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #0e1116;
-    --surface: #171b22;
-    --surface-2: #1f252e;
-    --text: #e8ebf0;
-    --text-muted: #a5aebb;
-    --border: #2d3440;
-    --border-strong: #6b7584;
-    --accent: #86a8ff;
-    --accent-text: #0b1020;
-    --accent-soft: #1c2848;
-    --focus: #9db8ff;
-    --danger: #ff8a7f;
-    --danger-soft: #3a1714;
-    --st-running: #6ee39a;
-    --st-running-bg: #133222;
-    --st-idle: #b4bcc8;
-    --st-idle-bg: #262c35;
-    --st-input: #ffc46b;
-    --st-input-bg: #3a2a0d;
-    --st-decision: #c9a6ff;
-    --st-decision-bg: #2c1d47;
-    --st-error: #ff8a7f;
-    --st-error-bg: #3a1714;
-    --st-paused: #c0c9d6;
-    --st-paused-bg: #29303b;
-    --st-starting: #8fb4ff;
-    --st-starting-bg: #172645;
-    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-    --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+    --bg: #101b35;
+    --surface: #16223f;
+    --surface-2: #1e2c4d;
+    --text: #f5f7fb;
+    --text-muted: #a9b5cd;
+    --border: #2c3c61;
+    --border-strong: #6d7ea5;
+    --accent: #0361f7;
+    --accent-hover: #0250d4;
+    --accent-text: #ffffff;
+    --accent-ink: #7eabff;
+    --accent-soft: #1b3266;
+    --focus: #4c8dff;
+    --danger: #ff7f89;
+    --danger-text: #101b35;
+    --danger-soft: #3e1a26;
+    --st-running: #8ab4ff;
+    --st-running-bg: #172e62;
+    --st-starting: #8ab4ff;
+    --st-starting-bg: #1a2a52;
+    --st-done: #5dd49b;
+    --st-done-bg: #0f3530;
+    --st-input: #ffc56e;
+    --st-input-bg: #3b2d16;
+    --st-decision: #ffc56e;
+    --st-decision-bg: #3b2d16;
+    --st-error: #ff8a93;
+    --st-error-bg: #40192a;
+    --st-idle: #b3bed4;
+    --st-idle-bg: #24314f;
+    --st-paused: #c2cbdd;
+    --st-paused-bg: #28365a;
+    --logo-grad-top: var(--brand-cyan);
+    --logo-grad-bottom: var(--brand-blue);
+    --logo-wordmark: #ffffff;
+    --shadow-sm: 0 1px 2px rgb(3 8 20 / 40%);
+    --shadow: 0 1px 2px rgb(3 8 20 / 40%), 0 2px 8px rgb(3 8 20 / 30%);
+    --shadow-lg: 0 16px 40px rgb(3 8 20 / 60%), 0 2px 8px rgb(3 8 20 / 40%);
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0e1116;
-  --surface: #171b22;
-  --surface-2: #1f252e;
-  --text: #e8ebf0;
-  --text-muted: #a5aebb;
-  --border: #2d3440;
-  --border-strong: #6b7584;
-  --accent: #86a8ff;
-  --accent-text: #0b1020;
-  --accent-soft: #1c2848;
-  --focus: #9db8ff;
-  --danger: #ff8a7f;
-  --danger-soft: #3a1714;
-  --st-running: #6ee39a;
-  --st-running-bg: #133222;
-  --st-idle: #b4bcc8;
-  --st-idle-bg: #262c35;
-  --st-input: #ffc46b;
-  --st-input-bg: #3a2a0d;
-  --st-decision: #c9a6ff;
-  --st-decision-bg: #2c1d47;
-  --st-error: #ff8a7f;
-  --st-error-bg: #3a1714;
-  --st-paused: #c0c9d6;
-  --st-paused-bg: #29303b;
-  --st-starting: #8fb4ff;
-  --st-starting-bg: #172645;
-  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+  --bg: #101b35;
+  --surface: #16223f;
+  --surface-2: #1e2c4d;
+  --text: #f5f7fb;
+  --text-muted: #a9b5cd;
+  --border: #2c3c61;
+  --border-strong: #6d7ea5;
+  --accent: #0361f7;
+  --accent-hover: #0250d4;
+  --accent-text: #ffffff;
+  --accent-ink: #7eabff;
+  --accent-soft: #1b3266;
+  --focus: #4c8dff;
+  --danger: #ff7f89;
+  --danger-text: #101b35;
+  --danger-soft: #3e1a26;
+  --st-running: #8ab4ff;
+  --st-running-bg: #172e62;
+  --st-starting: #8ab4ff;
+  --st-starting-bg: #1a2a52;
+  --st-done: #5dd49b;
+  --st-done-bg: #0f3530;
+  --st-input: #ffc56e;
+  --st-input-bg: #3b2d16;
+  --st-decision: #ffc56e;
+  --st-decision-bg: #3b2d16;
+  --st-error: #ff8a93;
+  --st-error-bg: #40192a;
+  --st-idle: #b3bed4;
+  --st-idle-bg: #24314f;
+  --st-paused: #c2cbdd;
+  --st-paused-bg: #28365a;
+  --logo-grad-top: var(--brand-cyan);
+  --logo-grad-bottom: var(--brand-blue);
+  --logo-wordmark: #ffffff;
+  --shadow-sm: 0 1px 2px rgb(3 8 20 / 40%);
+  --shadow: 0 1px 2px rgb(3 8 20 / 40%), 0 2px 8px rgb(3 8 20 / 30%);
+  --shadow-lg: 0 16px 40px rgb(3 8 20 / 60%), 0 2px 8px rgb(3 8 20 / 40%);
 }
 
 *,
@@ -133,8 +219,11 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
-  line-height: 1.45;
+  font-weight: var(--fw-regular);
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss03';
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -149,17 +238,32 @@ textarea {
 h1,
 h2,
 h3 {
-  line-height: 1.2;
+  line-height: 1.25;
   margin: 0;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--mono);
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-ink);
+  text-underline-offset: 2px;
 }
 
+/* Focus ring in Command Blue (a lighter tint on navy keeps 3:1). */
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-blue) 28%, transparent);
 }
 
 .visually-hidden {
@@ -200,9 +304,13 @@ a {
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .btn:hover:not(:disabled) {
   background: var(--surface-2);
@@ -215,23 +323,16 @@ a {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
+  box-shadow: 0 1px 2px rgb(3 97 247 / 24%);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(1.08);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
-}
-:root[data-theme='dark'] .btn-danger {
-  color: #1a0705;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn-danger {
-    color: #1a0705;
-  }
+  color: var(--danger-text);
 }
 .btn-ghost {
   border-color: transparent;
@@ -268,7 +369,7 @@ a {
   flex-wrap: wrap;
   gap: 4px;
   padding: 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
@@ -276,10 +377,10 @@ a {
   min-height: 32px;
   padding: 0 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 13px;
   cursor: pointer;
 }
@@ -299,7 +400,7 @@ a {
 }
 .field > label,
 .field > .label {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   font-size: 14px;
 }
 .field input[type='text'],
@@ -331,19 +432,12 @@ a {
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--danger);
-  color: #fff;
+  color: var(--danger-text);
   font-size: 12px;
-  font-weight: 700;
-}
-:root[data-theme='dark'] .badge {
-  color: #1a0705;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .badge {
-    color: #1a0705;
-  }
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
 .panel {

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cloudSession, localSession } from '../test/fixtures';
 import { FakeTransport, defaultResponse } from '../test/fakeTransport';
 import { renderWithApp } from '../test/render';
+import { originLabel } from '../protocol/helpers';
 import { RequestError } from '../state/core';
 import type { Transcript } from '../speech/transcribe';
 import { Composer } from './Composer';
@@ -62,6 +63,17 @@ describe('Composer', () => {
     );
     expect(await screen.findByText('Delivered')).toBeInTheDocument();
     expect(input).toHaveValue('');
+    // Sending plays the converging waveform once.
+    expect(screen.getByTestId('voice-wave')).toHaveAttribute('data-mode', 'converge');
+    await waitFor(() => expect(screen.queryByTestId('voice-wave')).not.toBeInTheDocument());
+  });
+
+  it('shows the target session, agent and project before sending', () => {
+    renderWithApp(<Composer session={localSession({ display_name: 'Checkout fix' })} />);
+    const target = screen.getByText('To').parentElement!;
+    expect(target).toHaveTextContent(
+      `To Checkout fix ${originLabel(localSession().origin)} · payments-api`,
+    );
   });
 
   it('shows queued delivery', async () => {
@@ -283,6 +295,8 @@ describe('Composer', () => {
       expect(mic).toHaveAccessibleName('Dictating… tap to stop');
       expect(mic).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByRole('timer', { name: 'Recording time' })).toHaveTextContent('00:00');
+      // The five-stroke waveform replaces the old pulsing dot.
+      expect(screen.getByTestId('voice-wave')).toHaveAttribute('data-mode', 'live');
       expect(screen.getByRole('button', { name: 'Cancel recording' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
 
@@ -301,6 +315,7 @@ describe('Composer', () => {
       );
       expect(mic).toHaveAccessibleName('Tap to dictate');
       expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('voice-wave')).not.toBeInTheDocument();
       // Still editable after stop.
       await userEvent.type(input, '!');
       expect(input).toHaveValue('Please commit the changes!');
