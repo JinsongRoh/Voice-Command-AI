@@ -3393,6 +3393,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "vca-client"
+version = "0.1.0"
+dependencies = [
+ "data-encoding",
+ "rmp-serde",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "uuid",
+ "vca-broker",
+ "vca-core",
+ "vca-net",
+ "vca-server",
+ "zeroize",
+]
+
+[[package]]
 name = "vca-cloud"
 version = "0.1.0"
 dependencies = [

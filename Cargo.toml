@@ -11,6 +11,7 @@ members = [
     "crates/vca-cloud",
     "crates/vca-server",
     "crates/vca-cli",
+    "crates/vca-client",
     "tools/vca-fake-agent",
 ]
 
@@ -31,6 +32,7 @@ vca-speech = { path = "crates/vca-speech" }
 vca-net = { path = "crates/vca-net" }
 vca-providers = { path = "crates/vca-providers" }
 vca-cloud = { path = "crates/vca-cloud" }
+vca-client = { path = "crates/vca-client" }
 
 anyhow = "1"
 bytes = "1"
