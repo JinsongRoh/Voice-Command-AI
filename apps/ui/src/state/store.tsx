@@ -163,8 +163,10 @@ export function AppProvider({
       }
       subscribed = selected;
       if (!selected) return;
-      // Resume from the last seen seq (CON-04); the server replays or sends stream_gap.
-      const fromSeq = store.getState().views[selected]?.lastSeq ?? null;
+      // Resume from the last seen seq (CON-04); the server replays or sends
+      // stream_gap. With nothing seen yet ask for the whole retained history:
+      // `null` would mean "new events only" and leave the view empty.
+      const fromSeq = store.getState().views[selected]?.lastSeq ?? 0;
       client.request({ type: 'subscribe', session_id: selected, from_seq: fromSeq }).catch(() => {
         if (subscribed === selected) subscribed = null;
       });

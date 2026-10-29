@@ -342,6 +342,12 @@ async fn serve_device(api: Api, net: NetServer, conn: ServerConnection) {
     while let Some(msg) = conn.recv().await {
         match msg {
             Ok(env) => {
+                if tracing::enabled!(tracing::Level::DEBUG) {
+                    let kind = serde_json::to_value(&env.body)
+                        .ok()
+                        .and_then(|v| v.get("type").and_then(|t| t.as_str()).map(str::to_owned));
+                    tracing::debug!(device = %device.device_id, id = env.id, kind = ?kind, "remote request");
+                }
                 // Every state-changing request is audited (SEC-07).
                 if Scope::required_for(&env.body) > Scope::View {
                     net.audit()

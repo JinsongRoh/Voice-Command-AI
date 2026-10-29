@@ -424,7 +424,8 @@ export class MockTransport implements Transport {
     if (!s) return this.error('not_found', `session ${sessionId} not found`);
     this.subscriptions.add(sessionId);
     const firstAvailable = s.events[0]?.seq ?? s.nextSeq;
-    const replay = s.events.filter((e) => fromSeq === null || e.seq > fromSeq);
+    // Like vcad: without `from_seq` only new events are streamed.
+    const replay = fromSeq === null ? [] : s.events.filter((e) => e.seq > fromSeq);
     const gap = fromSeq !== null && fromSeq + 1 < firstAvailable;
     // Replay after the response so the client sees `ok` first.
     setTimeout(() => {

@@ -48,11 +48,20 @@ describe('MockTransport', () => {
     await expect(req({ type: 'list_sessions' })).rejects.toThrow('not connected');
   });
 
-  it('replays history on subscribe, then streams with increasing seq, and resumes from_seq', async () => {
+  it('streams only new events without from_seq', async () => {
     const { t, pushed, req } = setup();
     void t.connect();
     await vi.runAllTimersAsync();
     req({ type: 'subscribe', session_id: 'wk-codex-web', from_seq: null });
+    await vi.runAllTimersAsync();
+    expect(events(pushed, 'wk-codex-web')).toHaveLength(0);
+  });
+
+  it('replays history on subscribe, then streams with increasing seq, and resumes from_seq', async () => {
+    const { t, pushed, req } = setup();
+    void t.connect();
+    await vi.runAllTimersAsync();
+    req({ type: 'subscribe', session_id: 'wk-codex-web', from_seq: 0 });
     await vi.runAllTimersAsync();
     const replay = events(pushed, 'wk-codex-web');
     expect(replay.length).toBeGreaterThan(0);
