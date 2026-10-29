@@ -1,10 +1,16 @@
+<p align="center">
+  <img src="docs/brand/logo/02_lockups/horizontal/VCA_logo_horizontal_light.svg" alt="Voice Command AI" width="420">
+</p>
+
+<p align="center"><strong>Your voice. Every agent. One command center.</strong></p>
+
 # Voice Command AI
 
 **Control every AI coding agent on your machine from your phone, with your voice.**
 
 Voice Command AI (VCA) is an open-source, cross-platform tool. It lets you watch, command and orchestrate AI coding agents running on your development machine. Supported agents include Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, Grok and more. You can reach them from anywhere, without fighting for keyboard focus and without letting runaway builds bring your machine down.
 
-> **Status:** Planning. The product specification is being finalized; no code has been released yet.
+> **Status:** Pre-release (milestone M0 complete, October 2026). The server, CLI, shared UI and Tauri desktop/mobile apps run end to end: pairing over Noise, live session cards, voice dictation, resource admission. There are no installers or store builds yet; see the [user guide](docs/user-guide.md) to build and run it, and the [M0 report](docs/m0-report.md) for what was verified.
 
 ---
 
@@ -18,7 +24,7 @@ Modern development often means running many agent sessions in parallel. Each ses
 
 VCA fixes this by putting a lightweight server on your machine. That server owns every agent session and exposes the sessions to a mobile app as a simple deck of cards.
 
-## Highlights (planned)
+## Highlights
 
 - **Session cards.** Every running agent session on your machine is listed as a live card showing project, agent, status and alerts.
 - **Voice first.** Pick a card, speak, review the transcript, send. Mixed-language speech (for example English mixed with Japanese, Spanish or Korean) is supported. A developer-vocabulary engine improves recognition of technical terms.
@@ -27,11 +33,11 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 - **Actionable notifications.** Get text and spoken alerts when a session finishes, needs input or asks for a decision. Answer with one tap.
 - **Resource broker.** CPU, memory, disk and network are monitored per session. Heavy jobs are admitted, queued, throttled or paused, automatically or by your own policies.
 - **Projects anywhere.** Create a project folder and start a new agent session on your machine from your phone.
-- **Multi-agent orchestration.** Coordinate several sessions on one task through an optional orchestrator session.
+- **Multi-agent orchestration** *(coming soon)*. Coordinate several sessions on one task through an optional orchestrator session.
 - **Multiple machines.** Pair your home, office and server machines with one app.
 - **Secure remote access.** Device pairing via QR code, TOTP two-factor authentication, short-lived tokens, end-to-end encryption, audit log and a kill switch.
-- **Your choice of connectivity.** Pluggable providers: DNS Pilot (tunnel or P2P), Tailscale, Cloudflare Tunnel, direct LAN, or bring your own.
-- **Pluggable speech-to-text.** Choose local Whisper, OpenAI, Google Cloud or another cloud provider.
+- **Your choice of connectivity.** Pluggable providers: Tailscale, Cloudflare Tunnel, direct LAN, or bring your own; DNS Pilot (tunnel or P2P) *coming soon*.
+- **Pluggable speech-to-text.** Use any OpenAI-compatible server (for example your own Whisper server, see a self-hosted Whisper server), OpenAI or Google Cloud; live dictation streams as you speak.
 - **Account profiles.** Keep several legitimately owned agent accounts or API keys side by side, see usage at a glance, and choose which profile a session uses.
 
 ## Architecture at a glance
@@ -53,6 +59,9 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 
 ## Documentation
 
+- [User guide](docs/user-guide.md)
+- [M0 report](docs/m0-report.md)
+- [Brand definition](docs/brand/brand-definition.md) and [logo files](docs/brand/logo/README.md)
 - [Product requirements](docs/requirements.md)
 - [Architecture](docs/architecture.md)
 - [Development plan](docs/development-plan.md)
