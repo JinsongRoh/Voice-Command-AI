@@ -311,9 +311,13 @@ impl Api {
                 Ok(session) => ServerMsg::Launched { session },
                 Err(err) => error_msg(&err),
             },
-            ClientMsg::LaunchCloud { .. } => error(
+            ClientMsg::LaunchCloud { .. } | ClientMsg::ListCloudProviders => error(
                 ErrorCode::Unsupported,
                 "cloud sessions are not wired up yet",
+            ),
+            ClientMsg::Transcribe { .. } => error(
+                ErrorCode::Unsupported,
+                "server-side transcription is not wired up yet",
             ),
             ClientMsg::ListDevices => match devices.map(|d| d.list_devices(current)) {
                 Some(Ok(devices)) => ServerMsg::Devices { devices },

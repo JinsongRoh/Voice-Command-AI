@@ -207,6 +207,9 @@ function applyServer(state: AppState, msg: ServerMsg): AppState {
       return { ...state, devices: msg.devices };
     case 'error':
       return { ...state, lastError: `${msg.code}: ${msg.message}` };
+    // Request/response only: the caller reads these from the reply.
+    case 'cloud_providers':
+    case 'transcript':
     case 'pong':
     case 'ok':
       return state;

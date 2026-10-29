@@ -118,7 +118,7 @@ pub enum Input {
 
 /// Serializes bytes as a byte string in MessagePack and as an array in JSON,
 /// without pulling in an extra dependency.
-mod serde_bytes_compat {
+pub(crate) mod serde_bytes_compat {
     use serde::{Deserializer, Serializer};
 
     pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {

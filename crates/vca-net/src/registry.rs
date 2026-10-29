@@ -41,7 +41,8 @@ impl Scope {
             | ClientMsg::Unsubscribe { .. }
             | ClientMsg::GetResources
             | ClientMsg::MarkRead { .. }
-            | ClientMsg::ListDevices => Scope::View,
+            | ClientMsg::ListDevices
+            | ClientMsg::ListCloudProviders => Scope::View,
             // The kill switch only ever reduces exposure, but a view-only
             // device must not be able to disrupt everyone's sessions.
             ClientMsg::SendInput { .. }
@@ -51,6 +52,9 @@ impl Scope {
             | ClientMsg::ReorderQueue { .. }
             | ClientMsg::CancelQueued { .. }
             | ClientMsg::KillSwitch => Scope::Command,
+            // Recognition changes nothing, but server-side engines may spend
+            // the owner's speech API quota.
+            ClientMsg::Transcribe { .. } => Scope::Command,
             ClientMsg::RevokeDevice { .. } => Scope::Admin,
         }
     }

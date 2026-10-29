@@ -404,6 +404,18 @@ export class MockTransport implements Transport {
         // Respond first, then drop every connection.
         setTimeout(() => this.disconnect(), 0);
         return { type: 'ok' };
+      case 'list_cloud_providers':
+        return { type: 'cloud_providers', providers: [] };
+      case 'transcribe':
+        return {
+          type: 'transcript',
+          text: 'Run the tests',
+          raw_text: 'run the tests',
+          language: msg.language,
+          corrections: [],
+          intent: { type: 'prompt' },
+          engine: 'mock',
+        };
     }
   }
 

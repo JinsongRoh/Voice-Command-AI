@@ -14,7 +14,8 @@ pub mod session;
 pub use error::{Error, Result};
 pub use event::{ControlKey, Decision, DecisionOption, Input, MessageRole, SessionEvent};
 pub use protocol::{
-    ClientMsg, DeliveryStatus, Envelope, PROTOCOL_VERSION, PairedDevice, ServerMsg,
+    AudioEncoding, ClientMsg, CloudProviderInfo, DeliveryStatus, Envelope, PROTOCOL_VERSION,
+    PairedDevice, ServerMsg, TranscriptCorrection, TranscriptIntent,
 };
 pub use resource::{AdmissionVerdict, JobClass, QueueEntry, ResourceSnapshot, SessionUsage};
 pub use session::{

@@ -216,7 +216,51 @@ export type ClientMsg =
   | { type: 'list_devices' }
   | { type: 'revoke_device'; device_id: string }
   /** Drop every remote connection and close the tunnel (SEC-09). */
-  | { type: 'kill_switch' };
+  | { type: 'kill_switch' }
+  | { type: 'list_cloud_providers' }
+  /** Server-side speech recognition (VOC-01); answered with `transcript`. */
+  | {
+      type: 'transcribe';
+      audio: Uint8Array;
+      format: AudioEncoding;
+      sample_rate: number | null;
+      language: string | null;
+      session_id: SessionId | null;
+    };
+
+export type AudioEncoding = 'wav' | 'pcm16' | 'webm' | 'ogg' | 'm4a';
+
+/** A term replaced by the developer vocabulary engine (VOC-05). */
+export interface TranscriptCorrection {
+  from: string;
+  to: string;
+  layer: 'base' | 'project' | 'personal';
+}
+
+/** How the server routed a transcript (VOC-06). */
+export type TranscriptIntent =
+  | { type: 'prompt' }
+  | {
+      type: 'control';
+      action: string;
+      session_action: SessionAction | null;
+      session_id: SessionId | null;
+      confidence: number;
+    }
+  | { type: 'ambiguous' };
+
+/** A cloud provider as the server offers it (CLD-07). */
+export interface CloudProviderInfo {
+  provider: CloudProvider;
+  account: string;
+  configured: boolean;
+  create: boolean;
+  follow_up: boolean;
+  stop: boolean;
+  approve_plan: boolean;
+  status_only: boolean;
+  unverified: boolean;
+}
 
 /** A device paired with the server (SEC-10). */
 export interface PairedDevice {
@@ -245,4 +289,14 @@ export type ServerMsg =
   | { type: 'input_ack'; session_id: SessionId; status: DeliveryStatus }
   | { type: 'launched'; session: SessionInfo }
   | { type: 'resources'; snapshot: ResourceSnapshot }
-  | { type: 'devices'; devices: PairedDevice[] };
+  | { type: 'devices'; devices: PairedDevice[] }
+  | { type: 'cloud_providers'; providers: CloudProviderInfo[] }
+  | {
+      type: 'transcript';
+      text: string;
+      raw_text: string;
+      language: string | null;
+      corrections: TranscriptCorrection[];
+      intent: TranscriptIntent;
+      engine: string;
+    };
