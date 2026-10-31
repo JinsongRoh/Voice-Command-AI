@@ -63,6 +63,8 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 ## Documentation
 
 - [User guide](docs/user-guide.md)
+- [Your own speech engines](docs/speech-engines.md): speech-to-text, correction LLM and text-to-speech
+- [Text-to-speech engine benchmark](docs/tts-benchmark.md)
 - [M0 report](docs/m0-report.md)
 - [Brand definition](docs/brand/brand-definition.md) and [logo files](docs/brand/logo/README.md)
 - [Product requirements](docs/requirements.md)
