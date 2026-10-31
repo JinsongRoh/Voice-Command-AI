@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Voice Command AI records your voice only while you hold the talk button, to turn it into a prompt.</string>
+  <!-- vca://pair links (the server's pairing QR code) open the app. Declared
+       here too so the scheme survives regenerating gen/apple. -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>io.github.voicecommandai.mobile</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>vca</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

@@ -1,0 +1,26 @@
+[package]
+name = "vca-shell"
+description = "Tauri commands shared by the desktop and mobile apps: Noise connections, pairing and microphone capture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+cpal = "0.16"
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-deep-link.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+vca-client.workspace = true
+vca-net.workspace = true
+
+[target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "ios"))'.dependencies]
+vca-client = { workspace = true, features = ["keychain"] }
+
+[lints]
+workspace = true

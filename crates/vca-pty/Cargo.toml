@@ -1,0 +1,28 @@
+[package]
+name = "vca-pty"
+description = "Cross-platform pseudo-terminal host for managed agent sessions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bytes = "1.12.1"
+crossterm = "0.29.0"
+interprocess = { version = "2.4.7", features = ["tokio"] }
+portable-pty = "0.9.0"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+vca-core.workspace = true
+vt100 = "0.18.1"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[target."cfg(windows)".dependencies]
+widestring = "1.2.1"

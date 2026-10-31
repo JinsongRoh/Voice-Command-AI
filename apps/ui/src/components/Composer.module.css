@@ -1,0 +1,237 @@
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.expand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.expand:hover,
+.expand[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.templates {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.template {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.template:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.corrections {
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-input);
+}
+/* Target of the command: session first, then agent and project (brand §8). */
+.target {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.targetTo {
+  flex: none;
+  color: var(--text-muted);
+}
+.targetName {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.targetMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.mic {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow:
+    0 6px 16px rgb(3 97 247 / 28%),
+    0 1px 3px rgb(16 27 53 / 18%);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    transform 0.12s ease-out,
+    background-color 0.15s;
+}
+.mic:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.mic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Recording: the voice accent. The symbol's cyan-to-blue gradient with a
+   Deep Navy icon (contrast >= 3:1 across the gradient) and a cyan ring. */
+.recording,
+.recording:hover:not(:disabled) {
+  background: var(--voice-gradient);
+  color: var(--brand-navy);
+  transform: scale(1.06);
+  animation: ring 1.4s ease-out infinite;
+}
+@keyframes ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-cyan) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+.status {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+}
+.phase {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--fw-semibold);
+}
+/* Recording indicator: five-stroke waveform + timer. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 10px 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.timer {
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+.cancel {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.cancel:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .recording {
+    animation: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 45%, transparent);
+  }
+}
+.delivery {
+  color: var(--text-muted);
+}
+.delivery[data-status='delivered'],
+.delivery[data-status='acknowledged'] {
+  color: var(--st-done);
+}
+.delivery[data-status='queued'] {
+  color: var(--st-input);
+}
+.delivery[data-status='failed'],
+.error {
+  color: var(--danger);
+}
+.info {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+}
+.info svg {
+  flex: none;
+  margin-top: 2px;
+}
+.keys {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.keys :global(.btn) {
+  flex: none;
+}
+.interrupt {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.flip {
+  transform: scaleX(-1);
+}

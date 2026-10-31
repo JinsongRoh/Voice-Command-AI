@@ -1,0 +1,236 @@
+# Spanish spoken forms of common developer terms.
+# Spoken variants only; categories and tags come from the English entries.
+# Format: see lexicon/README.md.
+language = "es"
+
+[[entry]]
+term = "JSON"
+variants = ["yeison", "jeison"]
+
+[[entry]]
+term = "GitHub"
+variants = ["guit jab", "git jab", "guijab"]
+
+[[entry]]
+term = "Git"
+variants = ["guit"]
+
+[[entry]]
+term = "Python"
+variants = ["paiton", "páiton"]
+
+[[entry]]
+term = "JavaScript"
+variants = ["yava script", "javascrip"]
+
+[[entry]]
+term = "TypeScript"
+variants = ["taip script", "taipscript"]
+
+[[entry]]
+term = "Docker"
+variants = ["doquer", "dóquer"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["kubernetis", "cubernetes", "kubernete"]
+
+[[entry]]
+term = "kubectl"
+variants = ["cubo control", "kube control"]
+
+[[entry]]
+term = "React"
+variants = ["riact"]
+
+[[entry]]
+term = "Node.js"
+variants = ["nod jota ese", "node jota ese"]
+
+[[entry]]
+term = "Next.js"
+variants = ["next jota ese"]
+
+[[entry]]
+term = "Vue.js"
+variants = ["vue jota ese"]
+
+[[entry]]
+term = "npm"
+variants = ["ene pe eme"]
+
+[[entry]]
+term = "API"
+variants = ["a pe i"]
+
+[[entry]]
+term = "SQL"
+variants = ["ese cu ele"]
+
+[[entry]]
+term = "MySQL"
+variants = ["mai sequel", "mi ese cu ele"]
+
+[[entry]]
+term = "PostgreSQL"
+variants = ["postgres cu ele"]
+
+[[entry]]
+term = "YAML"
+variants = ["yamel"]
+
+[[entry]]
+term = "Claude Code"
+variants = ["clod cod", "claud cod", "cloud cod"]
+
+[[entry]]
+term = "Claude"
+variants = ["clod"]
+
+[[entry]]
+term = "Gemini"
+variants = ["yemini", "jémini"]
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["yemini cli", "yemini ce ele i"]
+
+[[entry]]
+term = "Codex"
+variants = ["códex"]
+
+[[entry]]
+term = "Antigravity"
+variants = ["antigraviti"]
+
+[[entry]]
+term = "GitLab"
+variants = ["guit lab"]
+
+[[entry]]
+term = "pull request"
+variants = ["pul request", "pul ricuest"]
+
+[[entry]]
+term = "PR"
+variants = ["pe erre"]
+
+[[entry]]
+term = "git commit"
+variants = ["guit comit"]
+
+[[entry]]
+term = "git push"
+variants = ["guit push"]
+
+[[entry]]
+term = "VS Code"
+variants = ["uve ese code", "vi es code"]
+
+[[entry]]
+term = "README"
+variants = ["ridmi"]
+
+[[entry]]
+term = "localhost"
+variants = ["local jost"]
+
+[[entry]]
+term = "AWS"
+variants = ["a doble uve ese"]
+
+[[entry]]
+term = "LLM"
+variants = ["ele ele eme"]
+
+[[entry]]
+term = "MCP"
+variants = ["eme ce pe"]
+
+[[entry]]
+term = "CLI"
+variants = ["ce ele i"]
+
+[[entry]]
+term = "CI/CD"
+variants = ["ce i ce de"]
+
+[[entry]]
+term = "HTML"
+variants = ["hache te eme ele"]
+
+[[entry]]
+term = "CSS"
+variants = ["ce ese ese"]
+
+[[entry]]
+term = "JWT"
+variants = ["jota doble uve te"]
+
+[[entry]]
+term = "URL"
+variants = ["u erre ele"]
+
+[[entry]]
+term = "PDF"
+variants = ["pe de efe"]
+
+[[entry]]
+term = "Django"
+variants = ["yango"]
+
+[[entry]]
+term = "Tailwind CSS"
+variants = ["teilguind"]
+
+[[entry]]
+term = "ChatGPT"
+variants = ["chat yipiti", "chat yi pi ti", "chat ge pe te"]
+
+[[entry]]
+term = "OpenAI"
+variants = ["open ei ai"]
+
+[[entry]]
+term = "useEffect"
+variants = ["ius efect", "yus efect"]
+
+[[entry]]
+term = "useState"
+variants = ["ius steit"]
+
+[[entry]]
+term = "async"
+variants = ["asinc"]
+
+[[entry]]
+term = "WebSocket"
+variants = ["web sóquet"]
+
+[[entry]]
+term = "MongoDB"
+variants = ["mongo de be"]
+
+[[entry]]
+term = "nginx"
+variants = ["enyin ex", "engine equis"]
+
+[[entry]]
+term = "ssh"
+variants = ["ese ese hache"]
+
+[[entry]]
+term = "DNS"
+variants = ["de ene ese"]
+
+[[entry]]
+term = "Firebase"
+variants = ["fáiar beis"]
+
+[[entry]]
+term = "Supabase"
+variants = ["supa beis"]
+
+[[entry]]
+term = "GraphQL"
+variants = ["graf cu ele"]

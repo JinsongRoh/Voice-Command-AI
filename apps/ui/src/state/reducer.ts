@@ -1,0 +1,380 @@
+/**
+ * Pure application state for one connected machine. All server messages go
+ * through `reducer` via the `server` action, which makes the protocol
+ * handling easy to unit-test.
+ */
+import type {
+  Decision,
+  DeliveryStatus,
+  PairedDevice,
+  ResourceSnapshot,
+  ServerMsg,
+  SessionEvent,
+  SessionId,
+  SessionInfo,
+} from '../protocol/types';
+import { isCloud, needsAttention } from '../protocol/helpers';
+import type { ConnectionState } from '../protocol/transport';
+import type { AlertCategory } from './settings';
+
+/** Events kept per session in the client (older ones are dropped). */
+export const MAX_EVENTS = 1500;
+
+export type DeckFilter = 'all' | 'attention' | 'local' | 'cloud';
+
+export interface SessionView {
+  events: SessionEvent[];
+  /** Highest seq applied; used as `from_seq` when resubscribing. */
+  lastSeq: number | null;
+  /** Set after a `stream_gap`: events before this seq are missing. */
+  gapFrom: number | null;
+}
+
+export interface Delivery {
+  status: DeliveryStatus | 'sending' | 'failed';
+  at: number;
+  error?: string;
+}
+
+/** Status of a prompt sent from this client (`sending`/`failed` are client-side). */
+export type SentStatus = Delivery['status'];
+
+/**
+ * A prompt this client sent to a session, kept locally so the chat view can
+ * echo it (the protocol has no event for user input).
+ */
+export interface SentPrompt {
+  /** Client-generated, unique within the store. */
+  id: string;
+  text: string;
+  /** Client clock (ms) when the prompt was sent. */
+  at: number;
+  /** Highest event seq seen when the prompt was sent: it belongs after that event. */
+  afterSeq: number | null;
+  status: SentStatus;
+  error?: string;
+}
+
+/** Sent prompts kept per session (older ones are dropped). */
+export const MAX_SENT = 100;
+
+export interface Toast {
+  id: string;
+  category: AlertCategory;
+  sessionId: SessionId | null;
+  title: string;
+  body: string;
+}
+
+export interface AppState {
+  connection: ConnectionState;
+  serverName: string | null;
+  sessions: Record<SessionId, SessionInfo>;
+  /** Card order (server order, new sessions appended). */
+  order: SessionId[];
+  selectedId: SessionId | null;
+  filter: DeckFilter;
+  views: Record<SessionId, SessionView>;
+  decisions: Record<SessionId, Decision>;
+  delivery: Record<SessionId, Delivery>;
+  /** Prompts sent from this client, per session, oldest first. */
+  sent: Record<SessionId, SentPrompt[]>;
+  resources: ResourceSnapshot | null;
+  devices: PairedDevice[] | null;
+  toasts: Toast[];
+  lastError: string | null;
+}
+
+export const initialState: AppState = {
+  connection: 'disconnected',
+  serverName: null,
+  sessions: {},
+  order: [],
+  selectedId: null,
+  filter: 'all',
+  views: {},
+  decisions: {},
+  delivery: {},
+  sent: {},
+  resources: null,
+  devices: null,
+  toasts: [],
+  lastError: null,
+};
+
+export type Action =
+  | { type: 'reset' }
+  | { type: 'connection'; state: ConnectionState }
+  | { type: 'server'; msg: ServerMsg }
+  | { type: 'select'; id: SessionId | null }
+  | { type: 'filter'; filter: DeckFilter }
+  | { type: 'delivery'; sessionId: SessionId; delivery: Delivery }
+  | { type: 'prompt_sent'; sessionId: SessionId; id: string; text: string; at: number }
+  | {
+      type: 'prompt_status';
+      sessionId: SessionId;
+      id: string;
+      status: SentStatus;
+      error?: string;
+    }
+  | { type: 'decision_answered'; sessionId: SessionId }
+  | { type: 'toast'; toast: Toast }
+  | { type: 'dismiss_toast'; id: string }
+  | { type: 'error'; message: string | null };
+
+const MAX_TOASTS = 4;
+
+/** Later delivery states never go back to earlier ones (acks may arrive out of order). */
+const STATUS_RANK: Record<SentStatus, number> = {
+  sending: 0,
+  queued: 1,
+  delivered: 2,
+  acknowledged: 3,
+  failed: 4,
+};
+
+function updatePrompt(
+  state: AppState,
+  sessionId: SessionId,
+  pick: (list: SentPrompt[]) => number,
+  status: SentStatus,
+  error?: string,
+): AppState {
+  const list = state.sent[sessionId];
+  if (!list || list.length === 0) return state;
+  const index = pick(list);
+  const prompt = list[index];
+  if (!prompt) return state;
+  // `failed` only replaces client-side `sending`; server acks only move forward.
+  if (
+    status === 'failed'
+      ? prompt.status !== 'sending'
+      : STATUS_RANK[status] <= STATUS_RANK[prompt.status]
+  )
+    return state;
+  const next = [...list];
+  next[index] = { ...prompt, status, ...(error === undefined ? {} : { error }) };
+  return { ...state, sent: { ...state.sent, [sessionId]: next } };
+}
+
+function lastPending(list: SentPrompt[]): number {
+  for (let i = list.length - 1; i >= 0; i--) if (list[i]!.status !== 'failed') return i;
+  return -1;
+}
+const emptyView: SessionView = { events: [], lastSeq: null, gapFrom: null };
+
+function applyEvent(state: AppState, sessionId: SessionId, event: SessionEvent): AppState {
+  const view = state.views[sessionId] ?? emptyView;
+  // Replays after a resubscribe may overlap with what we already have.
+  if (view.lastSeq !== null && event.seq <= view.lastSeq) return state;
+  const events =
+    view.events.length >= MAX_EVENTS
+      ? [...view.events.slice(view.events.length - MAX_EVENTS + 1), event]
+      : [...view.events, event];
+  let decisions = state.decisions;
+  if (event.type === 'decision_requested') {
+    decisions = { ...decisions, [sessionId]: event.decision };
+  } else if (
+    event.type === 'state_changed' &&
+    event.state.type !== 'awaiting_decision' &&
+    decisions[sessionId]
+  ) {
+    decisions = { ...decisions };
+    delete decisions[sessionId];
+  }
+  return {
+    ...state,
+    decisions,
+    views: { ...state.views, [sessionId]: { ...view, events, lastSeq: event.seq } },
+  };
+}
+
+function upsertSession(state: AppState, session: SessionInfo): AppState {
+  const known = session.id in state.sessions;
+  let decisions = state.decisions;
+  if (session.state.type !== 'awaiting_decision' && decisions[session.id]) {
+    decisions = { ...decisions };
+    delete decisions[session.id];
+  }
+  return {
+    ...state,
+    decisions,
+    sessions: { ...state.sessions, [session.id]: session },
+    order: known ? state.order : [...state.order, session.id],
+  };
+}
+
+function removeSession(state: AppState, id: SessionId): AppState {
+  if (!(id in state.sessions)) return state;
+  const sessions = { ...state.sessions };
+  delete sessions[id];
+  const views = { ...state.views };
+  delete views[id];
+  const decisions = { ...state.decisions };
+  delete decisions[id];
+  const sent = { ...state.sent };
+  delete sent[id];
+  return {
+    ...state,
+    sessions,
+    views,
+    decisions,
+    sent,
+    order: state.order.filter((x) => x !== id),
+    selectedId: state.selectedId === id ? null : state.selectedId,
+  };
+}
+
+function applyServer(state: AppState, msg: ServerMsg): AppState {
+  switch (msg.type) {
+    case 'welcome':
+      return { ...state, serverName: msg.server_name };
+    case 'sessions': {
+      const sessions: Record<SessionId, SessionInfo> = {};
+      for (const s of msg.sessions) sessions[s.id] = s;
+      // Keep the existing order for known sessions; append new ones.
+      const order = [
+        ...state.order.filter((id) => id in sessions),
+        ...msg.sessions.map((s) => s.id).filter((id) => !state.order.includes(id)),
+      ];
+      const views: Record<SessionId, SessionView> = {};
+      for (const id of order) views[id] = state.views[id] ?? emptyView;
+      const sent: Record<SessionId, SentPrompt[]> = {};
+      for (const id of order) if (state.sent[id]) sent[id] = state.sent[id];
+      return {
+        ...state,
+        sessions,
+        order,
+        views,
+        sent,
+        selectedId: state.selectedId && sessions[state.selectedId] ? state.selectedId : null,
+      };
+    }
+    case 'session_updated':
+    case 'launched':
+      return upsertSession(state, msg.session);
+    case 'session_removed':
+      return removeSession(state, msg.session_id);
+    case 'event':
+      return applyEvent(state, msg.session_id, msg.event);
+    case 'stream_gap': {
+      const view = state.views[msg.session_id] ?? emptyView;
+      return {
+        ...state,
+        views: {
+          ...state.views,
+          // Reload: drop what we have; the replay that follows refills the view.
+          [msg.session_id]: {
+            ...view,
+            events: [],
+            lastSeq: null,
+            gapFrom: msg.first_available_seq,
+          },
+        },
+      };
+    }
+    case 'input_ack': {
+      const next = {
+        ...state,
+        delivery: { ...state.delivery, [msg.session_id]: { status: msg.status, at: Date.now() } },
+      };
+      // Acks are not correlated with a prompt; they refer to the latest input.
+      return updatePrompt(next, msg.session_id, lastPending, msg.status);
+    }
+    case 'resources':
+      return { ...state, resources: msg.snapshot };
+    case 'devices':
+      return { ...state, devices: msg.devices };
+    case 'error':
+      return { ...state, lastError: `${msg.code}: ${msg.message}` };
+    // Request/response only: the caller reads these from the reply.
+    case 'cloud_providers':
+    case 'transcript':
+    case 'pong':
+    case 'ok':
+      return state;
+  }
+}
+
+export function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'reset':
+      return { ...initialState, connection: state.connection };
+    case 'connection':
+      return { ...state, connection: action.state };
+    case 'server':
+      return applyServer(state, action.msg);
+    case 'select':
+      return { ...state, selectedId: action.id };
+    case 'filter':
+      return { ...state, filter: action.filter };
+    case 'delivery':
+      return { ...state, delivery: { ...state.delivery, [action.sessionId]: action.delivery } };
+    case 'prompt_sent': {
+      const prompt: SentPrompt = {
+        id: action.id,
+        text: action.text,
+        at: action.at,
+        afterSeq: state.views[action.sessionId]?.lastSeq ?? null,
+        status: 'sending',
+      };
+      const list = [...(state.sent[action.sessionId] ?? []), prompt].slice(-MAX_SENT);
+      return { ...state, sent: { ...state.sent, [action.sessionId]: list } };
+    }
+    case 'prompt_status':
+      return updatePrompt(
+        state,
+        action.sessionId,
+        (list) => list.findIndex((p) => p.id === action.id),
+        action.status,
+        action.error,
+      );
+    case 'decision_answered': {
+      if (!state.decisions[action.sessionId]) return state;
+      const decisions = { ...state.decisions };
+      delete decisions[action.sessionId];
+      return { ...state, decisions };
+    }
+    case 'toast': {
+      const toasts = [...state.toasts.filter((t) => t.id !== action.toast.id), action.toast];
+      return { ...state, toasts: toasts.slice(-MAX_TOASTS) };
+    }
+    case 'dismiss_toast':
+      return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) };
+    case 'error':
+      return { ...state, lastError: action.message };
+  }
+}
+
+// ---------------------------------------------------------------- selectors
+
+export function matchesFilter(session: SessionInfo, filter: DeckFilter): boolean {
+  switch (filter) {
+    case 'all':
+      return true;
+    case 'attention':
+      return needsAttention(session.state) || session.unread > 0;
+    case 'local':
+      return !isCloud(session.origin);
+    case 'cloud':
+      return isCloud(session.origin);
+  }
+}
+
+export function visibleSessions(state: AppState): SessionInfo[] {
+  return state.order
+    .map((id) => state.sessions[id])
+    .filter((s): s is SessionInfo => !!s && matchesFilter(s, state.filter));
+}
+
+export function attentionCount(state: AppState): number {
+  return state.order.filter((id) => {
+    const s = state.sessions[id];
+    return !!s && needsAttention(s.state);
+  }).length;
+}
+
+/** Whether the session accepts input from this client at all. */
+export function canSendInput(session: SessionInfo): boolean {
+  return session.control !== 'observe_only' && session.state.type !== 'exited';
+}

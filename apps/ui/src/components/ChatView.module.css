@@ -1,0 +1,139 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow-y: auto;
+  list-style: none;
+}
+.msg {
+  max-width: min(92%, 680px);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+.system {
+  align-self: center;
+  background: var(--surface-2);
+  font-size: 13px;
+}
+.role {
+  display: block;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.text {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tool {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 10px;
+  border-inline-start: 3px solid var(--border-strong);
+  font-family: var(--mono);
+  font-size: 12px;
+  min-width: 0;
+}
+.toolName {
+  font-weight: var(--fw-semibold);
+  flex: none;
+}
+.toolSummary {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.state {
+  align-self: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.state::before,
+.state::after {
+  content: ' — ';
+}
+.decision {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--st-decision);
+  background: var(--st-decision-bg);
+}
+.options {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  font-size: 13px;
+}
+.notification {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.outgoing .text {
+  margin-top: 0;
+}
+.status {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: end;
+  color: var(--text-muted);
+}
+.outgoing[data-status='failed'] {
+  border-color: var(--danger);
+}
+.outgoing[data-status='failed'] .status {
+  color: var(--danger);
+}
+.output {
+  align-self: flex-start;
+  width: min(100%, 680px);
+  max-width: 100%;
+  background: var(--surface-2);
+}
+.outputText {
+  margin: 4px 0 0;
+  max-height: 50vh;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.hintText {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+.gap {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--st-input-bg);
+  color: var(--st-input);
+  font-size: 13px;
+}

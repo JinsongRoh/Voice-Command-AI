@@ -1,0 +1,38 @@
+[package]
+name = "vca-client"
+description = "Device-side connection manager: pairing, secure storage and supervised connections to VCA servers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vca-core.workspace = true
+vca-net = { workspace = true, features = ["client-tls"] }
+rmp-serde.workspace = true
+# TLS for `wss://` endpoints: the `ring` provider is installed explicitly so the
+# client also works when another crate in the final binary enables a second
+# rustls provider.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+zeroize = "1.9.1"
+
+[features]
+default = []
+# Store device keys and tokens in the OS keychain (`vca_net::KeychainKeyStore`).
+keychain = ["vca-net/keychain"]
+
+[dev-dependencies]
+data-encoding = "2.11.1"
+tempfile = "3.27.0"
+vca-broker.workspace = true
+vca-server = { path = "../vca-server" }
+
+[lints]
+workspace = true

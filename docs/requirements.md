@@ -47,8 +47,8 @@ A phone becomes the control surface for every agent on every machine you own. Yo
 | **VCA Desktop** | Tauri 2 tray app and local dashboard for VCA Server: settings, pairing QR code, session overview and kill switch. |
 | **VCA Mobile** | Tauri 2 app for iOS and Android: session cards, voice input, live view, notifications and machine switching. |
 | **`vca` CLI** | Command-line entry point. It runs agents under VCA management, attaches terminals and administers the server. |
-| **Connectivity providers** | Interchangeable plugins: DNS Pilot, Tailscale, Cloudflare Tunnel, direct LAN and custom. |
-| **Push relay** | Relays end-to-end encrypted notifications to APNs and FCM (provided by DNS Pilot). |
+| **Connectivity providers** | Interchangeable plugins: DNSPilot, Tailscale, Cloudflare Tunnel, direct LAN and custom. |
+| **Push relay** | Relays end-to-end encrypted notifications to APNs and FCM (provided by DNSPilot). |
 
 ## 3. Functional requirements
 
@@ -147,8 +147,8 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 
 | ID | Requirement | Pri |
 |---|---|---|
-| CON-01 | DNS Pilot provider: app-token tunnel and embedded P2P, developed in parallel. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
-| CON-02 | Tailscale, Cloudflare Tunnel and direct LAN providers, supported on equal footing with DNS Pilot. The user chooses; the setup wizard recommends one based on diagnostics. | M |
+| CON-01 | DNSPilot provider: app-token tunnel and embedded P2P, developed in parallel. See [dnspilot-requirements.md](dnspilot-requirements.md). | M |
+| CON-02 | Tailscale, Cloudflare Tunnel and direct LAN providers, supported on equal footing with DNSPilot. The user chooses; the setup wizard recommends one based on diagnostics. | M |
 | CON-05 | Custom provider: any user-supplied tunnel or VPN that forwards to the server's local port. The user is responsible for securing it; VCA's own authentication and end-to-end encryption still apply. | S |
 | CON-03 | Connectivity diagnostics in the setup wizard (NAT type, reachability, recommended provider). | M |
 | CON-04 | Automatic reconnection, with the stream resuming without data loss. | M |
@@ -165,7 +165,7 @@ Priority levels: **M** = must-have for v1.0, **S** = should-have for v1.0. All i
 | SEC-06 | Step-up confirmation for sensitive actions (kill session, delete, raw shell, policy changes). | M |
 | SEC-07 | Audit log of every connection and command, viewable on desktop and mobile. | M |
 | SEC-08 | Alerts for new devices and new locations, and for failed authentication bursts. | M |
-| SEC-09 | Kill switch: drop all remote connections and close the tunnel instantly, from desktop, mobile or the DNS Pilot console. | M |
+| SEC-09 | Kill switch: drop all remote connections and close the tunnel instantly, from desktop, mobile or the DNSPilot console. | M |
 | SEC-10 | Revoke a device and list active connections. | M |
 
 ### 3.10 Cloud agent sessions (CLD)
@@ -228,7 +228,7 @@ Cloud-hosted coding agents run on the provider's infrastructure instead of the u
 | Reliability | The server restarts sessions' management state after a crash, and managed agents keep running if the server restarts. |
 | Privacy | No telemetry by default. Code and prompts never leave the user's machine except to the user's own devices and chosen STT provider. |
 | Extensibility | Agent adapters, STT engines and connectivity providers are plugins with documented interfaces. |
-| Distribution | Signed installers (MSI, DMG/PKG, deb/rpm/AppImage), Homebrew, winget and Cargo. Also available as a DNS Pilot Agent module. Mobile through the App Store and Google Play. |
+| Distribution | Signed installers (MSI, DMG/PKG, deb/rpm/AppImage), Homebrew, winget and Cargo. Also available as a DNSPilot Agent module. Mobile through the App Store and Google Play. |
 
 ## 5. Release plan
 
@@ -236,7 +236,7 @@ All features above ship in **v1.0**. Internal milestones:
 
 | Milestone | Scope |
 |---|---|
-| **M0 – Proofs of concept** | Focus-free input delivery on each OS and terminal, session discovery for Claude Code and Codex, DNS Pilot tunnel round trip, Tauri 2 mobile audio capture. |
+| **M0 – Proofs of concept** | Focus-free input delivery on each OS and terminal, session discovery for Claude Code and Codex, DNSPilot tunnel round trip, Tauri 2 mobile audio capture. |
 | **M1 – Core** | VCA Server, session cards, voice → edit → send, live view, notifications, pairing and TOTP. |
 | **M2 – Resources and projects** | Resource broker, project creation, multiple machines, alternative connectivity providers. |
 | **M3 – Intelligence** | Orchestrator mode, vocabulary learning, intent routing and LLM clean-up, account profiles, additional agent adapters. |
@@ -244,7 +244,7 @@ All features above ship in **v1.0**. Internal milestones:
 
 ## 6. Open questions
 
-1. DNS Pilot gaps G1–G10, especially app-token tunnel access (G1) and the embeddable P2P SDK (G2). See [dnspilot-requirements.md](dnspilot-requirements.md).
+1. DNSPilot gaps G1–G10, especially app-token tunnel access (G1) and the embeddable P2P SDK (G2). See [dnspilot-requirements.md](dnspilot-requirements.md).
 2. Exact native channels per agent (Codex app-server, Gemini CLI, Antigravity, Grok CLI). To be confirmed during M0.
 3. Feasibility of focus-free input into existing Windows Terminal sessions. To be confirmed during M0.
 4. Which usage data each agent exposes for account profiles.

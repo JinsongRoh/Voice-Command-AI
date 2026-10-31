@@ -1,0 +1,73 @@
+.wave {
+  display: inline-block;
+  flex: none;
+  width: 30px;
+  height: 22px;
+  overflow: visible;
+}
+
+.stroke {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Recording: each stroke's amplitude breathes on its own phase. The center
+   stroke leads, the outer pairs follow, so the rhythm reads as a voice. */
+.live.animated .stroke {
+  animation: amplitude 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  animation-delay: calc(var(--i) * -0.23s);
+}
+.live.animated .stroke:nth-child(2),
+.live.animated .stroke:nth-child(4) {
+  animation-duration: 0.95s;
+}
+.live.animated .stroke:nth-child(3) {
+  animation-duration: 0.8s;
+}
+
+@keyframes amplitude {
+  0% {
+    transform: scaleY(0.32);
+  }
+  35% {
+    transform: scaleY(1);
+  }
+  65% {
+    transform: scaleY(0.55);
+  }
+  100% {
+    transform: scaleY(0.85);
+  }
+}
+
+/* Sent: one converging motion. The strokes gather into the center stroke,
+   which settles and fades. Plays once (520 ms, see CONVERGE_MS). */
+.converge.animated .stroke {
+  animation: converge 0.52s cubic-bezier(0.32, 0, 0.2, 1) forwards;
+}
+
+@keyframes converge {
+  0% {
+    transform: translateX(0) scaleY(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(var(--dx)) scaleY(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--dx)) scaleY(0.2);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: a static waveform marks the recording. */
+.still .stroke {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stroke {
+    animation: none !important;
+  }
+}

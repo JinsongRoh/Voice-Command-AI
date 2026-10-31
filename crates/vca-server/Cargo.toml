@@ -1,0 +1,51 @@
+[package]
+name = "vca-server"
+description = "Voice Command AI server daemon (vcad)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+directories = "6.0.0"
+futures.workspace = true
+interprocess = { version = "2.4.7", features = ["tokio"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-tungstenite = "0.28.0"
+tokio-util = { version = "0.7.20", features = ["codec"] }
+toml = "1.1.8"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+vca-adapters.workspace = true
+vca-broker.workspace = true
+vca-cloud.workspace = true
+vca-net.workspace = true
+vca-providers.workspace = true
+vca-core.workspace = true
+vca-pty.workspace = true
+vca-speech.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "vcad"
+path = "src/main.rs"
+
+[target."cfg(unix)".dependencies]
+nix = { version = "0.31.3", features = ["user", "fs"] }
+
+[target."cfg(windows)".dependencies]
+widestring = "1.2.1"
+
+[dev-dependencies]
+data-encoding = "2.11.1"
+tempfile = "3.27.0"
+wiremock = "0.6.5"

@@ -1,0 +1,21 @@
+{
+  "name": "@vca/mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tauri 2 mobile shell (Android, iOS) around @vca/ui.",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "tauri": "tauri",
+    "android:init": "tauri android init",
+    "android:dev": "tauri android dev",
+    "ios:init": "tauri ios init",
+    "ios:dev": "tauri ios dev",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0"
+  }
+}

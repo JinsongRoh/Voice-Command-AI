@@ -1,0 +1,205 @@
+# English base lexicon: Version control terms and commands.
+# Format: see lexicon/README.md.
+language = "en"
+category = "git"
+
+[[entry]]
+term = "Git"
+tags = ["git"]
+weight = 1.5
+
+[[entry]]
+term = "GitHub"
+variants = ["git hub", "get hub"]
+tags = ["git"]
+weight = 1.5
+
+[[entry]]
+term = "GitLab"
+variants = ["git lab", "get lab"]
+tags = ["git"]
+weight = 1.2
+
+[[entry]]
+term = "Bitbucket"
+variants = ["bit bucket"]
+tags = ["git"]
+
+[[entry]]
+term = "git commit"
+variants = ["get commit"]
+tags = ["git"]
+
+[[entry]]
+term = "git push"
+variants = ["get push"]
+tags = ["git"]
+
+[[entry]]
+term = "git pull"
+variants = ["get pull"]
+tags = ["git"]
+
+[[entry]]
+term = "git rebase"
+variants = ["get rebase", "git re base"]
+tags = ["git"]
+
+[[entry]]
+term = "git stash"
+variants = ["get stash"]
+tags = ["git"]
+
+[[entry]]
+term = "git checkout"
+variants = ["get checkout", "git check out"]
+tags = ["git"]
+
+[[entry]]
+term = "git switch"
+tags = ["git"]
+
+[[entry]]
+term = "git merge"
+tags = ["git"]
+
+[[entry]]
+term = "git diff"
+tags = ["git"]
+
+[[entry]]
+term = "git log"
+tags = ["git"]
+
+[[entry]]
+term = "git status"
+tags = ["git"]
+
+[[entry]]
+term = "git cherry-pick"
+variants = ["git cherry pick", "get cherry pick"]
+tags = ["git"]
+
+[[entry]]
+term = "git bisect"
+variants = ["get bisect", "git by sect"]
+tags = ["git"]
+
+[[entry]]
+term = "git worktree"
+variants = ["git work tree", "get worktree"]
+tags = ["git"]
+
+[[entry]]
+term = "git reset"
+tags = ["git"]
+
+[[entry]]
+term = "git fetch"
+tags = ["git"]
+
+[[entry]]
+term = "git clone"
+variants = ["get clone"]
+tags = ["git"]
+
+[[entry]]
+term = "pull request"
+tags = ["git"]
+weight = 1.2
+
+[[entry]]
+term = "PR"
+variants = ["p r"]
+tags = ["git"]
+weight = 1.2
+
+[[entry]]
+term = "merge request"
+tags = ["git"]
+
+[[entry]]
+term = "MR"
+variants = ["m r"]
+tags = ["git"]
+weight = 0.6
+
+[[entry]]
+term = "main branch"
+tags = ["git"]
+
+[[entry]]
+term = "HEAD"
+tags = ["git"]
+weight = 0.8
+
+[[entry]]
+term = "upstream"
+variants = ["up stream"]
+tags = ["git"]
+
+[[entry]]
+term = "origin"
+tags = ["git"]
+weight = 0.6
+
+[[entry]]
+term = "rebase"
+variants = ["re base"]
+tags = ["git"]
+
+[[entry]]
+term = "cherry-pick"
+variants = ["cherry pick"]
+tags = ["git"]
+
+[[entry]]
+term = "squash"
+tags = ["git"]
+weight = 0.6
+
+[[entry]]
+term = "force push"
+variants = ["force push"]
+tags = ["git"]
+
+[[entry]]
+term = ".gitignore"
+variants = ["git ignore", "dot git ignore"]
+tags = ["git"]
+
+[[entry]]
+term = "CODEOWNERS"
+variants = ["code owners"]
+tags = ["git"]
+
+[[entry]]
+term = "GitHub Actions"
+variants = ["git hub actions", "github actions"]
+tags = ["ci"]
+weight = 1.2
+
+[[entry]]
+term = "CI/CD"
+variants = ["c i c d", "ci cd", "c i slash c d"]
+tags = ["ci"]
+weight = 1.2
+
+[[entry]]
+term = "CI"
+variants = ["c i"]
+tags = ["ci"]
+
+[[entry]]
+term = "commit message"
+tags = ["git"]
+
+[[entry]]
+term = "monorepo"
+variants = ["mono repo"]
+tags = ["git"]
+
+[[entry]]
+term = "submodule"
+variants = ["sub module"]
+tags = ["git"]

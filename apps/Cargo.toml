@@ -1,0 +1,39 @@
+# Native shells around `apps/ui`. This is a separate Cargo workspace so the
+# main workspace (and its CI) does not need the WebView toolchains.
+[workspace]
+resolver = "3"
+members = ["shell", "desktop/src-tauri", "mobile/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/JinsongRoh/Voice-Command-AI"
+authors = ["Voice Command AI contributors"]
+
+[workspace.dependencies]
+vca-shell = { path = "shell" }
+vca-client = { path = "../crates/vca-client" }
+vca-core = { path = "../crates/vca-core" }
+vca-net = { path = "../crates/vca-net" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.12", features = [] }
+tauri-build = { version = "2.7", features = [] }
+tauri-plugin-deep-link = "2.6"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+tracing = "0.1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -1,0 +1,87 @@
+.wrap {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.wrap:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.mirror,
+.input {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--font);
+  font-size: 16px; /* 16px avoids iOS zoom on focus */
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  letter-spacing: normal;
+  /* Same wrapping width for both layers even with classic scrollbars. */
+  scrollbar-gutter: stable;
+}
+.mirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: transparent;
+  pointer-events: none;
+}
+.mirror mark {
+  color: transparent;
+  background: var(--st-input-bg);
+  border-bottom: 2px solid var(--st-input);
+  border-radius: 3px;
+}
+.input {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* Height follows the content (set from JS); these are the bounds. */
+  min-height: 64px;
+  max-height: 40vh;
+  max-height: 40dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Expanded: a tall writing area for long dictation. */
+.expanded .input {
+  min-height: 65vh;
+  min-height: 65dvh;
+  max-height: 65vh;
+  max-height: 65dvh;
+}
+
+/*
+ * Live dictation: the mirror draws the text so the interim tail can be dimmed;
+ * the textarea text is transparent but keeps its caret and selection.
+ */
+.live .input {
+  color: transparent;
+  caret-color: var(--text);
+}
+.live .mirror,
+.live .mirror mark {
+  color: var(--text);
+}
+.live .mirror .tail {
+  color: var(--text-muted);
+}
+
+/* Phones: start at three lines so dictated text is readable without scrolling. */
+@media (max-width: 640px) {
+  .input {
+    min-height: calc(3 * 1.45em + 20px); /* 3 lines + padding */
+  }
+}

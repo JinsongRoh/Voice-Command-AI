@@ -1,12 +1,12 @@
 # Development Plan
 
-> **Status:** Draft v0.1. To be finalized after the DNS Pilot questionnaire is answered. Companion to [requirements.md](requirements.md) and [architecture.md](architecture.md).
+> **Status:** Draft v0.1. To be finalized after the DNSPilot questionnaire is answered. Companion to [requirements.md](requirements.md) and [architecture.md](architecture.md).
 
 ## 1. Scope and assumptions
 
 - **Scope:** everything in the requirements document ships in **v1.0**, built through internal milestones M0–M4.
 - **Team assumption:** a small core team working with AI coding agents. The durations below are planning estimates for that setup and will be recalibrated after M0.
-- **Rule for DNS Pilot:** no milestone is blocked by DNS Pilot work. Each milestone validates connectivity through the provider abstraction with Tailscale, Cloudflare Tunnel and direct LAN, and DNS Pilot features are integrated as they land.
+- **Rule for DNSPilot:** no milestone is blocked by DNSPilot work. Each milestone validates connectivity through the provider abstraction with Tailscale, Cloudflare Tunnel and direct LAN, and DNSPilot features are integrated as they land.
 
 ## 2. Technology baseline
 
@@ -35,7 +35,7 @@
 | **W4 Speech** | `vca-speech`, `lexicon/` | STT engines, vocabulary engine, intent routing, TTS |
 | **W5 Network and security** | `vca-net` | Providers, Noise channel, pairing, TOTP, tokens, audit, kill switch, push |
 | **W6 Apps** | `apps/desktop`, `apps/mobile`, `apps/ui` | Cards, voice input, live view, notifications, resource panel, settings, wizard |
-| **W7 Release engineering** | `.github/`, `packaging/` | CI, signing, installers, stores, DNS Pilot module, documentation site |
+| **W7 Release engineering** | `.github/`, `packaging/` | CI, signing, installers, stores, DNSPilot module, documentation site |
 
 ## 4. Milestones
 
@@ -49,7 +49,7 @@ Goal: retire the highest technical risks before building the product.
 | PoC-2 Existing-terminal injection | Can text be delivered to sessions **not** started by VCA? | Results table per terminal (tmux, WezTerm, kitty, iTerm2, Windows Terminal or conhost), each marked works, partial or no. |
 | PoC-3 Agent signals | Can completion, waiting-for-input and permission requests be detected reliably? | Claude Code hooks and Codex `notify` produce events into the PoC daemon. The integration paths for Gemini CLI, Antigravity and Grok are documented. |
 | PoC-4 Admission control | Can a PreToolUse hook hold a heavy command until the broker grants a slot? | Two agents running `cargo build` concurrently are serialized by the broker with a 2-slot policy. |
-| PoC-5 Connectivity | Does a WebSocket stream (HTTP/1.1, 30 s heartbeat, resumable) survive each provider, including relay restarts? | 2-hour stream with p95 latency and reconnection time measured over Tailscale, Cloudflare Tunnel and LAN. Also measured over DNS Pilot P2P, via its existing Android binding, and over a DNS Pilot tunnel once `app` mode is available. |
+| PoC-5 Connectivity | Does a WebSocket stream (HTTP/1.1, 30 s heartbeat, resumable) survive each provider, including relay restarts? | 2-hour stream with p95 latency and reconnection time measured over Tailscale, Cloudflare Tunnel and LAN. Also measured over DNSPilot P2P, via its existing Android binding, and over a DNSPilot tunnel once `app` mode is available. |
 | PoC-6 Mobile audio | Can a Tauri 2 mobile app capture audio with VAD and stream it? | Android and iOS builds capture and transcribe one utterance (local Whisper on the server and one cloud engine), including mixed-language speech. |
 | PoC-7 Cloud APIs | Do the official cloud agent APIs behave as documented? | For each provider in the architecture matrix: create, list, follow-up and progress verified with a real account, with the capability flags confirmed. |
 
@@ -85,8 +85,8 @@ Goal: retire the highest technical risks before building the product.
   - Mobile resource panel with a reorderable queue.
 - **W1:** New project creation and session launch from mobile. Resume of past sessions.
 - **W5:**
-  - DNS Pilot provider (tunnel and/or P2P, depending on DNS Pilot progress).
-  - Push notifications through the DNS Pilot relay.
+  - DNSPilot provider (tunnel and/or P2P, depending on DNSPilot progress).
+  - Push notifications through the DNSPilot relay.
   - Multiple machines.
 - **W6:** Multi-machine switcher, notification settings and quiet hours.
 
@@ -113,7 +113,7 @@ Goal: retire the highest technical risks before building the product.
 
 - Wake word (foreground only).
 - UI localization framework with initial translations.
-- Signed installers (MSI, DMG/PKG, deb, rpm, AppImage), Homebrew, winget, crates.io and the DNS Pilot Agent module.
+- Signed installers (MSI, DMG/PKG, deb, rpm, AppImage), Homebrew, winget, crates.io and the DNSPilot Agent module.
 - App Store and Google Play submissions.
 - Documentation site, security policy (`SECURITY.md`), contribution guide, code of conduct.
 - External security review of pairing, authentication and the Noise channel.
@@ -142,19 +142,19 @@ Goal: retire the highest technical risks before building the product.
 | Resource | Load scenarios (parallel builds, memory hogs) with pass/fail criteria for responsiveness. |
 | Security | Fuzzing of protocol parsers, pairing and token tests, external review before v1.0. |
 
-## 7. Dependencies on DNS Pilot
+## 7. Dependencies on DNSPilot
 
-| DNS Pilot item | Needed by | If late |
+| DNSPilot item | Needed by | If late |
 |---|---|---|
-| `app` access mode, OAuth device flow, local REST API, 24-hour proxy timeout | M2 | Ship the DNS Pilot provider later; the other providers are unaffected. |
-| Redistributable P2P mobile binding (Android and iOS) | M2 | DNS Pilot P2P stays out of release builds; tunnel and other providers remain. |
+| `app` access mode, OAuth device flow, local REST API, 24-hour proxy timeout | M2 | Ship the DNSPilot provider later; the other providers are unaffected. |
+| Redistributable P2P mobile binding (Android and iOS) | M2 | DNSPilot P2P stays out of release builds; tunnel and other providers remain. |
 | Push relay | M2 | In-app notifications only, or a temporary self-hosted push option. |
-| Delegated P2P grants | M3 | The phone signs in to the user's DNS Pilot organization instead. |
-| Code-signed and notarized Agent, Agent module support, international payments, API usage policy | M4 | Standalone installers remain the primary distribution; the DNS Pilot provider is labeled preview. |
+| Delegated P2P grants | M3 | The phone signs in to the user's DNSPilot organization instead. |
+| Code-signed and notarized Agent, Agent module support, international payments, API usage policy | M4 | Standalone installers remain the primary distribution; the DNSPilot provider is labeled preview. |
 
 See [dnspilot-requirements.md](dnspilot-requirements.md) for the full gap list.
 
-**Build rule:** the DNS Pilot P2P client is a separately licensed binary. It is included only behind a build feature flag, and the default open-source build compiles and runs without it.
+**Build rule:** the DNSPilot P2P client is a separately licensed binary. It is included only behind a build feature flag, and the default open-source build compiles and runs without it.
 
 ## 8. Risk register
 
@@ -169,6 +169,6 @@ See [dnspilot-requirements.md](dnspilot-requirements.md) for the full gap list.
 
 ## 9. Next steps
 
-1. Fold in the DNS Pilot answers and finalize the requirements, architecture and this plan.
+1. Fold in the DNSPilot answers and finalize the requirements, architecture and this plan.
 2. Approve the plan.
 3. Start M0: create the Cargo workspace skeleton, CI, and the seven PoCs.

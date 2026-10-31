@@ -1,0 +1,22 @@
+.icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-weight: var(--fw-semibold);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: hsl(var(--hue) 70% 22%);
+  background: hsl(var(--hue) 75% 88%);
+}
+:global(:root[data-theme='dark']) .icon {
+  color: hsl(var(--hue) 80% 85%);
+  background: hsl(var(--hue) 35% 24%);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme='light'])) .icon {
+    color: hsl(var(--hue) 80% 85%);
+    background: hsl(var(--hue) 35% 24%);
+  }
+}
