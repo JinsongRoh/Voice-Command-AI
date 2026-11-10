@@ -315,7 +315,7 @@ describe('confirmSend', () => {
     expect(io.spoken).toEqual(['삼번 세션에 run the tests. 보낼까요?']);
   });
 
-  // Regression: the CEO said "보내" and the text was cancelled. Silence (an
+  // Regression: a user said "보내" and the text was cancelled. Silence (an
   // answer given while the long read-back was still playing, before the
   // microphone opened) was a cancel at once, and anything but an exact word
   // ("보내요", "어 보내") cancelled after one re-ask.

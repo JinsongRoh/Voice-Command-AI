@@ -14,3 +14,17 @@ dist/
 
 # Python bytecode
 __pycache__/
+.gstack/
+
+# Secrets and signing material: never commit
+.env
+.env.*
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist

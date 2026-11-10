@@ -1,6 +1,6 @@
 /*
  * The dictation button's symbol in motion (MicSymbol.tsx). The styles are the
- * two prototypes the CEO reviewed: light assembly (A–H) and stroke motion
+ * two prototypes reviewed in field tests: light assembly (A–H) and stroke motion
  * (1–10). Sizes are relative so the same rules serve the 64 px composer
  * button, its smaller phone variants and the 44 px Settings previews.
  *

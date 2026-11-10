@@ -68,7 +68,7 @@ describe('matchSessionName', () => {
   const list = [
     s('a', 'Orbit Platform'),
     s('b', 'Voice Command AI'),
-    s('c', 'CHeck AI'),
+    s('c', 'NoVa AI'),
     s('d', '결제 서버'),
     s('e', '결제 서버 2'),
   ];
@@ -77,7 +77,7 @@ describe('matchSessionName', () => {
     setPronunciations([
       { term: 'Orbit', spoken: '오빗', language: 'ko' },
       { term: 'Platform', spoken: '플랫폼', language: 'ko' },
-      { term: 'CHeck', spoken: '체크', language: 'ko' },
+      { term: 'NoVa', spoken: '노바', language: 'ko' },
     ] as never);
     expect(matchSessionName('Orbit Platform', list)).toMatchObject({ kind: 'one', id: 'a' });
     expect(matchSessionName('오빗 플랫폼', list)).toMatchObject({ kind: 'one', id: 'a' });
@@ -85,7 +85,7 @@ describe('matchSessionName', () => {
       kind: 'one',
       id: 'a',
     });
-    expect(matchSessionName('체크 AI 세션', list)).toMatchObject({ kind: 'one', id: 'c' });
+    expect(matchSessionName('노바 AI 세션', list)).toMatchObject({ kind: 'one', id: 'c' });
     expect(matchSessionName('voice command ai', list)).toMatchObject({ kind: 'one', id: 'b' });
   });
 

@@ -8,7 +8,7 @@
  * - `stroke-*` ("stroke motion"): the strokes move while recording; "sent"
  *   plays the converge/flare motion.
  *
- * The list order is the picker order (the CEO's ranking first).
+ * The list order is the picker order (the field-test ranking first).
  */
 export const MIC_ANIMATIONS = [
   'light-drop',

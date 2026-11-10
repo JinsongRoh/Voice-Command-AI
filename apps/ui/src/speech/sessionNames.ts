@@ -6,7 +6,7 @@
  * (`speakableText`, applied when speaking), so "Orbit" is said "오빗".
  *
  * The other way round, `matchSessionName` finds the session a spoken name
- * means ("보코, 오빗 플랫폼", "보코, 체크 AI 세션"): normalized text, the
+ * means ("보코, 오빗 플랫폼", "보코, 노바 AI 세션"): normalized text, the
  * Korean reading from the pronunciation dictionary and a jamo-level fuzzy
  * match with a threshold; two close candidates are ambiguous (the caller
  * asks "어느 세션인가요?").

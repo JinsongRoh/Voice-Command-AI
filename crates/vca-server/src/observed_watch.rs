@@ -662,7 +662,7 @@ mod tests {
 
     #[tokio::test]
     async fn nothing_is_inferred_in_modes_that_settle_calls_on_their_own() {
-        // The CEO's case: an auto-mode session runs `cargo test; cargo
+        // A field-test case: an auto-mode session runs `cargo test; cargo
         // clippy` for minutes. Its tree looks idle (cargo waits for the
         // build directory lock other sessions hold) and shows no extra
         // child against a baseline taken while a background task ran.

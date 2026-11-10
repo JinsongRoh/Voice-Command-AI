@@ -769,8 +769,8 @@ mod tests {
     fn reference_samples() {
         let cases = [
             (
-                "Release Hub에서 setup.exe 서명이 끝났습니다. SHA 값 e25f95a9가 일치하고 Defender 검사도 clean입니다.",
-                "Release Hub에서 setup 점 이 엑스 이 서명이 끝났습니다. SHA 값 이 이 오 에프 구 오가 일치하고 Defender 검사도 clean입니다.",
+                "빌드 서버에서 setup.exe 서명이 끝났습니다. SHA 값 e25f95a9가 일치하고 Defender 검사도 clean입니다.",
+                "빌드 서버에서 setup 점 이 엑스 이 서명이 끝났습니다. SHA 값 이 이 오 에프 구 오가 일치하고 Defender 검사도 clean입니다.",
             ),
             (
                 "questions.rs와 QuestionForm.tsx를 고쳤고, cargo test 1702개와 vitest 1737개가 모두 pass했습니다.",
