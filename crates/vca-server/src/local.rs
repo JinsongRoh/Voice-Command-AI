@@ -70,6 +70,8 @@ pub fn gated_api_target(body: &ClientMsg) -> Option<GateTarget> {
 
 /// The gate for a request on this channel. Without the security service
 /// the answer is no: a gated action never runs unchecked.
+// The error is the response written back to the caller as is.
+#[allow(clippy::result_large_err)]
 pub(crate) async fn gate(
     api: &Api,
     id: u64,
@@ -97,6 +99,8 @@ pub(crate) async fn gate(
 }
 
 /// One security call on behalf of an older request.
+// The error is the response written back to the caller as is.
+#[allow(clippy::result_large_err)]
 async fn security_call(
     api: &Api,
     id: u64,

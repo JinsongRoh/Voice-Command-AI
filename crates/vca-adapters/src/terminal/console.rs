@@ -62,6 +62,7 @@ pub const CHUNK_SETTLE: Duration = Duration::from_millis(40);
 /// that would be read as one burst.
 pub const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
 /// How often the helper checks whether the input was read.
+#[cfg(windows)]
 const DRAIN_POLL: Duration = Duration::from_millis(5);
 
 /// `VK_RETURN`.

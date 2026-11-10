@@ -151,9 +151,12 @@ impl LocalVerifier for FakeVerifier {
 }
 
 /// Longest text of an OS prompt.
+#[cfg(any(windows, test))]
 const PROMPT_CHARS: usize = 120;
 
-/// Keeps the reason shown in the OS dialog short and printable.
+/// Keeps the reason shown in the OS dialog short and printable. Only the
+/// Windows Hello prompt shows a reason.
+#[cfg(any(windows, test))]
 pub(crate) fn prompt_text(reason: &str) -> String {
     // Direction marks could make the text read differently from what it is.
     let hidden = |c: char| {

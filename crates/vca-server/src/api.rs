@@ -1915,6 +1915,9 @@ impl Api {
     /// [`ScopeGates::change_by`]), after re-checking under them that the
     /// asking device's scope still permits `msg`: it may have been narrowed
     /// since the request's first check.
+    // The error is the reply sent to the client as is; it is built once per
+    // denied request, so boxing it would only add an allocation.
+    #[allow(clippy::result_large_err)]
     async fn change_gates(
         &self,
         client: &Client,
