@@ -225,9 +225,12 @@ export interface ServerTranscriberOptions {
  * cannot get back by waiting, rides that out: while the link is reconnecting
  * it waits for it (`RECONNECT_WAIT_MS`), and when the link dropped under the
  * request it is sent once more over the new link (recognition has no side
- * effect beyond the dictation topic, so a repeat is safe). A request that
- * timed out on a link that still looks alive is not repeated: the network is
- * too slow, and a second upload would make it worse. Interim previews and
+ * effect beyond the dictation topic, so a repeat is safe). The native link
+ * replaces itself when a `transcribe` times out, so a timed-out final is
+ * sent once more over the fresh link (a late answer on the old link is
+ * dropped, so the text arrives once). A request that timed out on a link
+ * that still looks alive is not repeated: the network is too slow, and a
+ * second upload would make it worse. Interim previews and
  * wake checks never wait: a newer one follows anyway. A failure that never
  * reached the server is a `RequestError` with code `transport`
  * (`isNetworkError`).
@@ -351,11 +354,12 @@ export function isSpeechDisabledError(err: unknown): boolean {
  * reached for a moment (vcad restarting, a network blip) rather than because
  * it rejected the audio. vca-server retries once, then answers `unavailable`
  * with a `speech_unreachable:` message; older servers send the raw
- * `http error: error sending request`. The UI shows a friendly "tap again".
+ * `http error: error sending request`. A server whose recognizer stayed busy
+ * answers `speech_busy:`. The UI shows a friendly "tap again".
  */
 export function isSpeechUnreachableError(err: unknown): boolean {
   if (!(err instanceof RequestError) || err.code !== 'unavailable') return false;
-  return /^speech_unreachable\b|^http error: error (sending request|trying to connect)/i.test(
+  return /^speech_(unreachable|busy)\b|^http error: error (sending request|trying to connect)/i.test(
     err.message,
   );
 }

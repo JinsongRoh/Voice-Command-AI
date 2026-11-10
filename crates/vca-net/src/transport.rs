@@ -492,6 +492,15 @@ where
         NetError::NonceExhausted => (CloseReason::NonceExhausted, false),
         _ => (CloseReason::TransportError, false),
     };
+    // Writes count toward liveness: on a half-open socket a large write
+    // never completes, and while it is awaited no heartbeat can fire. A
+    // write stuck this long ends the link like missed heartbeats do (no
+    // close frame: the socket does not take writes).
+    let write_limit = heartbeat * 2;
+    let stuck = |what: &str| {
+        tracing::debug!("closing connection: {what} write stalled for {write_limit:?}");
+        (CloseReason::HeartbeatTimeout, false)
+    };
     let budget = Arc::new(Semaphore::new(budget_total));
     // A message read while the application had no room for it. Until it is
     // handed over, nothing more is read, but outbound messages and pings
@@ -541,8 +550,10 @@ where
                     Some((&KIND_APP, body)) => held = Some(body.to_vec()),
                     Some((&KIND_CONTROL, body)) => match decode_control(body) {
                         Ok(Control::Ping { n }) => {
-                            if let Err(e) = send_control(sink, session, &Control::Pong { n }).await {
-                                return send_err(e);
+                            match timeout(write_limit, send_control(sink, session, &Control::Pong { n })).await {
+                                Ok(Ok(())) => {}
+                                Ok(Err(e)) => return send_err(e),
+                                Err(_) => return stuck("pong"),
                             }
                         }
                         Ok(Control::Pong { .. }) => {}
@@ -560,8 +571,10 @@ where
                 None => return (CloseReason::Normal, true),
                 Some(Outgoing::Close(r)) => return (r, true),
                 Some(Outgoing::App(bytes)) => {
-                    if let Err(e) = session.send(sink, &bytes).await {
-                        return send_err(e);
+                    match timeout(write_limit, session.send(sink, &bytes)).await {
+                        Ok(Ok(())) => {}
+                        Ok(Err(e)) => return send_err(e),
+                        Err(_) => return stuck("message"),
                     }
                 }
             },
@@ -574,8 +587,10 @@ where
                 }
                 ping_n += 1;
                 ping_sent.get_or_insert_with(Instant::now);
-                if let Err(e) = send_control(sink, session, &Control::Ping { n: ping_n }).await {
-                    return send_err(e);
+                match timeout(write_limit, send_control(sink, session, &Control::Ping { n: ping_n })).await {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => return send_err(e),
+                    Err(_) => return stuck("heartbeat"),
                 }
             }
         }
@@ -2047,6 +2062,55 @@ mod tests {
         let elapsed = started.elapsed();
         assert!(elapsed >= Duration::from_millis(200), "{elapsed:?}");
         assert!(f.server.active_connections().is_empty());
+    }
+
+    /// A half-open socket: an outgoing message is written into a tiny
+    /// buffer nobody reads, so the write never completes. The loop still
+    /// ends with the heartbeat timeout instead of hanging on the write.
+    #[tokio::test]
+    async fn a_write_that_never_completes_ends_the_link() {
+        let server = StaticKeypair::generate();
+        let device = StaticKeypair::generate();
+        let (mut a, mut b) = crate::noise::memory::pair();
+        let spub = *server.public();
+        let client = tokio::spawn(async move {
+            handshake_initiator(&mut a, &device, &spub, NoiseConfig::default()).await
+        });
+        let mut session = handshake_responder(&mut b, &server, NoiseConfig::default())
+            .await
+            .unwrap();
+        let _peer = client.await.unwrap().unwrap();
+
+        // One frame of room and no reader; nothing ever arrives either.
+        let (raw_sink, _unread) = futures_channel::mpsc::channel::<Vec<u8>>(0);
+        let mut sink = raw_sink.sink_map_err(|_| NetError::WebSocket("gone".into()));
+        let mut stream = futures_util::stream::pending::<Result<Vec<u8>>>();
+        let (in_tx, _in_rx) = mpsc::channel(4);
+        let (out_tx, mut out_rx) = mpsc::channel(4);
+        out_tx
+            .send(Outgoing::App(vec![7u8; 4 * MAX_NOISE_MESSAGE]))
+            .await
+            .unwrap();
+        let heartbeat = Duration::from_millis(100);
+        let started = std::time::Instant::now();
+        let (reason, notify) = timeout(
+            Duration::from_secs(5),
+            io_loop(
+                &mut sink,
+                &mut stream,
+                &mut session,
+                heartbeat,
+                &in_tx,
+                inbound_budget(1024),
+                &mut out_rx,
+            ),
+        )
+        .await
+        .expect("a stuck write must not hang the link");
+        assert_eq!(reason, CloseReason::HeartbeatTimeout);
+        assert!(!notify, "no close frame goes into a stuck socket");
+        let elapsed = started.elapsed();
+        assert!(elapsed >= heartbeat * 2, "{elapsed:?}");
     }
 
     /// The peer sends more than the inbound queue holds while the

@@ -10,6 +10,7 @@ import {
   type Link,
 } from '../test/tauriMock';
 import {
+  PENDING_QUIET_PROBE_MS,
   PROBE_TIMEOUT_MS,
   QUIET_PROBE_MS,
   TauriTransport,
@@ -314,7 +315,67 @@ describe('TauriTransport', () => {
     expect(t.state).toBe('connected');
   });
 
-  it('does not probe while another request is still pending', async () => {
+  it('probes a link that leaves requests unanswered during continuous dictation', async () => {
+    const links = captureLinks();
+    const t = new TauriTransport('m1');
+    await connected(t, links);
+    const preview = (id: number) =>
+      t.send({
+        id,
+        body: {
+          type: 'transcribe',
+          audio: new Uint8Array(64_044),
+          format: 'wav',
+          sample_rate: null,
+          language: null,
+          session_id: null,
+        },
+      });
+    const first = preview(80);
+    const firstLost = expect(first).rejects.toThrow(/connection lost/);
+    // Previews keep coming while nothing is heard; too early for a probe.
+    await vi.advanceTimersByTimeAsync(PENDING_QUIET_PROBE_MS - 2000);
+    void preview(81).catch(() => {});
+    await flush();
+    expect(tauri.callsOf('vca_send').map((c) => decodeClient(c.args).body.type)).toEqual([
+      'transcribe',
+      'transcribe',
+    ]);
+    // The oldest request has waited long enough: the next one pings first,
+    // even though requests are pending (QUIET_PROBE_MS has not passed).
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(PENDING_QUIET_PROBE_MS).toBeLessThan(QUIET_PROBE_MS);
+    void preview(82).catch(() => {});
+    await flush();
+    expect(tauri.callsOf('vca_send').map((c) => decodeClient(c.args).body.type)).toEqual([
+      'transcribe',
+      'transcribe',
+      'ping',
+      'transcribe',
+    ]);
+    await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS);
+    await firstLost;
+    expect(t.state).toBe('reconnecting');
+    expect(tauri.callsOf('vca_disconnect')).toHaveLength(1);
+  });
+
+  it('keeps a busy link whose ping is answered while requests are pending', async () => {
+    const links = captureLinks();
+    const t = new TauriTransport('m1');
+    const link = await connected(t, links);
+    void t.send({ id: 90, body: { type: 'briefing', language: null } }).catch(() => {});
+    await vi.advanceTimersByTimeAsync(PENDING_QUIET_PROBE_MS);
+    void t.send({ id: 91, body: { type: 'list_sessions' } }).catch(() => {});
+    await flush();
+    const ping = tauri.callsOf('vca_send').map((c) => decodeClient(c.args))[1]!;
+    expect(ping.body.type).toBe('ping');
+    link.message.onmessage(serverBytes({ id: ping.id, body: { type: 'pong', at: 1 } }));
+    await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS);
+    expect(t.state).toBe('connected');
+    expect(tauri.callsOf('vca_disconnect')).toHaveLength(0);
+  });
+
+  it('does not probe while a recent request is still pending', async () => {
     const links = captureLinks();
     const t = new TauriTransport('m1');
     await connected(t, links);

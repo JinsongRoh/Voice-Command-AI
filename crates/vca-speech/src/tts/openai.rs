@@ -110,10 +110,7 @@ impl OpenAiTtsEngine {
     /// Fails on an invalid key header or a gateway token without one.
     pub fn new(config: OpenAiTtsConfig) -> Result<Self> {
         config.auth.validate()?;
-        let client = reqwest::Client::builder()
-            .timeout(config.timeout)
-            .redirect(crate::auth::redirect_policy())
-            .build()?;
+        let client = crate::retry::client_builder(config.timeout).build()?;
         Ok(Self {
             config,
             client,

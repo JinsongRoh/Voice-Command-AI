@@ -83,10 +83,8 @@ impl GoogleSttEngine {
         if config.project_id.is_empty() {
             return Err(SpeechError::Config("Google project id is empty".into()));
         }
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(config.timeout_secs))
-            .redirect(crate::auth::redirect_policy())
-            .build()?;
+        let client =
+            crate::retry::client_builder(Duration::from_secs(config.timeout_secs)).build()?;
         Ok(Self { config, client })
     }
 

@@ -109,10 +109,7 @@ struct ContentBlock {
 
 impl AnthropicClient {
     pub fn new(config: AnthropicConfig) -> Result<Self> {
-        let client = reqwest::Client::builder()
-            .timeout(config.timeout)
-            .redirect(crate::auth::redirect_policy())
-            .build()?;
+        let client = crate::retry::client_builder(config.timeout).build()?;
         Ok(Self { config, client })
     }
 
@@ -121,18 +118,27 @@ impl AnthropicClient {
     }
 
     async fn send(&self, body: &serde_json::Value, refresh: bool) -> Result<reqwest::Response> {
-        let mut req = self
-            .client
-            .post(self.endpoint())
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .json(body);
-        req = match &self.config.auth {
-            AnthropicAuth::ApiKey(key) => req.header("x-api-key", key),
-            AnthropicAuth::Token(provider) => req
-                .bearer_auth(provider.token(refresh).await?)
-                .header("anthropic-beta", OAUTH_BETA),
+        let token = match &self.config.auth {
+            AnthropicAuth::ApiKey(_) => None,
+            AnthropicAuth::Token(provider) => Some(provider.token(refresh).await?),
         };
-        Ok(req.send().await?)
+        // Resent only when no connection was made (never billed twice).
+        let resp = crate::retry::send_unconnected_retry(|| {
+            let mut req = self
+                .client
+                .post(self.endpoint())
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .json(body);
+            req = match (&self.config.auth, &token) {
+                (AnthropicAuth::ApiKey(key), _) => req.header("x-api-key", key),
+                (AnthropicAuth::Token(_), token) => req
+                    .bearer_auth(token.as_deref().unwrap_or_default())
+                    .header("anthropic-beta", OAUTH_BETA),
+            };
+            req.send()
+        })
+        .await?;
+        Ok(resp)
     }
 }
 

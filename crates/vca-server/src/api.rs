@@ -158,7 +158,12 @@ impl Client {
     }
 
     async fn send(&self, id: u64, body: ServerMsg) {
-        let _ = self.out.send(Envelope { id, body }).await;
+        let _ = self.deliver(id, body).await;
+    }
+
+    /// Sends a reply; `false` when the connection is gone (the reply is lost).
+    async fn deliver(&self, id: u64, body: ServerMsg) -> bool {
+        self.out.send(Envelope { id, body }).await.is_ok()
     }
 }
 
@@ -1527,6 +1532,7 @@ impl Api {
                 // Recognition takes seconds; keep serving the client meanwhile.
                 let client = Arc::clone(client);
                 tokio::spawn(async move {
+                    let started = std::time::Instant::now();
                     let reply = match speech.transcribe(req, &ctx).await {
                         Ok(t) => ServerMsg::Transcript {
                             text: t.text,
@@ -1539,7 +1545,17 @@ impl Api {
                         },
                         Err(err) => error_msg(&err),
                     };
-                    client.send(id, reply).await;
+                    // The reply goes to the connection that asked; after a
+                    // reconnect it is lost and the app times out instead.
+                    if !client.deliver(id, reply).await {
+                        tracing::warn!(
+                            request = id,
+                            is_final,
+                            elapsed_ms =
+                                u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+                            "transcript reply not delivered: the client disconnected"
+                        );
+                    }
                 });
                 return;
             }

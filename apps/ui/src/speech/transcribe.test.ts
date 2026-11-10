@@ -1,9 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { LinkStatus } from '../native/bridge';
+import { TauriTransport } from '../protocol/tauriTransport';
 import { Client, type ConnectionState } from '../protocol/transport';
 import type { ClientMsg, Envelope, ServerMsg } from '../protocol/types';
 import { FakeTransport } from '../test/fakeTransport';
-import { tauri } from '../test/tauriMock';
+import {
+  decodeClient,
+  serverBytes,
+  status,
+  tauri,
+  type FakeChannel,
+  type Link,
+} from '../test/tauriMock';
 import { createNativeRecorder } from './recorder';
 import { RequestError } from '../state/core';
 import {
@@ -281,6 +290,101 @@ describe('server transcriber on a weak link', () => {
   });
 });
 
+describe('server transcriber over the native link', () => {
+  const wav = new Blob([new Uint8Array(44 + 32_000)], { type: 'audio/wav' });
+  const FINAL = { ...OPTIONS, final: true };
+  const TIMEOUT_MS = 5000;
+
+  /** Records `vca_connect` channels; the test answers on them. */
+  function captureLinks() {
+    const links: Link[] = [];
+    tauri.handlers.set('vca_connect', (args) => {
+      const { onStatus, onMessage } = args as {
+        onStatus: FakeChannel<LinkStatus>;
+        onMessage: FakeChannel<unknown>;
+      };
+      links.push({ status: onStatus, message: onMessage });
+      return undefined;
+    });
+    tauri.handlers.set('vca_send', () => undefined);
+    tauri.handlers.set('vca_disconnect', () => undefined);
+    return links;
+  }
+
+  async function setup() {
+    const links = captureLinks();
+    const transport = new TauriTransport('m1', {
+      transcribeTimeoutMs: TIMEOUT_MS,
+      quietProbeMs: 0,
+    });
+    const p = transport.connect();
+    await vi.advanceTimersByTimeAsync(0);
+    links[0]!.status.onmessage(status('connected'));
+    await p;
+    return { links, transport, client: new Client(transport) };
+  }
+
+  const sentTranscribes = () =>
+    tauri
+      .callsOf('vca_send')
+      .map((c) => decodeClient(c.args))
+      .filter((e) => e.body.type === 'transcribe');
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    tauri.reset();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('recycles the link when a final times out and sends it once more', async () => {
+    const { links, transport, client } = await setup();
+    const result = createServerTranscriber(() => client)(wav, FINAL);
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    // No answer: the link is replaced instead of left "connected".
+    expect(transport.state).toBe('reconnecting');
+    expect(links).toHaveLength(2);
+    expect(sentTranscribes()).toHaveLength(1);
+    links[1]!.status.onmessage(status('connected'));
+    await vi.advanceTimersByTimeAsync(0);
+    const sent = sentTranscribes();
+    expect(sent).toHaveLength(2);
+    expect((sent[1]!.body as { audio: Uint8Array }).audio).toEqual(
+      (sent[0]!.body as { audio: Uint8Array }).audio,
+    );
+    // A late answer on the old link is dropped; the new one counts, once.
+    links[0]!.message.onmessage(serverBytes({ id: sent[0]!.id, body: TRANSCRIPT }));
+    links[1]!.message.onmessage(serverBytes({ id: sent[1]!.id, body: TRANSCRIPT }));
+    await expect(result).resolves.toMatchObject({ text: 'run pnpm test' });
+    expect(sentTranscribes()).toHaveLength(2);
+  });
+
+  it('retries a timed-out final only once and keeps it a network error', async () => {
+    const { links, client } = await setup();
+    const result = createServerTranscriber(() => client)(wav, FINAL);
+    const assertion = expect(result).rejects.toSatisfy(isNetworkError);
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    links[1]!.status.onmessage(status('connected'));
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    await assertion;
+    expect(sentTranscribes()).toHaveLength(2);
+    links[2]?.status.onmessage(status('connected'));
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    expect(sentTranscribes()).toHaveLength(2);
+  });
+
+  it('recycles the link for a timed-out preview but does not resend it', async () => {
+    const { links, transport, client } = await setup();
+    const result = createServerTranscriber(() => client)(wav, OPTIONS);
+    const assertion = expect(result).rejects.toSatisfy(isNetworkError);
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    await assertion;
+    expect(transport.state).toBe('reconnecting');
+    links[1]!.status.onmessage(status('connected'));
+    await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+    expect(sentTranscribes()).toHaveLength(1);
+  });
+});
+
 describe('isSpeechUnreachableError', () => {
   it('recognizes an unreachable speech server, new and old wording', () => {
     const msg =
@@ -289,6 +393,12 @@ describe('isSpeechUnreachableError', () => {
     expect(
       isSpeechUnreachableError(
         new RequestError('unavailable', 'http error: error sending request'),
+      ),
+    ).toBe(true);
+    // A recognizer that stayed busy (vcad gives up waiting for a slot).
+    expect(
+      isSpeechUnreachableError(
+        new RequestError('unavailable', 'speech_busy: the speech server is busy'),
       ),
     ).toBe(true);
   });

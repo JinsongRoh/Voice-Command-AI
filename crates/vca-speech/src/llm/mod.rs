@@ -102,10 +102,7 @@ impl ChatClient {
     /// Fails on an invalid key header or a gateway token without one.
     pub fn new(config: ChatConfig) -> Result<Self> {
         config.auth.validate()?;
-        let client = reqwest::Client::builder()
-            .timeout(config.timeout)
-            .redirect(crate::auth::redirect_policy())
-            .build()?;
+        let client = crate::retry::client_builder(config.timeout).build()?;
         Ok(Self { config, client })
     }
 
@@ -136,8 +133,12 @@ impl ChatClient {
             "temperature": 0,
             "stream": false,
         });
-        let req = self.authorized(self.client.post(self.endpoint()).json(&body));
-        let resp = req.send().await?;
+        // Resent only when no connection was made (never billed twice).
+        let resp = crate::retry::send_unconnected_retry(|| {
+            self.authorized(self.client.post(self.endpoint()).json(&body))
+                .send()
+        })
+        .await?;
         let status = resp.status();
         let text = resp.text().await?;
         if !status.is_success() {

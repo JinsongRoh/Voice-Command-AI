@@ -24,6 +24,12 @@ export interface TauriTransportOptions {
    * `ping` (default `QUIET_PROBE_MS`; `0` turns the probe off).
    */
   quietProbeMs?: number;
+  /**
+   * With requests pending, the probe runs once nothing has arrived and the
+   * oldest pending request has waited this long (default
+   * `PENDING_QUIET_PROBE_MS`).
+   */
+  pendingQuietProbeMs?: number;
   /** How long that `ping` may take before the link counts as dead (default `PROBE_TIMEOUT_MS`). */
   probeTimeoutMs?: number;
   /** Injectable clock (tests). */
@@ -61,6 +67,12 @@ export function transcribeTimeoutFor(body: ClientMsg): number {
  * heartbeat gives up (up to a minute): a dictation sent then was lost.
  */
 export const QUIET_PROBE_MS = 30_000;
+/**
+ * The same check while requests are pending: continuous dictation always has
+ * one in flight, and a half-open link that swallows them all must not look
+ * "busy" forever. A slow server still answers the `ping` at once.
+ */
+export const PENDING_QUIET_PROBE_MS = 18_000;
 /** A `pong` slower than this means the link is dead: it is reopened. */
 export const PROBE_TIMEOUT_MS = 8_000;
 
@@ -68,6 +80,8 @@ interface Pending {
   resolve(msg: ServerMsg): void;
   reject(err: Error): void;
   timer: ReturnType<typeof setTimeout>;
+  /** When the request was registered. */
+  at: number;
 }
 
 interface Waiter {
@@ -96,6 +110,7 @@ export class TauriTransport implements Transport {
   private readonly requestTimeoutMs: number;
   private readonly transcribeTimeoutMs: number | null;
   private readonly quietProbeMs: number;
+  private readonly pendingQuietProbeMs: number;
   private readonly probeTimeoutMs: number;
   private readonly now: () => number;
   /** When the link last delivered something (or came up). */
@@ -111,6 +126,7 @@ export class TauriTransport implements Transport {
     this.requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
     this.transcribeTimeoutMs = options.transcribeTimeoutMs ?? null;
     this.quietProbeMs = options.quietProbeMs ?? QUIET_PROBE_MS;
+    this.pendingQuietProbeMs = options.pendingQuietProbeMs ?? PENDING_QUIET_PROBE_MS;
     this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
     this.now = options.now ?? Date.now;
   }
@@ -194,10 +210,17 @@ export class TauriTransport implements Transport {
    */
   private probeIfQuiet(): Promise<void> | null {
     if (this.quietProbeMs <= 0 || this.probe) return this.probe;
-    const quietMs = this.now() - this.lastRxAt;
-    // With a request still pending the silence may be a slow server (the
-    // ping would queue behind it), not a dead link.
-    if (quietMs < this.quietProbeMs || this.pending.size > 0) return null;
+    const now = this.now();
+    const quietMs = now - this.lastRxAt;
+    if (this.pending.size === 0) {
+      if (quietMs < this.quietProbeMs) return null;
+    } else {
+      // A request that only just went out may simply not be answered yet;
+      // one unanswered this long, with nothing else heard, points at the link.
+      let oldest = now;
+      for (const p of this.pending.values()) oldest = Math.min(oldest, p.at);
+      if (now - Math.max(this.lastRxAt, oldest) < this.pendingQuietProbeMs) return null;
+    }
     const generation = this.generation;
     const sentAt = this.now();
     const ping: Envelope<ClientMsg> = {
@@ -264,12 +287,24 @@ export class TauriTransport implements Transport {
       return { reply: Promise.reject(err as Error), handedOver: Promise.resolve() };
     }
     let handedOver: Promise<void> = Promise.resolve();
+    const generation = this.generation;
     const reply = new Promise<ServerMsg>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(envelope.id);
         reject(new Error(`request timed out (${envelope.body.type})`));
+        // An unanswered recognition is the symptom of a link that died under
+        // it (a network change). The link is replaced at once, so the caller
+        // sees `reconnecting` and may send a final chunk once more.
+        if (
+          envelope.body.type === 'transcribe' &&
+          generation === this.generation &&
+          this._state === 'connected'
+        ) {
+          diag('link.transcribe.timeout', { timeoutMs });
+          this.recycle();
+        }
       }, timeoutMs);
-      this.pending.set(envelope.id, { resolve, reject, timer });
+      this.pending.set(envelope.id, { resolve, reject, timer, at: this.now() });
       const fail = (err: Error) => {
         const entry = this.pending.get(envelope.id);
         if (!entry) return;

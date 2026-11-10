@@ -68,6 +68,27 @@ const TOPIC_HINT_CHARS: usize = 250;
 const LLM_VOCAB_TERMS: usize = 40;
 /// Correction layer name of the LLM context pass.
 const CONTEXT_LAYER: &str = "context";
+/// Longest wait of an interim preview for a recognizer slot: a stale
+/// preview fails fast instead of queuing behind slow requests.
+const PREVIEW_PERMIT_WAIT: Duration = Duration::from_secs(10);
+/// Longest wait of a final chunk for a recognizer slot.
+const FINAL_PERMIT_WAIT: Duration = Duration::from_secs(30);
+
+/// How long a request waits for a recognizer slot, by kind.
+#[derive(Debug, Clone, Copy)]
+struct PermitWait {
+    preview: Duration,
+    final_chunk: Duration,
+}
+
+impl Default for PermitWait {
+    fn default() -> Self {
+        Self {
+            preview: PREVIEW_PERMIT_WAIT,
+            final_chunk: FINAL_PERMIT_WAIT,
+        }
+    }
+}
 
 /// Vocabulary engines per project folder (`None`: no project), with the
 /// time they were built and the [`Personal::generation`] they were built from.
@@ -433,6 +454,7 @@ pub struct Speech {
     fillers: FillerRemover,
     vocab: Mutex<VocabCache>,
     permits: Semaphore,
+    permit_wait: PermitWait,
 }
 
 fn api_error(code: ErrorCode, message: impl Into<String>) -> Error {
@@ -537,6 +559,7 @@ impl Speech {
             router: IntentRouter::new(),
             fillers: FillerRemover::new(),
             vocab: Mutex::new(HashMap::new()),
+            permit_wait: PermitWait::default(),
         })
     }
 
@@ -783,8 +806,17 @@ impl Speech {
             .ok_or_else(|| api_error(ErrorCode::Unsupported, "no speech engine is configured"))?;
         let engine = slot.engine(&self.secrets)?;
         let llm = self.llm_slot(device);
+        let audio_ms = audio_millis(&req.audio, req.format, req.sample_rate);
         let audio = audio_input(req.audio, req.format, req.sample_rate)?;
+        let is_final = req.is_final;
+        let started = Instant::now();
         let vocab = self.vocabulary(req.project_dir.as_deref()).await;
+        tracing::info!(
+            is_final,
+            audio_ms,
+            elapsed_ms = elapsed_ms(started),
+            "speech: vocabulary ready"
+        );
         let language = req.language.clone().or_else(|| self.cfg.language.clone());
         let topic_key = req.topic_key.as_deref().filter(|_| llm.is_some());
         let (topic, topic_terms) = match topic_key {
@@ -802,15 +834,57 @@ impl Speech {
             phrase_hints: merge_terms(&topic_terms, vocab.hint_phrases(HINT_PHRASES), HINT_PHRASES),
         };
 
-        let _permit = self
-            .permits
-            .acquire()
-            .await
-            .map_err(|_| api_error(ErrorCode::Unavailable, "speech is shutting down"))?;
-        let mut transcript = engine
-            .transcribe(&audio, &options)
-            .await
-            .map_err(speech_error)?;
+        // A bounded wait: when the speech server hangs (a dead connection
+        // after a network change), later requests fail instead of queuing
+        // for minutes. Previews give up sooner than finals.
+        let wait = if is_final {
+            self.permit_wait.final_chunk
+        } else {
+            self.permit_wait.preview
+        };
+        let available = self.permits.available_permits();
+        let started = Instant::now();
+        let permit = match tokio::time::timeout(wait, self.permits.acquire()).await {
+            Ok(Ok(permit)) => permit,
+            Ok(Err(_)) => {
+                return Err(api_error(ErrorCode::Unavailable, "speech is shutting down"));
+            }
+            Err(_) => {
+                tracing::warn!(
+                    is_final,
+                    audio_ms,
+                    waited_ms = elapsed_ms(started),
+                    "speech: no recognizer slot became free; request dropped"
+                );
+                return Err(api_error(
+                    ErrorCode::Unavailable,
+                    format!(
+                        "{SPEECH_BUSY}: the speech server is busy; no recognizer slot \
+                         was free within {} s",
+                        wait.as_secs()
+                    ),
+                ));
+            }
+        };
+        tracing::info!(
+            is_final,
+            audio_ms,
+            permits_available = available,
+            elapsed_ms = elapsed_ms(started),
+            "speech: recognizer slot acquired"
+        );
+        let started = Instant::now();
+        let result = engine.transcribe(&audio, &options).await;
+        // The slot covers the recognizer only; the LLM pass has its own.
+        drop(permit);
+        tracing::info!(
+            is_final,
+            audio_ms,
+            ok = result.is_ok(),
+            elapsed_ms = elapsed_ms(started),
+            "speech: engine call finished"
+        );
+        let mut transcript = result.map_err(speech_error)?;
         // Drop low-confidence segments that are only a known Whisper
         // hallucination ("감사합니다.", "Thanks for watching!").
         vca_speech::cleanup::strip_hallucinated_segments(&mut transcript);
@@ -854,7 +928,15 @@ impl Speech {
                     terms: &terms,
                     language: detected.as_deref(),
                 };
+                let started = Instant::now();
                 let applied = self.topics.correct(&corrector, input, llm.timeout).await;
+                tracing::info!(
+                    is_final,
+                    audio_ms,
+                    applied = applied.is_some(),
+                    elapsed_ms = elapsed_ms(started),
+                    "speech: LLM correction finished"
+                );
                 if let Some(applied) = applied {
                     corrections.extend(applied.fixes.into_iter().map(|f| TranscriptCorrection {
                         from: f.from,
@@ -974,6 +1056,32 @@ fn audio_input(
         (_, rate) => rate.unwrap_or(0),
     };
     Ok(AudioInput::from_encoded(bytes, format, rate))
+}
+
+/// Message prefix of a request that found no free recognizer slot in time.
+const SPEECH_BUSY: &str = "speech_busy";
+
+fn elapsed_ms(since: Instant) -> u64 {
+    u64::try_from(since.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
+/// Audio length in milliseconds for logs: exact for PCM16, from the header
+/// for a plain 44-byte-header WAV, 0 when unknown (compressed formats).
+fn audio_millis(bytes: &[u8], format: AudioEncoding, sample_rate: Option<u32>) -> u64 {
+    let (rate, channels, bits, data) = match format {
+        AudioEncoding::Pcm16 => (sample_rate.unwrap_or(0), 1u16, 16u16, bytes.len()),
+        AudioEncoding::Wav if bytes.len() > 44 => {
+            let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
+            let rate = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
+            (rate, u16_at(22), u16_at(34), bytes.len() - 44)
+        }
+        _ => return 0,
+    };
+    let bytes_per_sec = u64::from(rate) * u64::from(channels) * u64::from(bits / 8);
+    if bytes_per_sec == 0 {
+        return 0;
+    }
+    (data as u64).saturating_mul(1000) / bytes_per_sec
 }
 
 /// Message prefix of a speech server that could not be reached (connection
@@ -1112,6 +1220,95 @@ mod tests {
             topic_key: None,
             device: None,
         }
+    }
+
+    /// An engine whose requests never finish (a dead connection).
+    struct HangingEngine;
+
+    #[async_trait::async_trait]
+    impl SttEngine for HangingEngine {
+        fn name(&self) -> &str {
+            "hanging"
+        }
+
+        async fn transcribe(
+            &self,
+            _audio: &AudioInput,
+            _options: &TranscribeOptions,
+        ) -> vca_speech::Result<Transcript> {
+            std::future::pending().await
+        }
+    }
+
+    #[tokio::test]
+    async fn a_full_recognizer_fails_waiting_requests_fast() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = SpeechConfig {
+            language: Some("en".into()),
+            max_concurrent: 1,
+            ..SpeechConfig::default()
+        };
+        let mut s = Speech::with_engine(Arc::new(HangingEngine), cfg, dir.path()).unwrap();
+        s.permit_wait = PermitWait {
+            preview: Duration::from_millis(50),
+            final_chunk: Duration::from_millis(200),
+        };
+        let s = Arc::new(s);
+        let ctx = IntentContext::default();
+        // The first request holds the only slot forever.
+        let holder = {
+            let s = Arc::clone(&s);
+            let ctx = ctx.clone();
+            tokio::spawn(async move { s.transcribe(req(wav(), AudioEncoding::Wav), &ctx).await })
+        };
+        while s.permits.available_permits() > 0 {
+            tokio::task::yield_now().await;
+        }
+        let started = Instant::now();
+        let err = s
+            .transcribe(req(wav(), AudioEncoding::Wav), &ctx)
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), ErrorCode::Unavailable);
+        assert!(err.to_string().contains(SPEECH_BUSY), "{err}");
+        let preview_wait = started.elapsed();
+        assert!(
+            preview_wait < Duration::from_millis(190),
+            "{preview_wait:?}"
+        );
+
+        let mut fin = req(wav(), AudioEncoding::Wav);
+        fin.is_final = true;
+        let started = Instant::now();
+        let err = s.transcribe(fin, &ctx).await.unwrap_err();
+        assert_eq!(err.code(), ErrorCode::Unavailable);
+        assert!(
+            started.elapsed() >= Duration::from_millis(200),
+            "finals wait longer"
+        );
+        holder.abort();
+    }
+
+    #[tokio::test]
+    async fn the_slot_is_freed_after_the_engine_call() {
+        let (s, _dir) = speech(MockSttEngine::always("hello"));
+        let before = s.permits.available_permits();
+        s.transcribe(req(wav(), AudioEncoding::Wav), &IntentContext::default())
+            .await
+            .unwrap();
+        assert_eq!(s.permits.available_permits(), before);
+    }
+
+    #[test]
+    fn audio_length_is_estimated_for_logs() {
+        // 1600 samples at 16 kHz mono.
+        assert_eq!(audio_millis(&wav(), AudioEncoding::Wav, None), 100);
+        assert_eq!(
+            audio_millis(&[0; 32_000], AudioEncoding::Pcm16, Some(16_000)),
+            1000
+        );
+        assert_eq!(audio_millis(&[0; 10], AudioEncoding::Pcm16, None), 0);
+        assert_eq!(audio_millis(&[0; 10], AudioEncoding::Webm, None), 0);
     }
 
     #[test]
