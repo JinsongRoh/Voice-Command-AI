@@ -19,7 +19,7 @@ use super::audit::{AUDIT_FILE, ShellAudit};
 use super::*;
 use crate::events::LogLimits;
 use crate::sessions::{ManagerConfig, Observed, ObservedIdentity, SessionManager};
-use crate::workspace::WorkspaceRoots;
+use crate::workspace::{WorkspaceRoots, without_verbatim_prefix};
 
 const TEST_SHELL: &str = if cfg!(windows) { "cmd" } else { "sh" };
 const WAIT: Duration = Duration::from_secs(20);
@@ -49,6 +49,9 @@ fn fixture(settings: ShellSettings) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let workspace = dir.path().join("workspace");
     std::fs::create_dir_all(workspace.join("project")).unwrap();
+    // The server reports canonical paths; on Windows the temp dir can come
+    // as an 8.3 short name (`RUNNER~1`) that canonicalizing expands.
+    let workspace = without_verbatim_prefix(std::fs::canonicalize(&workspace).unwrap());
     let mgr = SessionManager::new(
         ManagerConfig {
             limits: LogLimits::default(),
