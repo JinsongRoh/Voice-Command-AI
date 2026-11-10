@@ -105,7 +105,116 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.dnspilot {
+/* Pairing as one card of steps: pending (muted), active, done (check),
+   error (on the step it belongs to). */
+.stepper {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+.step[data-state='active'] {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.step[data-state='error'] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.step[data-state='pending'] .stepTitle {
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+.stepMark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.step[data-state='active'] .stepMark {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.step[data-state='done'] .stepMark {
+  border-color: var(--st-done);
+  background: var(--st-done);
+  color: var(--surface);
+}
+.step[data-state='error'] .stepMark {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--danger-text);
+}
+.stepBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stepBody > * {
+  margin: 0;
+}
+.stepTitle {
+  margin: 0;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  font-weight: var(--fw-semibold);
+}
+.step[data-state='done'] .stepTitle {
+  color: var(--st-done);
+}
+.stepAction {
+  align-self: flex-start;
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.confirmLine {
+  margin: 0;
+}
+.confirmCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: var(--fw-semibold);
+  min-height: 44px;
+}
+.confirmCheck input {
+  width: 22px;
+  height: 22px;
+}
+.paste summary,
+.advanced summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.paste[open] summary {
+  margin-bottom: 8px;
+}
+/* Fallbacks the one-QR flow no longer needs: collapsed by default. */
+.advanced {
   align-self: stretch;
   display: flex;
   flex-direction: column;
@@ -113,7 +222,10 @@
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
-.dnspilot h3 {
+.advanced[open] > * + * {
+  margin-top: 8px;
+}
+.advanced h3 {
   margin: 0;
   font-size: 15px;
 }

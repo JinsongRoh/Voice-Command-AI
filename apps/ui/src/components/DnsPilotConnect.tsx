@@ -76,6 +76,73 @@ export function DnsPilotPanel({ service }: { service: DnsPilotService }) {
 }
 
 /**
+ * "Reconnect DNSPilot": runs the DNSPilot approval again, connected or not
+ * (the new grant replaces the old one). Used where a pairing code could not
+ * carry an invite because DNSPilot is not connected or refused the grant.
+ */
+export function DnsPilotRelink({
+  service,
+  onConnected,
+}: {
+  service: DnsPilotService;
+  onConnected?: () => void;
+}) {
+  const { t } = useI18n();
+  const [prompt, setPrompt] = useState<DnsPilotPrompt | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
+
+  const start = async () => {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      setPrompt(await service.authorizeStart());
+      await service.authorizeWait();
+      onConnected?.();
+    } catch (err) {
+      if (toNativeError(err).code !== 'dnspilot_cancelled') setError(describeNativeError(t, err));
+    } finally {
+      running.current = false;
+      setPrompt(null);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.box}>
+      {prompt ? (
+        <Approval
+          prompt={prompt}
+          onOpen={() =>
+            void service.openActivation().catch((e) => setError(describeNativeError(t, e)))
+          }
+          onCancel={() => void service.authorizeCancel().catch(() => {})}
+        />
+      ) : (
+        <div className={styles.row}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={busy}
+            onClick={() => void start()}
+          >
+            {t('host.invite.relink')}
+          </button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className={styles.error}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * "Connect DNSPilot": authorizes VCA in DNSPilot with the device flow,
  * creates (or records) an app-mode tunnel to vcad on the PC and registers
  * this app's client key on it. Keys and tokens never reach the webview.

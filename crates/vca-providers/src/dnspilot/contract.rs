@@ -582,6 +582,9 @@ pub mod invite_errors {
     pub const TUNNEL_NOT_APP_MODE: &str = "tunnel_not_app_mode";
     pub const CLIENT_LIMIT: &str = "client_limit";
     pub const INVITE_LIMIT: &str = "invite_limit";
+    /// 403: the OAuth grant may not change this tunnel (DNSPilot 1.27.6+;
+    /// older consoles answer with a plain-string 403 instead).
+    pub const OAUTH_TUNNEL_NOT_OWNED: &str = "oauth_tunnel_not_owned";
 
     /// Every documented code.
     pub const ALL: &[&str] = &[
@@ -593,6 +596,7 @@ pub mod invite_errors {
         TUNNEL_NOT_APP_MODE,
         CLIENT_LIMIT,
         INVITE_LIMIT,
+        OAUTH_TUNNEL_NOT_OWNED,
     ];
 }
 

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '../i18n/context';
+import type { DnsPilotService } from '../native/bridge';
 import { hostBridge, type HostPairing, type HostStatus, type RemoteInfo } from '../native/host';
 import { tauri } from '../test/tauriMock';
 import { ConnectPhoneView } from './ConnectPhoneView';
@@ -10,6 +11,7 @@ import { ConnectPhoneView } from './ConnectPhoneView';
 vi.mock('@tauri-apps/api/core', () => import('../test/tauriMock'));
 
 const T0 = Date.UTC(2026, 9, 30, 12, 0, 0);
+const ONE_QR = /This one QR code registers the phone for remote access and connects it/;
 
 function remote(over: Partial<RemoteInfo> = {}): RemoteInfo {
   return {
@@ -271,11 +273,11 @@ describe('ConnectPhoneView', () => {
     expect(box).not.toBeChecked();
   });
 
-  it('says when the code also registers the phone on the DNSPilot tunnel', async () => {
+  it('says when one code registers the phone for remote access and pairs it', async () => {
     tauri.handlers.set('vca_host_pair', () => pairing(1, { invite_included: true }));
     renderView();
     await createQr();
-    expect(await screen.findByText(/also registers the phone/)).toBeInTheDocument();
+    expect(await screen.findByText(ONE_QR)).toBeInTheDocument();
   });
 
   it('keeps the plain code with a short note when no invite could be made', async () => {
@@ -285,8 +287,48 @@ describe('ConnectPhoneView', () => {
     expect(await screen.findByRole('note')).toHaveTextContent('this app didn’t create it');
     expect(screen.getByRole('img', { name: /QR/i })).toBeInTheDocument();
     expect(screen.getByDisplayValue('vca://pair?v=1&s=secret1')).toBeInTheDocument();
-    expect(screen.queryByText(/also registers the phone/)).not.toBeInTheDocument();
+    expect(screen.queryByText(ONE_QR)).not.toBeInTheDocument();
+    // No DNSPilot service here: nothing to reconnect, the console guidance stays.
+    expect(screen.queryByRole('button', { name: 'Reconnect DNSPilot' })).toBeNull();
   });
+
+  for (const reason of ['not_owned', 'not_connected'] as const) {
+    it(`offers to reconnect DNSPilot when the invite was skipped (${reason})`, async () => {
+      vi.useRealTimers();
+      const user = userEvent.setup();
+      tauri.handlers.set('vca_host_pair', () => pairing(1, { invite_skipped: reason }));
+      let approve: () => void = () => {};
+      const dnspilot = {
+        authorizeStart: vi.fn(async () => ({
+          userCode: 'WXYZ-1234',
+          verificationUri: 'https://console.example/activate',
+          verificationUriComplete: null,
+          expiresIn: 600,
+        })),
+        authorizeWait: vi.fn(() => new Promise<void>((resolve) => (approve = resolve))),
+        authorizeCancel: vi.fn(async () => {}),
+        openActivation: vi.fn(async () => {}),
+      } as unknown as DnsPilotService;
+      render(
+        <I18nProvider locale="en">
+          <ConnectPhoneView host={hostBridge} dnspilot={dnspilot} clock={() => nowMs} />
+        </I18nProvider>,
+      );
+      await createQr();
+      const note = await screen.findByRole('note');
+      expect(note).toHaveTextContent(/cannot register the phone for remote access/);
+      expect(note).not.toHaveTextContent(/console/);
+      await user.click(within(note).getByRole('button', { name: 'Reconnect DNSPilot' }));
+      expect(dnspilot.authorizeStart).toHaveBeenCalledOnce();
+      expect(await screen.findByText('WXYZ-1234')).toBeInTheDocument();
+      await act(async () => approve());
+      expect(
+        await screen.findByText(/DNSPilot is connected\. Create a new QR code/),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('note')).toBeNull();
+      expect(screen.getByRole('button', { name: 'New code' })).toBeEnabled();
+    });
+  }
 
   it('shows pairing errors', async () => {
     tauri.handlers.set('vca_host_pair', () => {

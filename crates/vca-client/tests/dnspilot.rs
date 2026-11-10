@@ -1461,6 +1461,14 @@ async fn without_an_invite_the_pairing_code_says_why() {
             ResponseTemplate::new(403).set_body_json(json!({"detail": "Not this app's tunnel."})),
             "not_owned",
         ),
+        // DNSPilot 1.27.6+ gives the same refusal a stable code.
+        (
+            ResponseTemplate::new(403).set_body_json(json!({"detail": {
+                "message": "This OAuth grant may not change this tunnel.",
+                "code": "oauth_tunnel_not_owned"
+            }})),
+            "not_owned",
+        ),
         (
             ResponseTemplate::new(429)
                 .insert_header("Retry-After", "60")
@@ -1489,6 +1497,32 @@ async fn without_an_invite_the_pairing_code_says_why() {
             hub.dnspilot().pairing_invite(&pairing_endpoints()).await,
             PairingInvite::Skipped { reason }
         );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_coded_not_owned_refusal_asks_for_the_console_like_a_plain_one() {
+    let console = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/tunnels/12/app-clients"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"items": []})))
+        .mount(&console)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/tunnels/12/app-clients"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(json!({"detail": {
+            "message": "This OAuth grant may not change this tunnel.",
+            "code": "oauth_tunnel_not_owned"
+        }})))
+        .mount(&console)
+        .await;
+    let dir = tempfile::tempdir().unwrap();
+    let (hub, _) = signed_in_hub(&console, dir.path());
+    let dp = hub.dnspilot();
+    dp.add_tunnel("vca-new.example.com", 443, Some(12)).unwrap();
+    match dp.register_client("vca-new.example.com").await.unwrap() {
+        Registration::NeedsConsole { reason, .. } => assert_eq!(reason, "not_created_by_app"),
+        other => panic!("{other:?}"),
     }
 }
 

@@ -101,6 +101,9 @@ fn coded(code: &str) -> &'static str {
         invite_errors::TUNNEL_NOT_APP_MODE => "dnspilot_tunnel_not_app_mode",
         invite_errors::CLIENT_LIMIT => "dnspilot_client_limit",
         invite_errors::INVITE_LIMIT => "dnspilot_invite_limit",
+        // Same meaning as a plain-string 403 on a tunnel: this grant may not
+        // change it.
+        invite_errors::OAUTH_TUNNEL_NOT_OWNED => "dnspilot_forbidden",
         _ => "dnspilot_error",
     }
 }
@@ -1063,8 +1066,14 @@ impl DnsPilotManager {
                     client_id: client.id,
                 })
             }
-            // Only tunnels this grant created can be changed by the app.
+            // The grant may not change this tunnel: a plain-string 403 from
+            // older consoles, `oauth_tunnel_not_owned` from newer ones.
             Err(ProviderError::Forbidden(_)) => Ok(needs("not_created_by_app")),
+            Err(ProviderError::Coded { code, .. })
+                if code == invite_errors::OAUTH_TUNNEL_NOT_OWNED =>
+            {
+                Ok(needs("not_created_by_app"))
+            }
             Err(e) => Err(dp_err(e)),
         }
     }

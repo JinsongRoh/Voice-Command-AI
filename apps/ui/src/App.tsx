@@ -217,7 +217,11 @@ function Shell() {
   else if (view === 'connect' && native?.host)
     main = (
       <div className={styles.page}>
-        <ConnectPhoneView host={native.host} onBack={() => setView('settings')} />
+        <ConnectPhoneView
+          host={native.host}
+          dnspilot={native.dnspilot}
+          onBack={() => setView('settings')}
+        />
       </div>
     );
   else if (view === 'pairing' && demo)
@@ -461,7 +465,11 @@ function SetupContent({ onTryDemo }: { onTryDemo?: () => void }) {
       <main id="main" className={styles.main} tabIndex={-1}>
         <div className={styles.page}>
           {connect && native?.host ? (
-            <ConnectPhoneView host={native.host} onBack={() => setConnect(false)} />
+            <ConnectPhoneView
+              host={native.host}
+              dnspilot={native.dnspilot}
+              onBack={() => setConnect(false)}
+            />
           ) : (
             <PairingView
               intro={t('pairing.noMachines')}

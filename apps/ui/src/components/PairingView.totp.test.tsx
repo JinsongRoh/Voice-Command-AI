@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -133,19 +133,28 @@ describe('the tf=1 hint in pairing links', () => {
 });
 
 describe('pairing with 2-step verification', () => {
-  it('explains the code and the order of steps', async () => {
+  it('shows the steps, and the code step only when the PC asks for a code', async () => {
+    const user = userEvent.setup();
     const { native } = fixture();
     renderView(native);
-    const field = await screen.findByLabelText(CODE_LABEL);
+    const steps = screen.getByRole('list', { name: 'Pairing steps' });
+    // Scan, then connect: nothing else is known yet.
+    expect(steps.querySelectorAll(':scope > li')).toHaveLength(2);
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('data-state', 'active');
+    expect(screen.getByTestId('step-scan')).toHaveTextContent('Connect a phone');
+    expect(screen.getByTestId('step-connect')).toHaveAttribute('data-state', 'pending');
+    expect(screen.queryByLabelText(CODE_LABEL)).toBeNull();
+
+    await paste(user, screen.getByLabelText('Pairing link'), PAIR_TOTP);
+    expect(steps.querySelectorAll(':scope > li')).toHaveLength(3);
+    const field = screen.getByLabelText(CODE_LABEL);
     expect(field).toHaveAttribute('inputmode', 'numeric');
-    expect(field).not.toBeRequired();
+    expect(field).toBeRequired();
     const help = document.getElementById('pair-totp-help');
     expect(help).toHaveTextContent('“Voice Command AI” entry in your authenticator app');
     expect(help).toHaveTextContent('It is not a DNSPilot code.');
-    expect(help).toHaveTextContent('Enter it if you turned on 2-step verification on the PC.');
-    const steps = screen.getByRole('list', { name: 'Pairing steps' });
-    expect(steps.querySelectorAll('li')).toHaveLength(4);
-    expect(steps).toHaveTextContent(/DNSPilot.*Connect a phone.*scan the QR code.*6-digit code/);
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('data-state', 'done');
+    expect(screen.getByTestId('step-code')).toHaveAttribute('data-state', 'active');
   });
 
   it('keeps the form on totp_required, focuses the code and sends it at the sixth digit', async () => {
@@ -162,6 +171,7 @@ describe('pairing with 2-step verification', () => {
     expect(alert).toHaveTextContent(PROMPT);
     expect(alert).toHaveTextContent('Error code: totp_required');
     expect(alert).not.toHaveTextContent('authentication failed');
+    expect(within(screen.getByTestId('step-code')).getByRole('alert')).toBe(alert);
     const field = screen.getByLabelText(CODE_LABEL);
     await waitFor(() => expect(field).toHaveFocus());
     expect(field).toBeRequired();
@@ -210,7 +220,7 @@ describe('pairing with 2-step verification', () => {
     await waitFor(() => expect(field).toHaveFocus());
   });
 
-  it('a scanned link that needs a code goes to the "same code" check, then the code', async () => {
+  it('a scanned link that needs a code focuses the code; confirm, six digits, paired', async () => {
     const user = userEvent.setup();
     const { native, pair } = fixture();
     const scanner: QrScanner = {
@@ -222,15 +232,85 @@ describe('pairing with 2-step verification', () => {
     pair.mockResolvedValue(MACHINE);
     const onPaired = renderView(native);
     await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(PROMPT);
-    const field = screen.getByLabelText(CODE_LABEL);
+    const field = await screen.findByLabelText(CODE_LABEL);
+    await waitFor(() => expect(field).toHaveFocus());
+    // Nothing is wrong: no alert, the confirm code is the step-1 action.
+    expect(screen.queryByRole('alert')).toBeNull();
     const box = await screen.findByRole('checkbox', { name: 'My PC shows the same code' });
-    await waitFor(() => expect(box).toHaveFocus());
-    expect(pair).not.toHaveBeenCalled();
+    expect(screen.getByTestId('step-scan')).toContainElement(box);
+    expect(screen.getByTestId('step-scan')).toHaveTextContent('ABCD-EFGH-JKMN-PQRS');
     await user.click(box);
     expect(field).toHaveFocus();
+    expect(pair).not.toHaveBeenCalled();
     await user.keyboard('654321');
     await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+    expect(pair).toHaveBeenCalledExactlyOnceWith(PAIR_TOTP, 'My Android', '654321');
+    for (const id of ['step-scan', 'step-code', 'step-connect']) {
+      expect(screen.getByTestId(id)).toHaveAttribute('data-state', 'done');
+    }
+    expect(screen.getByRole('status')).toHaveTextContent('Paired with Studio.');
+  });
+
+  it('a scanned link without 2-step verification pairs as soon as the code is confirmed', async () => {
+    const user = userEvent.setup();
+    const { native, pair } = fixture();
+    native.qrScanner = {
+      scan: async () => ({ kind: 'link', uri: PAIR }),
+      cancel: async () => {},
+      openSettings: async () => {},
+    };
+    pair.mockResolvedValue(MACHINE);
+    const onPaired = renderView(native);
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    const box = await screen.findByRole('checkbox', { name: 'My PC shows the same code' });
+    expect(screen.queryByLabelText(CODE_LABEL)).toBeNull();
+    expect(pair).not.toHaveBeenCalled();
+    await user.click(box);
+    await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+    expect(pair).toHaveBeenCalledExactlyOnceWith(PAIR, 'My Android', null);
+  });
+
+  it('a pasted link never pairs by itself, even when everything is checked', async () => {
+    const user = userEvent.setup();
+    const { native, pair } = fixture();
+    pair.mockResolvedValue(MACHINE);
+    renderView(native);
+    await paste(user, screen.getByLabelText('Pairing link'), PAIR_TOTP);
+    await user.type(screen.getByLabelText(CODE_LABEL), '123456');
+    expect(pair).not.toHaveBeenCalled();
+    expect(screen.getByTestId('step-connect')).toHaveAttribute('data-state', 'active');
+    expect(screen.getByTestId('step-connect')).toHaveTextContent('Tap Pair to connect');
+    await user.click(screen.getByRole('button', { name: 'Pair' }));
+    await waitFor(() => expect(pair).toHaveBeenCalledOnce());
+  });
+
+  it('puts each failure on its own step', async () => {
+    const user = userEvent.setup();
+    const cases: [NativeError, string][] = [
+      [new NativeError('unreachable', 'down'), 'step-connect'],
+      [new NativeError('invalid_pairing', 'used'), 'step-scan'],
+      [new NativeError('pairing_attempts_exhausted', 'x'), 'step-scan'],
+    ];
+    for (const [error, step] of cases) {
+      const { native, pair } = fixture();
+      pair.mockRejectedValue(error);
+      const view = render(
+        <I18nProvider locale="en">
+          <NativeProvider value={native}>
+            <PairingView />
+          </NativeProvider>
+        </I18nProvider>,
+      );
+      await paste(user, screen.getByLabelText('Pairing link'), PAIR);
+      await user.click(screen.getByRole('button', { name: 'Pair' }));
+      const alert = await screen.findByRole('alert');
+      expect(screen.getByTestId(step)).toContainElement(alert);
+      expect(screen.getByTestId(step)).toHaveAttribute('data-state', 'error');
+      // Only one error, and no success next to it.
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+      expect(screen.queryByText(/Paired with/)).toBeNull();
+      view.unmount();
+    }
   });
 
   it('the scanner overlay takes the focus, keeps it and cancels on Escape', async () => {
@@ -321,10 +401,31 @@ describe('pairing with 2-step verification', () => {
       const field = screen.getByLabelText(CODE_LABEL);
       await user.type(field, '654321');
       expect(pair).not.toHaveBeenCalled();
+      // The hint goes to step 1, where the check is.
+      const hint = await screen.findByRole('alert');
+      expect(hint).toHaveTextContent(/Check the confirm code first/);
+      expect(screen.getByTestId('step-scan')).toContainElement(hint);
+      // Confirming is the go-ahead: the code typed already is sent.
       await user.click(screen.getByRole('checkbox'));
-      await user.clear(field);
-      await user.type(field, '654321');
       await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+      expect(pair).toHaveBeenCalledExactlyOnceWith(PAIR_TOTP, 'My Android', '654321');
+    });
+
+    it('unchecking stops the auto pairing', async () => {
+      const user = userEvent.setup();
+      const { native, pair } = fixture();
+      native.qrScanner = {
+        scan: async () => ({ kind: 'link', uri: PAIR_TOTP }),
+        cancel: async () => {},
+        openSettings: async () => {},
+      };
+      renderView(native);
+      await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+      const box = await screen.findByRole('checkbox');
+      await user.click(box);
+      await user.click(box);
+      await user.type(screen.getByLabelText(CODE_LABEL), '654321');
+      expect(pair).not.toHaveBeenCalled();
     });
   });
 
@@ -340,6 +441,8 @@ describe('pairing with 2-step verification', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/already used or has expired.*new pairing QR code/);
     expect(alert.querySelector('small')).toHaveTextContent('Error code: invalid_pairing');
-    expect(screen.getByLabelText(CODE_LABEL)).not.toBeRequired();
+    // A new QR code is the fix: the error sits on the scan step.
+    expect(screen.getByTestId('step-scan')).toContainElement(alert);
+    expect(screen.queryByLabelText(CODE_LABEL)).toBeNull();
   });
 });

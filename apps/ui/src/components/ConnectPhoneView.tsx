@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { useI18n } from '../i18n/context';
 import type { MessageKey, TranslateFn } from '../i18n/i18n';
-import { toNativeError, type DeviceScope } from '../native/bridge';
+import { toNativeError, type DeviceScope, type DnsPilotService } from '../native/bridge';
 import { describeNativeError } from '../native/errors';
 import { isStepUpCanceled } from '../native/security';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../native/host';
 import { TOTP_ISSUER } from '../protocol/shell';
 import { ConfirmCode } from './ConfirmCode';
+import { DnsPilotRelink } from './DnsPilotConnect';
 import { Icon } from './Icon';
 import { BackupCodeActions } from './SecurityTotpSetup';
 import { openSettingsAt } from './settingsNav';
@@ -42,6 +43,8 @@ const HOST_ERRORS = [
 ] as const;
 
 const INVITE_NOTES = ['not_connected', 'not_owned', 'rate_limited', 'invite_limit'] as const;
+/** Reasons that reconnecting DNSPilot in this app can fix. */
+const RELINK_REASONS = ['not_connected', 'not_owned'] as const;
 
 /** Why this pairing code has no DNSPilot invite. */
 function inviteNote(t: TranslateFn, reason: string): string {
@@ -81,11 +84,14 @@ async function clearCopied(copied: { current: string | null }) {
 
 export function ConnectPhoneView({
   host,
+  dnspilot,
   onBack,
   clock = Date.now,
   pollMs = 4000,
 }: {
   host: HostServices;
+  /** This app's DNSPilot connection: fixes a code that could not carry an invite. */
+  dnspilot?: DnsPilotService;
   onBack?: () => void;
   /** Current time in ms (tests). */
   clock?: () => number;
@@ -109,6 +115,8 @@ export function ConnectPhoneView({
   const [paired, setPaired] = useState(false);
   /** The last code ran out and was discarded; a new one needs a click. */
   const [codeExpired, setCodeExpired] = useState(false);
+  /** DNSPilot was reconnected here: the next code can carry an invite. */
+  const [relinked, setRelinked] = useState(false);
   const [now, setNow] = useState(() => clock());
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
   /** The link this view put on the clipboard. */
@@ -158,6 +166,7 @@ export function ConnectPhoneView({
       setPaired(false);
       setCodeExpired(false);
       setScopeChanged(false);
+      setRelinked(false);
       setCopy('idle');
       try {
         // The prompt asks first, so a code never appears unverified.
@@ -460,12 +469,25 @@ export function ConnectPhoneView({
                   {t('host.confirmCodeHelp')}
                 </p>
               )}
-              {pairing.invite_included && <p className={styles.help}>{t('host.inviteIncluded')}</p>}
-              {pairing.invite_skipped && (
-                <p className={styles.help} role="note">
-                  {inviteNote(t, pairing.invite_skipped)}
+              {pairing.invite_included && (
+                <p className={styles.inviteOk} role="status">
+                  <Icon name="check" size={16} />
+                  {t('host.inviteIncluded')}
                 </p>
               )}
+              {pairing.invite_skipped &&
+                (relinked ? (
+                  <p className={styles.inviteOk} role="status">
+                    <Icon name="check" size={16} />
+                    {t('host.invite.relinked')}
+                  </p>
+                ) : (
+                  <InviteSkipped
+                    reason={pairing.invite_skipped}
+                    dnspilot={dnspilot}
+                    onRelinked={() => setRelinked(true)}
+                  />
+                ))}
             </div>
           )}
 
@@ -522,6 +544,33 @@ export function ConnectPhoneView({
           <p className={styles.note}>{t('host.single')}</p>
         </section>
       )}
+    </div>
+  );
+}
+
+/**
+ * Why this code cannot register the phone for remote access, with the one
+ * thing to do: reconnect DNSPilot here when that fixes it, otherwise the
+ * console guidance.
+ */
+function InviteSkipped({
+  reason,
+  dnspilot,
+  onRelinked,
+}: {
+  reason: string;
+  dnspilot?: DnsPilotService;
+  onRelinked: () => void;
+}) {
+  const { t } = useI18n();
+  const fix =
+    dnspilot && (RELINK_REASONS as readonly string[]).includes(reason)
+      ? (reason as (typeof RELINK_REASONS)[number])
+      : null;
+  return (
+    <div className={styles.inviteSkipped} role="note">
+      <p className={styles.help}>{fix ? t(`host.invite.${fix}_fix`) : inviteNote(t, reason)}</p>
+      {fix && dnspilot && <DnsPilotRelink service={dnspilot} onConnected={onRelinked} />}
     </div>
   );
 }

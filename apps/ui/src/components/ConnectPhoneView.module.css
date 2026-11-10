@@ -201,3 +201,29 @@
   margin: 0;
   font-size: 17px;
 }
+
+/* The one QR registers the phone for remote access and pairs it. */
+.inviteOk {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.inviteOk svg {
+  flex: none;
+  margin-top: 2px;
+}
+/* The code has no invite: why, and the fix. */
+.inviteSkipped {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}

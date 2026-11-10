@@ -145,6 +145,14 @@ fn quiet(e: ProviderError) -> ProviderError {
             status,
             message: "the push request was refused".into(),
         },
+        // Was a plain `Forbidden` before DNSPilot gave it a code.
+        ProviderError::Coded { ref code, .. }
+            if code == super::contract::invite_errors::OAUTH_TUNNEL_NOT_OWNED =>
+        {
+            ProviderError::Forbidden(
+                "push needs the granted scope and an editor role or higher".into(),
+            )
+        }
         ProviderError::Coded { status, .. } => ProviderError::Api {
             status,
             message: "the push request was refused".into(),

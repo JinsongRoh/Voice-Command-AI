@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -19,7 +19,9 @@ const PAIR = 'vca://pair?v=1&k=abc&s=secret';
 const PAIR_INVITE = `${PAIR}&h=vca.example.com&t=12&c=${CODE}`;
 const CONSOLE = `https://dns.dnspilot.kr/enroll#v=1&h=vca.example.com&t=12&c=${CODE}`;
 const UNREACHABLE_TEXT = /could not be reached/;
-const WAIT_TEXT = /Registered\. Connecting can take up to \d+ seconds\./;
+const WAIT_TEXT = /Connecting… up to \d+ s/;
+const NEXT_SCAN = 'Now scan the pairing QR code on your PC';
+const CODE_LABEL = 'VCA 2-step verification code (6 digits)';
 
 const enrollment = (readyWithinSec: number): DnsPilotEnrollment => ({
   hostname: 'vca.example.com',
@@ -97,6 +99,8 @@ describe('pairing with a DNSPilot invite', () => {
     expect(pair).toHaveBeenCalledTimes(3);
     expect(screen.getByRole('status')).toHaveTextContent('Studio');
     expect(screen.queryByText(WAIT_TEXT)).not.toBeInTheDocument();
+    expect(screen.getByTestId('step-remote')).toHaveAttribute('data-state', 'done');
+    expect(screen.getByTestId('step-connect')).toHaveAttribute('data-state', 'done');
   });
 
   it('shows the real error only after the window ends', async () => {
@@ -111,6 +115,9 @@ describe('pairing with a DNSPilot invite', () => {
 
     const alert = await screen.findByRole('alert', {}, { timeout: 3000 });
     expect(alert).toHaveTextContent(UNREACHABLE_TEXT);
+    expect(screen.getByTestId('step-connect')).toContainElement(alert);
+    // The registration itself worked: it stays done.
+    expect(screen.getByTestId('step-remote')).toHaveAttribute('data-state', 'done');
     expect(pair.mock.calls.length).toBeGreaterThan(1);
     expect(screen.queryByText(WAIT_TEXT)).not.toBeInTheDocument();
   });
@@ -143,38 +150,84 @@ describe('pairing with a DNSPilot invite', () => {
     expect(enroll).toHaveBeenCalledOnce();
   });
 
-  it('a scan enrolls at once but does not spend the one-time code on a blind attempt', async () => {
+  it('a scan registers at once but pairs only after the confirm code check', async () => {
     const user = userEvent.setup();
     const { native, pair, enroll } = fixture(30);
     native.qrScanner = scannerFor({ kind: 'link', uri: PAIR_INVITE });
-    renderView(native);
+    const onPaired = renderView(native);
     await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
     await waitFor(() => expect(enroll).toHaveBeenCalledOnce());
-    expect(await screen.findByText(WAIT_TEXT)).toBeInTheDocument();
-    expect(await screen.findByText(/then tap Pair/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('step-remote')).toHaveAttribute('data-state', 'done'),
+    );
+    expect(screen.getByTestId('step-remote')).toHaveTextContent('Registered for remote access');
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('data-state', 'active');
     expect(pair).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Pairing link')).toHaveValue(PAIR_INVITE);
 
-    pair.mockResolvedValue(MACHINE);
+    pair.mockRejectedValueOnce(unreachable()).mockResolvedValue(MACHINE);
     await user.click(await screen.findByRole('checkbox'));
-    await user.type(screen.getByLabelText(/2-step verification code/), '123456');
-    await user.click(screen.getByRole('button', { name: 'Pair' }));
-    await waitFor(() => expect(pair).toHaveBeenCalledOnce());
-    expect(pair.mock.calls[0]?.[2]).toBe('123456');
+    // While the PC learns the key, the connect step says how long it may take.
+    expect(await screen.findByText(WAIT_TEXT)).toBeInTheDocument();
+    expect(screen.getByTestId('step-connect')).toContainElement(screen.getByText(WAIT_TEXT));
+    await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+    expect(pair.mock.calls[0]?.[2]).toBeNull();
     expect(enroll).toHaveBeenCalledOnce();
   });
 
-  it('a scan with the code already in still waits for the confirm code', async () => {
+  it('one QR with an invite and 2-step verification: scan, confirm, six digits, paired', async () => {
     const user = userEvent.setup();
-    const { native, pair } = fixture(0);
+    const { native, pair, enroll } = fixture(0);
+    native.qrScanner = scannerFor({ kind: 'link', uri: `${PAIR_INVITE}&tf=1` });
+    pair.mockResolvedValue(MACHINE);
+    const onPaired = renderView(native);
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    const field = await screen.findByLabelText(CODE_LABEL);
+    await waitFor(() => expect(field).toHaveFocus());
+    await waitFor(() => expect(enroll).toHaveBeenCalledOnce());
+    await user.click(await screen.findByRole('checkbox'));
+    expect(field).toHaveFocus();
+    expect(pair).not.toHaveBeenCalled();
+    await user.keyboard('123456');
+    await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+    expect(pair).toHaveBeenCalledExactlyOnceWith(`${PAIR_INVITE}&tf=1`, 'My iPhone', '123456');
+    for (const id of ['step-scan', 'step-remote', 'step-code', 'step-connect']) {
+      expect(screen.getByTestId(id)).toHaveAttribute('data-state', 'done');
+    }
+  });
+
+  it('a confirm given while the invite registers pairs once it is registered', async () => {
+    const user = userEvent.setup();
+    const { native, pair, enroll } = fixture(0);
+    let finish: (e: DnsPilotEnrollment) => void = () => {};
+    enroll.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
     native.qrScanner = scannerFor({ kind: 'link', uri: PAIR_INVITE });
     pair.mockResolvedValue(MACHINE);
     const onPaired = renderView(native);
-    await user.type(screen.getByLabelText(/2-step verification code/), '123456');
     await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    await waitFor(() => expect(enroll).toHaveBeenCalledOnce());
+    expect(screen.getByTestId('step-remote')).toHaveTextContent('Registering for remote access');
     await user.click(await screen.findByRole('checkbox'));
     expect(pair).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Pair' }));
+    await act(async () => finish(enrollment(0)));
+    await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
+    expect(pair).toHaveBeenCalledOnce();
+  });
+
+  it('a scan with the code typed first waits for the confirm code', async () => {
+    const user = userEvent.setup();
+    const { native, pair } = fixture(0);
+    native.qrScanner = scannerFor({ kind: 'link', uri: `${PAIR_INVITE}&tf=1` });
+    pair.mockResolvedValue(MACHINE);
+    const onPaired = renderView(native);
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    await screen.findByTestId('confirm-code');
+    await user.type(screen.getByLabelText(CODE_LABEL), '123456');
+    expect(pair).not.toHaveBeenCalled();
+    expect(within(screen.getByTestId('step-scan')).getByRole('alert')).toHaveTextContent(
+      /Check the confirm code first/,
+    );
+    await user.click(screen.getByRole('checkbox'));
     await waitFor(() => expect(onPaired).toHaveBeenCalledWith('m1'));
   });
 
@@ -195,10 +248,17 @@ describe('pairing with a DNSPilot invite', () => {
     native.qrScanner = scannerFor({ kind: 'link', uri: CONSOLE });
     renderView(native);
     await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
-    expect(await screen.findByText(/Now scan the VCA pairing QR code/)).toBeInTheDocument();
+    expect(await screen.findByText(NEXT_SCAN)).toBeInTheDocument();
     expect(enroll).toHaveBeenCalledExactlyOnceWith(CONSOLE);
     expect(pair).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Pairing link')).toHaveValue('');
+    // Registered: step 2 is done, scanning the PC's QR (step 1) is next.
+    expect(screen.getByTestId('step-remote')).toHaveAttribute('data-state', 'done');
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('data-state', 'active');
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByTestId('step-scan')).toHaveTextContent(NEXT_SCAN);
+    expect(screen.getByRole('button', { name: 'Scan QR code' })).toHaveClass('btn-primary');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('after the console QR, Pair with an empty field asks for the pairing QR, not "invalid"', async () => {
@@ -207,7 +267,7 @@ describe('pairing with a DNSPilot invite', () => {
     native.qrScanner = scannerFor({ kind: 'link', uri: CONSOLE });
     renderView(native);
     await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
-    await screen.findByText(/Now scan the VCA pairing QR code/);
+    await screen.findByText(NEXT_SCAN);
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     expect(screen.queryByText(/not a valid vca:\/\/pair link/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -222,7 +282,7 @@ describe('pairing with a DNSPilot invite', () => {
     const field = screen.getByLabelText('Pairing link');
     await paste(user, field, CONSOLE);
     await user.click(screen.getByRole('button', { name: 'Pair' }));
-    await screen.findByText(/Now scan the VCA pairing QR code/);
+    await screen.findByText(NEXT_SCAN);
 
     await paste(user, field, PAIR);
     await user.click(screen.getByRole('button', { name: 'Pair' }));
@@ -254,6 +314,7 @@ describe('pairing with a DNSPilot invite', () => {
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('expired or was already used');
+    expect(screen.getByTestId('step-remote')).toContainElement(alert);
     expect(alert).not.toHaveTextContent(CODE);
   });
 

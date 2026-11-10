@@ -97,8 +97,10 @@ describe('NativeApp', () => {
     const { scanner } = fakeScanner();
     renderNative({ qrScanner: scanner });
     expect(await screen.findByDisplayValue('My Windows')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Scan QR code/ })).toBeDisabled();
+    // No camera: no scan button, the link field is the way in.
+    expect(screen.queryByRole('button', { name: /Scan QR code/ })).toBeNull();
     expect(screen.getByText(/paste the pairing link/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Pairing link')).toBeVisible();
   });
 
   it('fills the pairing link from a scanned QR code but waits for the tap', async () => {
@@ -116,7 +118,8 @@ describe('NativeApp', () => {
     expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(document.documentElement).not.toHaveClass('vca-scanning');
-    expect(screen.getByText('Pairing link scanned. Check it, then tap Pair.')).toBeInTheDocument();
+    // The confirm code check (step 1) comes before anything is sent.
+    expect(screen.getByTestId('step-scan')).toHaveAttribute('data-state', 'active');
     expect(tauri.callsOf('vca_pair')).toHaveLength(0);
   });
 
@@ -192,14 +195,19 @@ describe('NativeApp', () => {
     });
     renderNative();
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText('Pairing link'), URI);
+    // With a camera, pasting is the secondary option, folded away.
+    await user.click(await screen.findByText('Paste a link instead'));
+    const field = screen.getByLabelText('Pairing link');
+    expect(field).toBeVisible();
+    await user.type(field, URI);
     await user.click(await screen.findByRole('checkbox', { name: /same code/ }));
-    await user.type(screen.getByLabelText('VCA 2-step verification code (6 digits)'), '123456');
+    // The link does not ask for a 2-step code: no code step.
+    expect(screen.queryByLabelText('VCA 2-step verification code (6 digits)')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     expect(tauri.callsOf('vca_pair')[0]!.args).toEqual({
       uri: URI,
       deviceName: 'My Android',
-      totp: '123456',
+      totp: null,
     });
     // The new machine is selected and connected.
     expect(await screen.findByRole('combobox', { name: 'Machine' })).toHaveValue('mach-1');
@@ -214,7 +222,8 @@ describe('NativeApp', () => {
     });
     renderNative();
     const user = userEvent.setup();
-    const input = await screen.findByLabelText('Pairing link');
+    await user.click(await screen.findByText('Paste a link instead'));
+    const input = screen.getByLabelText('Pairing link');
     await user.type(input, 'https://example.com');
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     expect(screen.getByRole('alert')).toHaveTextContent('This is not a valid vca://pair link.');
