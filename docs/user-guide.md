@@ -2,7 +2,9 @@
 
 This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside your network.
 
-> **Status (version 0.1.0, November 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases] (Linux comes in a later version; build it from source until then)(https://github.com/JinsongRoh/Voice-Command-AI/releases/latest); the iPhone and Android apps are coming to the App Store and Google Play. You can also build everything from source. Items marked *coming soon* are not available yet.
+> **Status (version 0.1.0, released November 11, 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) (Linux packages come in a later version; build from source until then). The iPhone/iPad and Android apps are in review at the App Store and Google Play. Items marked *coming soon* are not available yet.
+>
+> **Watch first:** a [2-minute walkthrough video](https://youtu.be/y1nxSgDrQi8) ([Korean version](https://youtu.be/I3vdZhCmwQg)).
 
 ## 1. What you get
 
@@ -13,19 +15,29 @@ This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the 
 | VCA app | iPhone, Android, Windows/macOS/Linux desktop | Session cards, live chat and terminal view, voice dictation, alerts. |
 | Speech service | a server you choose | Speech-to-text for `vcad`: any OpenAI-compatible endpoint (a self-hosted Whisper server, OpenAI) or Google Cloud. |
 
-Your phone talks only to your own PC, over an end-to-end encrypted (Noise) channel, after a one-time pairing. Nothing goes through a VCA cloud.
+Your phone talks only to your own PC, over an end-to-end encrypted (Noise) channel, after a one-time pairing. Nothing goes through a VCA cloud: self-hosted use sends MetaVu no personal data, and the optional DNSPilot service (section 5) is the only VCA-team service that receives any. See the [privacy policy](https://vca.metavu.io/privacy).
 
 ## 2. Install VCA
 
-Install the **desktop app on the PC where your agents run**: it includes the server (`vcad`) and the `vca` command it uses, and starts the server when it opens (section 4). Then install the app on your phone and pair it with the PC (section 4). Desktop downloads are on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest).
+Install the **desktop app on the PC where your agents run**: it includes the server (`vcad`) and the `vca` command it uses, and starts the server when it opens (section 4). Then install the app on your phone and pair it with the PC (section 4).
+
+| Platform | Download |
+|---|---|
+| Windows 10/11 (x64) | [Voice.Command.AI_0.1.0_x64-setup.exe](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64-setup.exe) |
+| macOS, Apple silicon (M1 or later) | [Voice.Command.AI_0.1.0_aarch64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_aarch64.dmg) |
+| macOS, Intel | [Voice.Command.AI_0.1.0_x64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) |
+| iPhone, iPad | App Store: *in review, coming soon* |
+| Android | Google Play: *in review, coming soon* |
+
+These links always fetch the files of the latest release. All files and the release notes are on the [release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) (GitHub shows the spaces of the file names as dots).
 
 ### Windows
 
-Download `Voice Command AI_<version>_x64-setup.exe` (on the release page the spaces show as dots) and run it. The installer and the app are signed by **MetaVu Co., Ltd.** For a new release, Microsoft Defender SmartScreen can still show "Windows protected your PC" until the file has built up reputation: choose **More info**, check that the publisher is MetaVu Co., Ltd., then **Run anyway**. Never run a VCA installer whose publisher is anyone else. The app then updates itself (section 14).
+Download the installer above and run it. The installer and the app are code-signed by **MetaVu Co., Ltd.** While a new release is still building up reputation, Microsoft Defender SmartScreen can show "Windows protected your PC": choose **More info**, check that the publisher is MetaVu Co., Ltd., then **Run anyway**. Never run a VCA installer whose publisher is anyone else. The app then updates itself (section 14).
 
 ### macOS
 
-Download the `.dmg` for your Mac (`aarch64` for Apple silicon, `x64` for Intel), open it and drag **Voice Command AI** to Applications. The app is signed with an Apple Developer ID and notarized by Apple, so it opens without a warning. macOS asks for the microphone the first time you dictate. The app then updates itself (section 14).
+Download the `.dmg` for your Mac (`aarch64` for Apple silicon, `x64` for Intel; Apple menu › About This Mac shows which you have), open it and drag **Voice Command AI** to Applications. The app is signed with an Apple Developer ID and notarized by Apple, so it opens without a Gatekeeper warning (the first launch may ask you to confirm that you want to open an app downloaded from the internet). macOS asks for the microphone the first time you dictate. The app then updates itself (section 14).
 
 ### Linux
 
@@ -38,13 +50,23 @@ The app keeps its keys in the Secret Service (GNOME Keyring or KWallet) when one
 
 ### Android
 
-**Google Play:** *coming soon* (the store listing is not live yet). Android 8.0 or later. Until then, build the app from source (below).
+**Google Play:** *in review, coming soon* (the store listing is not live yet). Android 8.0 or later. Until then, you can build the app from source (below).
 
-### iPhone
+### iPhone and iPad
 
-**App Store:** *coming soon* (the listing is not live yet). iOS 15 or later. Until then, build the app from source (below).
+**App Store:** *in review, coming soon* (the listing is not live yet). iOS 15 or later. Until then, you can build the app from source (below).
+
+### Try the demo
+
+No PC set up yet? The phone app has a built-in demo. On its first screen, choose **Try the demo**: the app opens with sample computers and sessions, marked **Demo**, and a banner says *Sample data, not connected to a computer*. Nothing leaves the device and no network is used. Pairing and security settings are not available in the demo. **Exit demo** goes back to the first screen, where you can pair with your PC.
+
+### Language
+
+The app is in English, Korean, Japanese and Spanish. It follows your device's language, and uses English for any other language; change it under **Settings › General › Appearance › Language**. On iPhone and iPad, the system permission prompts (microphone, camera, photos, local network, Face ID) are in the same languages.
 
 ### Build from source
+
+This is the secondary path, for Linux, for contributors, and for using the `vca` command in your own terminal.
 
 Requirements: Git and the Rust toolchain (https://rustup.rs). Windows also needs the "Desktop development with C++" build tools. To use the `vca` command in your own terminal (for example `vca run`, `vca pair` or the commands in this guide), install the server and the CLI this way even if you use the desktop app.
 
@@ -165,15 +187,19 @@ A cloud session appears as a card marked **Cloud**, and the session filter has a
 
 ## 4. Pair the app
 
-1. **Turn on two-factor sign-in once** (required by default): run `vca totp enroll` and scan the code with an authenticator app (Google Authenticator, 1Password, …). Keep the printed backup codes.
-2. **Create a pairing code:** `vca pair` shows a QR code and a `vca://pair?...` link. It works once and expires after 60 seconds (`remote.pairing_ttl_secs`). A missing or mistyped 2-step verification code does not use it up: retry with the same link until it expires (at most 5 wrong codes).
-3. **In the app:** open the pairing screen and follow its steps. The card shows each step as waiting, current, done (✓) or needing attention (!), and an error appears on the step it belongs to, with what to do next:
+You need one QR code from the PC. It pairs the phone and, when you reach the PC through DNSPilot, also registers the phone for remote access (section 5), in one scan.
+
+1. **Turn on two-factor sign-in once** (required by default). The desktop app does this for you the first time you connect a phone (below); from a terminal, run `vca totp enroll` and scan the code with an authenticator app (Google Authenticator, 1Password, …). Keep the backup codes.
+2. **Create a pairing QR code on the PC:** in the desktop app, open **Settings › Connection & security › Connect a phone** and press **Create QR code** (details below). From a terminal, `vca pair` shows a QR code and a `vca://pair?...` link instead. A code works once and expires after 60 seconds (`remote.pairing_ttl_secs`). A missing or mistyped 2-step verification code does not use it up: retry with the same code until it expires (at most 5 wrong codes).
+3. **In the phone app:** open the pairing screen and follow its step card. The card shows each step as waiting, current, done (✓) or needing attention (!), and an error appears on the step it belongs to, with what to do next:
    1. **Scan the QR code on your PC** (or, under **Paste a link instead**, paste the `vca://pair` link). The step then shows the confirm code: tick **My PC shows the same code** only if the PC shows exactly that code. Nothing is sent to the PC before you tick it.
    2. **Register for remote access**: only when the QR code also carries a DNSPilot invite (section 5). It happens by itself right after the scan.
    3. **Enter the 2-step verification code**: only when the PC asks for one. After a scan the cursor is already in the code field.
-   4. **Connect**: with a scanned QR code, pairing starts by itself once the confirm code is ticked and, if needed, the sixth digit is typed. If you type the code before ticking, the app waits and step 1 reminds you to check the code first. A pasted link always waits for a tap on **Pair**. Right after a remote registration it can show "Connecting… up to 30 s" while your PC learns the phone's key.
+   4. **Connect**: with a scanned QR code, pairing starts by itself once the confirm code is ticked and, if needed, the sixth digit is typed. If you type the code before ticking, the app waits and step 1 reminds you to check the code first. A pasted link always waits for a tap on **Pair**. Right after a remote registration it can show "Connecting… up to 30 s" while your PC learns the phone's key. The step turns to **Connected** when the phone is paired.
 
-**From the desktop app instead:** open **Settings → Connect a phone** (or **Connect a phone** on the pairing screen). It shows whether the server on this PC runs (with a **Start server** button), how phones will reach this PC, a permission picker (**Command** by default) and a **Create QR code** button. No code is made until you press it, because making one asks you to verify on this PC and starts its 60-second clock; press it when the phone is ready. The QR code then shows with a countdown and a copyable link; after it expires, **New QR code** makes another. Changing the permission while a code is shown removes that code (it was made for the old permission) and waits for **New QR code**, so no new verification prompt opens on its own. The **Two-factor sign-in** part always shows whether an authenticator is set up (and since when), its entry in the authenticator app and how many backup codes are left. **Set up again** replaces the authenticator (the old one keeps working until the new code is confirmed), and **Make new backup codes** replaces the backup codes; new codes can be copied or saved to a file before you close them. If the server requires two-factor sign-in and none is set up, the screen enrolls an authenticator first. The secret is shown only on this PC, and these controls exist only in the desktop app: paired phones cannot change them. The desktop app also shows this PC's own sessions as **This PC** without pairing: it talks to `vcad` over the same owner-only local channel as the `vca` CLI.
+The pairing screen's **Advanced** section holds what you rarely need: connecting DNSPilot on the phone itself and scanning the console QR code (section 5) when the PC's QR code can't register the phone.
+
+**Connect a phone on the desktop app:** open **Settings › Connection & security › Connect a phone** (or **Connect a phone** on the pairing screen). It shows whether the server on this PC runs (with a **Start server** button), how phones will reach this PC, a permission picker (**Command** by default) and a **Create QR code** button. No code is made until you press it, because making one asks you to verify on this PC and starts its 60-second clock; press it when the phone is ready. The QR code then shows with a countdown and a copyable link; after it expires, **New QR code** makes another. Changing the permission while a code is shown removes that code (it was made for the old permission) and waits for **New QR code**, so no new verification prompt opens on its own. The **Two-factor sign-in** part always shows whether an authenticator is set up (and since when), its entry in the authenticator app and how many backup codes are left. **Set up again** replaces the authenticator (the old one keeps working until the new code is confirmed), and **Make new backup codes** replaces the backup codes; new codes can be copied or saved to a file before you close them. If the server requires two-factor sign-in and none is set up, the screen enrolls an authenticator first. The secret is shown only on this PC, and these controls exist only in the desktop app: paired phones cannot change them. The desktop app also shows this PC's own sessions as **This PC** without pairing: it talks to `vcad` over the same owner-only local channel as the `vca` CLI.
 
 The desktop app starts its bundled `vcad` when it opens and no server is running (setting **Run the VCA server on this PC**, on by default). A server you started yourself (`vca daemon`) is used as is; the app only ever stops a server it started. The bundled server keeps running when you close the app, so your agents and phones stay connected; stop it from the same screen.
 
@@ -223,9 +249,7 @@ mode = "serve"
 
 **Outside the office: DNSPilot.** The DNSPilot Agent on your PC (section 7) carries the app's connection through a DNSPilot **app-mode tunnel**: no port is opened on your router or PC, `vcad` stays on `127.0.0.1`, and the tunnel admits only the VCA app's own key (a client certificate checked during the TLS handshake). TLS ends at the Agent on your PC; VCA's pairing, authenticator code and end-to-end encryption still apply inside the tunnel. Tunnels need a paid DNSPilot plan.
 
-*New in this build: tested against a local stand-in for the Agent and a mock console, not yet against the live DNSPilot service.*
-
-1. **In the desktop app on your PC**, open Settings → DNSPilot (or **Advanced** on the pairing screen) and choose **Connect DNSPilot**. The app shows an approval code and an **Open** button for https://dns.dnspilot.kr/oauth/activate.
+1. **In the desktop app on your PC**, open **Settings › Connection & security › DNSPilot** (or **Advanced** on the pairing screen) and choose **Connect DNSPilot**. The app shows an approval code and an **Open** button for https://dns.dnspilot.kr/oauth/activate.
 2. **In the browser**, sign in to DNSPilot, check that the code matches, pick your organization and, under devices, **your PC**, then approve. Creating tunnels needs approval by an organization owner or admin. The app continues by itself.
 3. **Create the tunnel** in the desktop app: pick your PC from the list (the desktop app preselects the PC it runs on; any other device must be chosen by hand) and the domain, press **Create tunnel on** *your PC*, and confirm the device and domain in the dialog. Phones don't create tunnels. If that PC already has a tunnel to `vcad`, the app uses it instead of creating another. The app creates an app-mode tunnel to `127.0.0.1:47800` with a random name such as `vca-k3x9q2ab4m.example.com` and registers its key on it. DNSPilot emails your organization that a tunnel opened, with a link to turn it off. Until DNSPilot offers its domain list to apps, you type the zone ID shown in the console instead of picking the domain. If DNSPilot answers that the PC wasn't selected when you approved, disconnect DNSPilot, connect again and select it. If you already have an app-mode tunnel to the PC, pick it under **Use an existing tunnel** instead. If the tunnel is created but the app's key can't be registered, the app says so and keeps the tunnel: press **Register this app on the tunnel** rather than creating another.
 4. **On the PC**, set the provider in `config.toml` and restart `vcad`:
@@ -238,19 +262,19 @@ mode = "serve"
    `vcad` finds the Agent's app-mode tunnel to its port by itself. If it can't read the Agent's tunnel list (on Linux, add the `vcad` user to the `dnspilot` group), or the PC has several such tunnels, add `[remote.provider.dnspilot]` with `hostname = "vca-k3x9q2ab4m.example.com"` (the app shows these lines). `vca remote` shows the provider, the Agent's state, and the tunnel's address and state (`serving`, `waiting`, `paused`, …).
 5. **Pair** (section 4) with a new pairing code: it carries `wss://vca-k3x9q2ab4m.example.com/v1/ws`. A phone needs no DNSPilot login: see below.
 
-**Phones: one QR code.** A tunnel admits only registered keys, so a new phone has to register its key before it can reach your PC. When the desktop app shows a pairing code for a DNSPilot tunnel, it adds a single-use DNSPilot invite to the same QR code and says so under the code: *This one QR code registers the phone for remote access and connects it in one go.* In the phone app, choose **Scan QR code** and scan it once: the phone registers its own key with the invite (step 2 turns ✓), you compare and tick the confirm code, enter your authenticator code if the PC asks for one, and the app pairs by itself. You don't need the DNSPilot console for this. Your phone's camera app can't do this for you: scan from inside the VCA app.
+**Phones: one QR code.** A tunnel admits only registered keys, so a new phone has to register its key before it can reach your PC. When the desktop app shows a pairing code for a DNSPilot tunnel (**Settings › Connection & security › Connect a phone**), it adds a single-use DNSPilot invite to the same QR code and says so under the code: *This one QR code registers the phone for remote access and connects it in one go.* In the phone app, choose **Scan QR code** and scan it once: the phone registers its own key with the invite (step 2 turns ✓), you compare and tick the confirm code, enter your authenticator code if the PC asks for one, and the app pairs by itself. You don't need the DNSPilot console for this. Your phone's camera app can't do this for you: scan from inside the VCA app.
 
 **The 30-second wait.** After a phone registers, the DNSPilot Agent on your PC can take up to about 30 seconds to learn the new key. The connect step shows "Connecting… up to 30 s" and keeps retrying every few seconds; you only see an error if the wait ends without a connection. A key that was already registered connects at once.
 
-**When the QR code can't register the phone.** If the invite can't be made, the desktop app still shows a plain pairing QR code with the reason. When DNSPilot isn't connected in this app, or DNSPilot didn't let this app add phones to the tunnel, the note has a **Reconnect DNSPilot** button: approve again in the browser (pick this PC), then press **New code** so the QR code carries the invite. When DNSPilot limits invites, wait a few minutes or revoke unused invites (Settings → DNSPilot → Registered devices), then make a new code.
+**When the QR code can't register the phone.** If the invite can't be made, the desktop app still shows a plain pairing QR code with the reason. When DNSPilot isn't connected in this app, or DNSPilot didn't let this app add phones to the tunnel, the note has a **Reconnect DNSPilot** button: approve again in the browser (pick this PC), then press **New code** so the QR code carries the invite. When DNSPilot limits invites, wait a few minutes or revoke unused invites (**Settings › Connection & security › DNSPilot › Registered devices**), then make a new code.
 
 **Console QR code (fallback).** Only needed when the PC's QR code can't carry an invite. In the DNSPilot console, open the tunnel, then **App clients → Phone pairing QR**. In the phone app, scan it with **Scan QR code**, or paste the link (the pairing screen's **Advanced** section explains this too). The app accepts only `https://dns.dnspilot.kr/enroll#...` links; this registers the phone (step 2 turns ✓) but doesn't pair it, so step 1 then says **Now scan the pairing QR code on your PC**.
 
-**Registered devices.** In the desktop app, Settings → DNSPilot → **Registered devices** lists the keys on a tunnel, with where each came from and any invites still pending. **Revoke** removes a key or cancels an invite; a revoked device is cut off within about a minute.
+**Registered devices.** In the desktop app, **Settings › Connection & security › DNSPilot › Registered devices** lists the keys on a tunnel, with where each came from and any invites still pending. **Revoke** removes a key or cancels an invite; a revoked device is cut off within about a minute.
 
 **Tunnel created in the console instead.** Create it there with Tunnels → New: device = your PC, local port 47800, http, access mode **App**. In the app, pick it under **Use an existing tunnel** (or, without connecting DNSPilot, enter its address under **Use a tunnel created in the DNSPilot console**). Because VCA did not create that tunnel, register the app's key yourself: open the tunnel's **App clients**, add the SPKI SHA-256 fingerprint the app shows, and confirm your identity when DNSPilot asks (re-authentication). On the PC, `dnspilot client add <tunnel-id> --spki <fingerprint>` does the same. Then tap **I added it** and continue with step 4.
 
-**App tokens.** Settings → DNSPilot → Advanced can issue a `dpt_app_` app token for a tunnel VCA created. Keep this off for VCA: an app token is a fallback for clients that can't present a certificate, not a second factor, and while app tokens are allowed a token alone opens the tunnel. If you issue one anyway, it expires after 7 days; turn off **Allow app tokens** in the console when you're done.
+**App tokens.** **Settings › Connection & security › DNSPilot › Advanced** can issue a `dpt_app_` app token for a tunnel VCA created. Keep this off for VCA: an app token is a fallback for clients that can't present a certificate, not a second factor, and while app tokens are allowed a token alone opens the tunnel. If you issue one anyway, it expires after 7 days; turn off **Allow app tokens** in the console when you're done.
 
 The app's client key and the DNSPilot tokens stay in your phone's or computer's keychain; they never appear on screen except the public fingerprint. **Disconnect DNSPilot** revokes the app's access: DNSPilot turns off every tunnel the app created and revokes the keys and tokens it registered, so phones on those tunnels stop connecting. The tunnels aren't deleted, but connecting DNSPilot again doesn't bring them back, because a new approval can't manage them; you'd have to turn them on in the console. Never publish `vcad` through a public tunnel (password or fully public access modes).
 
@@ -479,7 +503,7 @@ When an agent is stuck on a command it isn't allowed to run, you can open a plai
 
 Who can open one: only devices paired with the **admin** permission (and the VCA app on the PC itself). View and command devices can't open shells, watch them or type into them; they can still stop one.
 
-Before the first shell, set up an authenticator app on the PC: in the desktop app, **Settings → Security → Security status → 2-step verification** (also offered under **Settings → Connect a phone → Two-factor sign-in**), or `vca totp enroll`. Then:
+Before the first shell, set up an authenticator app on the PC: in the desktop app, **Settings → Security → Security status → 2-step verification** (also offered under **Settings › Connection & security › Connect a phone › Two-factor sign-in**), or `vca totp enroll`. Then:
 
 1. In the app, start a new session and choose **Shell**, the shell (Windows: PowerShell, PowerShell 7 (`pwsh`), Command Prompt; macOS/Linux: bash, zsh, sh) and a folder inside your workspace roots.
 2. Enter the 6-digit number shown for the **Voice Command AI** entry in your authenticator app. Each code works once; if it was just used (for example to sign in), wait for the next one. No access to the app? Tap **Use a backup code** and type one of the backup codes you saved (each works once). If the PC has no authenticator set up, the app says so instead of asking for a code.
@@ -551,16 +575,16 @@ More: tunnels https://dns.dnspilot.kr/docs/en/tunnels, app mode https://dns.dnsp
 | `vca ping` fails | Is `vcad` running? Start it with `vca daemon`. |
 | App says "Login required" | Enter a fresh authenticator code (or a backup code). |
 | App shows "Disconnected" and doesn't retry | The device was revoked or the kill switch is on (`vca devices`, `vca kill-switch --reset`). Pair again if revoked. |
-| Pairing link "not valid" | Links expire after 60 seconds and work once. In the desktop app, open Settings → Connect a phone and press **New QR code** (or **Create QR code**), or run `vca pair` again. |
+| Pairing link "not valid" | Links expire after 60 seconds and work once. In the desktop app, open **Settings › Connection & security › Connect a phone** and press **New QR code** (or **Create QR code**), or run `vca pair` again. |
 | "Speech recognition is turned off" | Section 6: `[speech]` in `config.toml`, and `VCA_STT_TOKEN` set where `vcad` starts. |
 | Support asks for a diagnostic log | The log is off by default. Turn on Settings → About → **Diagnostic log → Keep a diagnostic log on this device**, repeat the problem, then **Copy** and send it yourself. It stays on the device and is never uploaded: it holds timings, counts, status and error codes, not audio, transcripts, prompts, file paths, keys or addresses. GitHub issues are public. Turning it off clears it. |
 | Speech errors 401 | The token is wrong or expired; get a new one from whoever runs the speech server. |
 | Speech errors 429 | Too many requests or failed attempts; wait a minute (10 minutes after repeated bad tokens). |
 | Pairing says "DNSPilot is not ready" | Check that the Agent is signed in and the kill switch is off, and that one app-mode tunnel forwards to `127.0.0.1:47800` (`vca remote`, `dnspilot status`, `dnspilot tunnel ls`). Otherwise set `remote.provider.dnspilot.hostname`. |
-| App can't reach the DNSPilot tunnel | Is this app's key on the tunnel's App clients list (Settings → DNSPilot shows "Ready")? Does the tunnel forward to `127.0.0.1:47800` with access mode App? Is it turned on in the console? |
+| Pairing stops at **Connect** with "The server could not be reached" (error code `unreachable`) when the PC is reached through DNSPilot | Usually the phone's key is not registered on the tunnel, so the tunnel turns the phone away. On the PC, open **Settings › Connection & security › Connect a phone** and scan the new QR code with the VCA app: it registers the phone and pairs it in one go. If the note under the code offers **Reconnect DNSPilot**, press it, approve again in the browser (pick this PC), then press **New code** and scan again. If a key was just registered, wait about 30 seconds first (section 5). |
+| App can't reach the DNSPilot tunnel | Is this app's key on the tunnel's App clients list (**Settings › Connection & security › DNSPilot** shows "Ready")? Does the tunnel forward to `127.0.0.1:47800` with access mode App? Is it turned on in the console? |
 | "This PC wasn’t selected when you approved VCA" | Disconnect DNSPilot in the app, connect again and select the PC under devices. |
 | "DNSPilot did not allow this" | An organization owner or admin must approve tunnel access; tunnels need a paid plan. |
-
 | Resources shows a session but pause is dimmed | The session was started outside VCA: it is shown for monitoring only. VCA never suspends, kills or reprioritizes a process it did not start. |
 | A restored window opened but did not move | The window did not appear within 30 seconds. Move it by hand; the next snapshot saves the new place. |
 | A restored session shows another conversation | Its transcript is gone, so the agent's latest conversation in that folder opened. Check the progress view. |
@@ -640,7 +664,9 @@ On a computer, allow desktop notifications in the Alerts menu to get an operatin
 With **Settings > Voice > Spoken alerts** on, the app reads alert titles aloud (for example "Session needs a decision"). It only reads these short, generic titles: never the request text and never activity updates, which can hold commands or paths. Where the voice comes from is set in **Voice source**:
 
 - **This device** (default): the voice of your phone or computer. Voice, speed and Preview are shown below it.
-- **PC server: *engine name***: the PC synthesizes the title with a TTS engine you configured and sends the audio back; the app plays it. Use Preview to hear it. If the PC cannot speak (engine down, too many alerts, older server), the device voice is used instead. Audio is kept in memory, so a repeated alert is not synthesized twice.
+- **PC server: *engine name***: the PC synthesizes the title with a TTS engine you configured and sends the audio back; the app plays it. Use Preview to hear it. Audio is kept in memory, so a repeated alert is not synthesized twice.
+
+**One voice.** When you choose a TTS engine on the PC, everything the app says uses that voice: alerts, the status briefing, result summaries and hands-free read-backs. You don't hear the device voice and the PC voice mixed. The device voice is only a fallback before any PC audio has started, for example while the PC is unreachable, the engine is down or an older server can't speak.
 
 The choice appears once the PC has at least one TTS engine. VCA ships no voices and no model weights: you run your own engine (for example MeloTTS, Chatterbox, CosyVoice, XTTS, F5-TTS, Fish Speech or any other server) and point VCA at it. VCA talks to the OpenAI-compatible speech endpoint, `POST {base_url}/audio/speech` with `{model, input, voice, response_format, speed}`, which many self-hosted TTS servers offer directly or through a small wrapper. VCA's own small wrapper for MeloTTS and Supertonic is in [`tools/tts-server`](../tools/tts-server/README.md); [Your own speech engines](speech-engines.md) walks through it, and the desktop app can add and test TTS engines in **Settings > Speech engines on this PC** instead of editing the file below.
 
@@ -761,7 +787,7 @@ Decisions and questions the agent shows in its own prompt stay in the Alerts tab
 
 **Optional: finding requests with a language model.** In **To-do settings (this PC)** (desktop app on the PC only) you can also let the PC ask the language model of the speech settings (the `[speech] default_llm` profile, else the first `[[speech.llms]]` profile) to find requests. It is off by default. Likely secrets are removed before the text leaves the PC, at most 6,000 characters are sent, the model is told the message is untrusted data, only a strict JSON answer is used, and the PC makes at most 30 such requests an hour. Use a model you trust with your conversations.
 
-**Working with the list.** Check a task off with its checkbox (and back on from the **Done** filter). Open a task to see its steps and command, **Start** it, **Snooze** it (1 hour, 4 hours, tomorrow morning), move it up or down, **Edit** it (title, steps, command, administrator rights, priority, due time) or **Dismiss** it. Filter by status, session or "needs admin only", or search. **Export Markdown** and **Export CSV** save (and copy) the list, or the tasks of one session when a session is selected in the filter.
+**Working with the list.** Check a task off with its checkbox (and back on from the **Done** filter). Open a task to see its steps and command, **Start** it, **Snooze** it (1 hour, 4 hours, tomorrow morning), move it up or down, **Edit** it (title, steps, command, administrator rights, priority, due time) or **Dismiss** it. Filter by status, session or "needs admin only", or search. **Export Markdown** and **Export CSV** export the list, or the tasks of one session when a session is selected in the filter: on a computer they save a file; on a phone or tablet they open the system share sheet (save to Files, send to another app). Either way the export is also copied to the clipboard.
 
 **Commands are never run for you.** A command in a task is stored and shown with the same danger check as the remote shell (risky parts highlighted, with the reasons). You can copy it. On the PC itself, for a task that needs administrator rights, **Open admin PowerShell** opens an administrator PowerShell through the normal Windows permission prompt (UAC): the window shows the command and puts it on the clipboard, and you paste it and press Enter yourself. VCA never bypasses UAC, never types the command, and never opens an administrator shell from a phone or another computer; there the task says it must be run on the PC, and you can snooze it as a reminder. On macOS and Linux, copy the command and run it with `sudo` in a terminal.
 
@@ -792,6 +818,6 @@ Problems are shown in plain words, for example when the PC is offline or a downl
 
 A server you started yourself (`vca daemon`) is never stopped by the app; update it like you installed it.
 
-**iPhone.** Through the App Store, once the app is published there (*coming soon*). A build from source is updated by installing a new build from Xcode.
+**iPhone and iPad.** Through the App Store, once the app is published there (*in review, coming soon*). A build from source is updated by installing a new build from Xcode.
 
-**Android.** Through Google Play, once the app is published there (*coming soon*). A build from source is updated by installing the new APK (`adb install -r`, or open the APK on the phone); your pairings are kept.
+**Android.** Through Google Play, once the app is published there (*in review, coming soon*). A build from source is updated by installing the new APK (`adb install -r`, or open the APK on the phone); your pairings are kept.
