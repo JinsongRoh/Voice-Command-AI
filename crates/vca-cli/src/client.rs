@@ -56,6 +56,12 @@ impl Client {
         }
     }
 
+    /// Like [`Self::local`], with [`LocalResponse::Error`] left as an answer,
+    /// for a caller that acts on the code.
+    pub async fn local_answer(&mut self, req: LocalRequest) -> CliResult<LocalResponse> {
+        self.inner.call(&req).await.map_err(|e| self.io_error(e))
+    }
+
     pub fn next_id(&mut self) -> u64 {
         self.inner.next_id()
     }
@@ -224,6 +230,16 @@ pub(crate) mod tests {
             last_activity: 0,
             unread: 0,
             preview: None,
+            auto_name: None,
+            custom_name: false,
+            shell: None,
+            pending_decision: None,
+            subagents: 0,
+            conductor: false,
+            terminal_prompt: None,
+            question: None,
+            progress: None,
+            problem: None,
         }
     }
 

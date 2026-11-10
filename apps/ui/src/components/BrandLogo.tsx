@@ -1,7 +1,6 @@
 import { useId } from 'react';
 
-import horizontalSvg from '../assets/brand/VCA_logo_horizontal_light.svg?raw';
-import verticalSvg from '../assets/brand/VCA_logo_vertical_light.svg?raw';
+import { HORIZONTAL, SYMBOL_VIEWBOX, VERTICAL } from './brandArt';
 
 /**
  * The Voice Command AI logo, drawn inline from the official SVG package
@@ -20,34 +19,17 @@ import verticalSvg from '../assets/brand/VCA_logo_vertical_light.svg?raw';
  * space around the symbol.
  */
 
-interface LogoArt {
-  viewBox: string;
-  symbol: string[];
-  wordmark: string;
-}
-
-function parseLogo(svg: string): LogoArt {
-  const viewBox = /viewBox="([^"]+)"/.exec(svg)?.[1] ?? '0 0 0 0';
-  const group = /<g id="symbol"[^>]*>([\s\S]*?)<\/g>/.exec(svg)?.[1] ?? '';
-  const symbol = [...group.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1] ?? '');
-  const wordmark = /<path id="wordmark"[^>]*\sd="([^"]+)"/.exec(svg)?.[1] ?? '';
-  return { viewBox, symbol, wordmark };
-}
-
-const HORIZONTAL = parseLogo(horizontalSvg);
-const VERTICAL = parseLogo(verticalSvg);
-/** The symbol occupies the left 1178 × 1073 square of the horizontal lockup. */
-const SYMBOL_VIEWBOX = '0 0 1178 1073';
-
 export type LogoVariant = 'horizontal' | 'vertical' | 'symbol';
 
 export interface BrandLogoProps {
   variant?: LogoVariant;
   /**
    * `theme` follows the light/dark logo variants; `gradient` always uses the
-   * signature cyan-to-blue symbol (for hero placements).
+   * signature cyan-to-blue symbol (for hero placements); `mono` draws the
+   * official single-color variant in `currentColor` (white on Command Blue,
+   * Deep Navy on the voice gradient), e.g. inside the microphone button.
    */
-  tone?: 'theme' | 'gradient';
+  tone?: 'theme' | 'gradient' | 'mono';
   /** Accessible name. Without it the logo is decorative (aria-hidden). */
   title?: string;
   className?: string;
@@ -76,14 +58,16 @@ export function BrandLogo({
       focusable="false"
       {...a11y}
     >
-      <defs>
-        {/* Same geometry as the package's `vcaGrad`: top to bottom per stroke. */}
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: top }} />
-          <stop offset="1" style={{ stopColor: bottom }} />
-        </linearGradient>
-      </defs>
-      <g data-part="symbol" fill={`url(#${gradientId})`}>
+      {tone !== 'mono' && (
+        <defs>
+          {/* Same geometry as the package's `vcaGrad`: top to bottom per stroke. */}
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style={{ stopColor: top }} />
+            <stop offset="1" style={{ stopColor: bottom }} />
+          </linearGradient>
+        </defs>
+      )}
+      <g data-part="symbol" fill={tone === 'mono' ? 'currentColor' : `url(#${gradientId})`}>
         {art.symbol.map((d, i) => (
           <path key={i} d={d} />
         ))}

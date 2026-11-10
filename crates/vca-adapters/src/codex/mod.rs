@@ -12,7 +12,7 @@ pub mod notify;
 pub mod rollout;
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use async_trait::async_trait;
 use vca_core::{AgentKind, LaunchRequest};
@@ -20,6 +20,7 @@ use vca_core::{AgentKind, LaunchRequest};
 use crate::adapter::{AgentAdapter, SessionLocator, basic_launch_spec};
 use crate::claude::{attach_processes, blocking};
 use crate::error::{AdapterError, Result};
+use crate::meta_cache::{self, FileStamp, SharedCache};
 use crate::process::{ProcessMatcher, ProcessTable};
 use crate::tail::{self, HistoryStream, JsonlTail};
 use crate::types::{
@@ -38,6 +39,8 @@ pub struct CodexAdapter {
     poll_interval: Duration,
     /// Upper bound on rollout files inspected during discovery (newest first).
     max_sessions: usize,
+    /// What discovery read from each rollout (shared by clones).
+    stored: SharedCache<rollout::RolloutMeta>,
 }
 
 impl Default for CodexAdapter {
@@ -57,6 +60,7 @@ impl CodexAdapter {
             home: home.into(),
             poll_interval: Duration::from_millis(1000),
             max_sessions: 500,
+            stored: SharedCache::default(),
         }
     }
 
@@ -77,8 +81,9 @@ impl CodexAdapter {
         vec!["resume".into(), session_id.into()]
     }
 
-    /// All rollout files with their modification time, newest first.
-    fn rollout_files(&self) -> Vec<(PathBuf, Option<u64>)> {
+    /// All rollout files with their stamp in the directory listing,
+    /// newest first.
+    fn rollout_files(&self) -> Vec<(std::fs::DirEntry, FileStamp)> {
         let mut out = Vec::new();
         let mut stack = vec![self.home.join("sessions")];
         while let Some(dir) = stack.pop() {
@@ -86,34 +91,49 @@ impl CodexAdapter {
                 continue;
             };
             for entry in entries.filter_map(|e| e.ok()) {
-                let path = entry.path();
                 let Ok(ft) = entry.file_type() else { continue };
                 if ft.is_dir() {
-                    stack.push(path);
+                    stack.push(entry.path());
                 } else if entry
                     .file_name()
                     .to_str()
                     .is_some_and(|n| n.starts_with("rollout-") && n.ends_with(".jsonl"))
+                    && let Some(stamp) = meta_cache::stamp(&entry, false)
                 {
-                    let mtime = entry
-                        .metadata()
-                        .ok()
-                        .and_then(|m| m.modified().ok())
-                        .and_then(system_time_millis);
-                    out.push((path, mtime));
+                    out.push((entry, stamp));
                 }
             }
         }
-        out.sort_by_key(|(_, m)| std::cmp::Reverse(*m));
+        out.sort_by_key(|(_, s)| std::cmp::Reverse(s.modified()));
         out
     }
 
+    /// The newest rollouts as sessions (blocking). A rollout is read again
+    /// only when its size or modification time changed; entries of rollouts
+    /// that were deleted or fell out of the newest [`Self::max_sessions`] are
+    /// dropped.
     fn stored_sessions(&self) -> Vec<DiscoveredSession> {
-        self.rollout_files()
+        let now = SystemTime::now();
+        let mut cache = self.stored.lock();
+        cache.begin();
+        let out = self
+            .rollout_files()
             .into_iter()
             .take(self.max_sessions)
-            .map(|(path, mtime)| {
-                let meta = rollout::read_meta(&path).unwrap_or_default();
+            .map(|(entry, listed)| {
+                let path = entry.path();
+                // Codex keeps a rollout open while it runs, and a directory
+                // listing may then lag behind; a rollout read before its
+                // first prompt is checked exactly until it has one.
+                let incomplete = cache.peek(&path).is_some_and(|m| m.first_prompt.is_none());
+                let stamp = if listed.is_recent(now) || incomplete {
+                    meta_cache::stamp(&entry, true).unwrap_or(listed)
+                } else {
+                    listed
+                };
+                let meta = cache.get(&path, stamp, || {
+                    rollout::read_meta(&path).unwrap_or_default()
+                });
                 let id = meta.session_id.clone().or_else(|| {
                     path.file_name()
                         .and_then(|n| n.to_str())
@@ -124,12 +144,17 @@ impl CodexAdapter {
                     agent_session_id: id,
                     project_dir: meta.cwd,
                     pid: None,
-                    last_activity: mtime.or(meta.started_at),
+                    last_activity: stamp
+                        .modified()
+                        .and_then(system_time_millis)
+                        .or(meta.started_at),
                     title: meta.first_prompt,
                     transcript_path: Some(path),
                 }
             })
-            .collect()
+            .collect();
+        cache.finish();
+        out
     }
 
     fn locate(&self, session: &SessionLocator) -> Result<PathBuf> {
@@ -142,7 +167,7 @@ impl CodexAdapter {
             .ok_or_else(|| AdapterError::NotFound("no session id or transcript path".into()))?;
         self.rollout_files()
             .into_iter()
-            .map(|(p, _)| p)
+            .map(|(e, _)| e.path())
             .find(|p| {
                 p.file_name()
                     .and_then(|n| n.to_str())
@@ -171,6 +196,44 @@ fn session_id_from_cmd(cmd: &[String]) -> Option<String> {
 impl AgentAdapter for CodexAdapter {
     fn kind(&self) -> AgentKind {
         AgentKind::Codex
+    }
+
+    /// Codex stores rollouts by date; the rollout's metadata names the
+    /// directory it was started in.
+    fn new_transcript_since(
+        &self,
+        cwd: &Path,
+        since: vca_core::UnixMillis,
+        taken: &[String],
+    ) -> Option<SessionLocator> {
+        let normalized: PathBuf = cwd.components().collect();
+        // Newest first; a fresh rollout is among the first few.
+        let candidates: Vec<(PathBuf, rollout::RolloutMeta)> = self
+            .rollout_files()
+            .into_iter()
+            .take(32)
+            .map(|(e, _)| e.path())
+            .filter_map(|p| {
+                let meta = rollout::read_meta(&p).ok()?;
+                let same = meta
+                    .cwd
+                    .as_deref()
+                    .is_some_and(|c| c.components().collect::<PathBuf>() == normalized);
+                let claimed = meta
+                    .session_id
+                    .as_ref()
+                    .is_some_and(|id| taken.contains(id));
+                (same && !claimed).then_some((p, meta))
+            })
+            .collect();
+        let path =
+            crate::adapter::newest_file_since(candidates.iter().map(|(p, _)| p.clone()), since)?;
+        let meta = candidates.into_iter().find(|(p, _)| *p == path)?.1;
+        Some(SessionLocator {
+            agent_session_id: meta.session_id,
+            transcript_path: Some(path),
+            project_dir: Some(cwd.to_owned()),
+        })
     }
 
     fn capabilities(&self) -> Capabilities {
@@ -263,5 +326,96 @@ mod tests {
     fn profile_env_sets_codex_home() {
         let env = CodexAdapter::new().profile_env(&Profile::new("p", "/x"));
         assert_eq!(env, vec![("CODEX_HOME".to_owned(), "/x".to_owned())]);
+    }
+
+    fn write_rollout(home: &Path, day: &str, id: &str, prompt: Option<&str>) -> PathBuf {
+        let dir = home.join("sessions").join(day);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(format!("rollout-2026-11-01T10-00-00-{id}.jsonl"));
+        let mut text = format!(
+            r#"{{"timestamp":"2026-11-01T10:00:00.000Z","type":"session_meta","payload":{{"id":"{id}","cwd":"/w/{id}","timestamp":"2026-11-01T10:00:00.000Z"}}}}"#
+        );
+        text.push('\n');
+        if let Some(p) = prompt {
+            text.push_str(&user_line(p));
+        }
+        std::fs::write(&path, text).unwrap();
+        path
+    }
+
+    fn user_line(text: &str) -> String {
+        format!(
+            r#"{{"timestamp":"2026-11-01T10:00:01.000Z","type":"response_item","payload":{{"type":"message","role":"user","content":[{{"type":"input_text","text":"{text}"}}]}}}}"#
+        ) + "\n"
+    }
+
+    #[test]
+    fn rollouts_are_read_again_only_when_changed() {
+        use std::io::Write;
+
+        let home = tempfile::tempdir().unwrap();
+        let a = write_rollout(home.path(), "2026/11/01", "aaa", None);
+        let b = write_rollout(home.path(), "2026/11/02", "bbb", Some("hello"));
+        let adapter = CodexAdapter::with_home(home.path());
+        let reads = || adapter.stored.lock().reads();
+        let pass = || adapter.clone().stored_sessions();
+
+        assert_eq!(pass().len(), 2);
+        assert_eq!(reads(), 2);
+        assert_eq!(pass().len(), 2);
+        assert_eq!(reads(), 2, "unchanged rollouts are not read");
+
+        // The first prompt arrives: that rollout is read again.
+        let mut f = std::fs::OpenOptions::new().append(true).open(&a).unwrap();
+        write!(f, "{}", user_line("fix the build")).unwrap();
+        drop(f);
+        let found = pass();
+        let title = |id: &str| {
+            found
+                .iter()
+                .find(|s| s.agent_session_id.as_deref() == Some(id))
+                .and_then(|s| s.title.clone())
+        };
+        assert_eq!(title("aaa").as_deref(), Some("fix the build"));
+        assert_eq!(title("bbb").as_deref(), Some("hello"));
+        assert_eq!(reads(), 3);
+
+        // A deleted rollout is evicted.
+        std::fs::remove_file(&b).unwrap();
+        assert_eq!(pass().len(), 1);
+        assert_eq!(adapter.stored.lock().len(), 1);
+        assert_eq!(reads(), 3);
+    }
+
+    #[test]
+    fn per_pass_reads_do_not_grow_with_stored_rollouts() {
+        let home = tempfile::tempdir().unwrap();
+        for i in 0..120 {
+            write_rollout(
+                home.path(),
+                &format!("2026/10/{:02}", i % 28 + 1),
+                &format!("id{i}"),
+                Some("p"),
+            );
+        }
+        let adapter = CodexAdapter::with_home(home.path());
+        assert_eq!(adapter.stored_sessions().len(), 120);
+        assert_eq!(adapter.stored.lock().reads(), 120);
+        for _ in 0..5 {
+            assert_eq!(adapter.stored_sessions().len(), 120);
+        }
+        assert_eq!(adapter.stored.lock().reads(), 120);
+    }
+
+    #[test]
+    fn the_cache_holds_only_the_newest_rollouts() {
+        let home = tempfile::tempdir().unwrap();
+        for i in 0..5 {
+            write_rollout(home.path(), "2026/10/01", &format!("id{i}"), Some("p"));
+        }
+        let mut adapter = CodexAdapter::with_home(home.path());
+        adapter.max_sessions = 3;
+        assert_eq!(adapter.stored_sessions().len(), 3);
+        assert_eq!(adapter.stored.lock().len(), 3);
     }
 }

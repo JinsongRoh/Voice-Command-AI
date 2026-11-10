@@ -1,11 +1,11 @@
 //! Connectivity providers (requirements §3.8): direct LAN, Tailscale,
-//! Cloudflare Tunnel, DNS Pilot and custom URLs.
+//! Cloudflare Tunnel, DNSPilot and custom URLs.
 //!
 //! All providers implement [`ConnectivityProvider`] and are interchangeable
 //! and equal: none is a default in code. The user chooses one; the setup
 //! wizard may recommend one based on [`ConnectivityProvider::diagnostics`].
 //!
-//! Every provider is treated as an untrusted transport (DNS Pilot design
+//! Every provider is treated as an untrusted transport (DNSPilot design
 //! consequence C1): the server serves plain HTTP/1.1 WebSocket on loopback
 //! (C2, C3), and VCA's own pairing keys and Noise channel provide
 //! authentication and confidentiality on top of whatever the provider

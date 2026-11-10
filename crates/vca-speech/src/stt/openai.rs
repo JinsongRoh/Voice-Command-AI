@@ -13,11 +13,12 @@ use serde::{Deserialize, Serialize};
 
 use super::{SttEngine, TranscribeOptions, Transcript, base_language, language_code_from_name};
 use crate::audio::AudioInput;
+use crate::auth::EngineAuth;
 use crate::error::{Result, SpeechError};
 use crate::stt::Segment;
 
 /// Configuration of [`OpenAiSttEngine`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenAiSttConfig {
     /// API root, e.g. `https://api.openai.com/v1` or `http://localhost:8000/v1`.
     pub base_url: String,
@@ -33,6 +34,24 @@ pub struct OpenAiSttConfig {
     /// Request timeout.
     #[serde(with = "secs")]
     pub timeout: Duration,
+    /// Key header and gateway token (never serialized).
+    #[serde(skip)]
+    pub auth: EngineAuth,
+}
+
+// Neither the key nor the gateway token is printed.
+impl std::fmt::Debug for OpenAiSttConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAiSttConfig")
+            .field("base_url", &self.base_url)
+            .field("api_key", &self.api_key.as_ref().map(|_| "[REDACTED]"))
+            .field("model", &self.model)
+            .field("response_format", &self.response_format)
+            .field("temperature", &self.temperature)
+            .field("timeout", &self.timeout)
+            .field("auth", &self.auth)
+            .finish()
+    }
 }
 
 mod secs {
@@ -57,6 +76,7 @@ impl Default for OpenAiSttConfig {
             response_format: None,
             temperature: None,
             timeout: Duration::from_secs(60),
+            auth: EngineAuth::default(),
         }
     }
 }
@@ -69,9 +89,14 @@ pub struct OpenAiSttEngine {
 }
 
 impl OpenAiSttEngine {
-    /// Creates the engine with its own HTTP client.
+    /// Creates the engine with its own HTTP client. Fails on an invalid
+    /// key header or a gateway token without one.
     pub fn new(config: OpenAiSttConfig) -> Result<Self> {
-        let client = reqwest::Client::builder().timeout(config.timeout).build()?;
+        config.auth.validate()?;
+        let client = reqwest::Client::builder()
+            .timeout(config.timeout)
+            .redirect(crate::auth::redirect_policy())
+            .build()?;
         Ok(Self::with_client(config, client))
     }
 
@@ -130,33 +155,36 @@ impl SttEngine for OpenAiSttEngine {
         options: &TranscribeOptions,
     ) -> Result<Transcript> {
         let upload = audio.to_uploadable()?;
-        let file = Part::bytes(upload.bytes)
-            .file_name(format!("audio.{}", upload.format.extension()))
-            .mime_str(upload.format.mime_type())?;
         let format = self.response_format();
-        let mut form = Form::new()
-            .part("file", file)
-            .text("model", self.config.model.clone())
-            .text("response_format", format.clone());
-        // Forcing a language disables code-switching, so only send it when
-        // the user speaks a single language.
-        if let Some(lang) = &options.primary_language
-            && options.secondary_languages.is_empty()
-        {
-            form = form.text("language", base_language(lang));
-        }
-        if let Some(prompt) = options.prompt_hint.as_deref().filter(|p| !p.is_empty()) {
-            form = form.text("prompt", prompt.to_owned());
-        }
-        if let Some(t) = self.config.temperature {
-            form = form.text("temperature", t.to_string());
-        }
-
-        let mut req = self.client.post(self.endpoint()).multipart(form);
-        if let Some(key) = &self.config.api_key {
-            req = req.bearer_auth(key);
-        }
-        let resp = req.send().await?;
+        // Transcription is idempotent: a connection that dropped before the
+        // server answered (restart, network blip) is retried once. A
+        // multipart form cannot be cloned, so it is rebuilt per attempt.
+        let resp = crate::retry::send_idempotent(|| async {
+            let file = Part::bytes(upload.bytes.clone())
+                .file_name(format!("audio.{}", upload.format.extension()))
+                .mime_str(upload.format.mime_type())?;
+            let mut form = Form::new()
+                .part("file", file)
+                .text("model", self.config.model.clone())
+                .text("response_format", format.clone());
+            // Forcing a language disables code-switching, so only send it
+            // when the user speaks a single language.
+            if let Some(lang) = &options.primary_language
+                && options.secondary_languages.is_empty()
+            {
+                form = form.text("language", base_language(lang));
+            }
+            if let Some(prompt) = options.prompt_hint.as_deref().filter(|p| !p.is_empty()) {
+                form = form.text("prompt", prompt.to_owned());
+            }
+            if let Some(t) = self.config.temperature {
+                form = form.text("temperature", t.to_string());
+            }
+            let req = self.client.post(self.endpoint()).multipart(form);
+            let req = self.config.auth.apply(req, self.config.api_key.as_deref());
+            req.send().await
+        })
+        .await?;
         let status = resp.status();
         let body = resp.text().await?;
         if !status.is_success() {

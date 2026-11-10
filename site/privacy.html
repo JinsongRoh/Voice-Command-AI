@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy · Voice Command AI</title>
+<meta name="description" content="Privacy policy of Voice Command AI: no account, no VCA cloud, no tracking. What stays on your devices and what reaches the services you choose.">
+<meta name="theme-color" content="#101B35">
+<meta name="color-scheme" content="light">
+<link rel="canonical" href="https://vca.metavu.io/privacy.html">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preload" href="fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header on-navy">
+  <div class="container header-inner">
+    <a class="brand" href="./" aria-label="Voice Command AI home">
+      <img src="assets/logo-horizontal-on-navy.svg" alt="Voice Command AI" width="193" height="46">
+    </a>
+    <div class="header-actions">
+      <a class="doc-home" href="./">Home</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1" class="doc-main">
+  <article class="container doc-page">
+<h1 id="privacy-policy">Privacy Policy</h1>
+<p><strong>Effective date:</strong> 10 November 2026<br>
+<strong>Applies to:</strong> Voice Command AI (VCA) 0.1.0 and later: the desktop app for Windows, macOS and Linux, the mobile app for iOS and Android, the server <code>vcad</code> and the command-line tool <code>vca</code>.<br>
+<strong>Controller:</strong> MetaVu Co., Ltd.<br>
+<strong>Contact:</strong> <a href="https://github.com/JinsongRoh/Voice-Command-AI/issues" rel="noopener">GitHub Issues</a> for questions; <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/SECURITY.md" rel="noopener">private vulnerability reporting</a> for security or privacy problems.</p>
+<p>The source of this policy is <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/privacy.md" rel="noopener">docs/privacy.md</a> in the repository.</p>
+<h2 id="1-summary">1. Summary</h2>
+<ul>
+<li><strong>There is no VCA account and no VCA cloud.</strong> VCA runs on your own computers and phones. MetaVu runs no server that relays your sessions, stores your data or receives your voice.</li>
+<li><strong>No analytics, advertising, tracking or crash reporting</strong> is built into VCA. MetaVu receives no usage data from the apps.</li>
+<li><strong>Your phone talks to your own PC.</strong> Everything between a paired device and the server on your PC is end-to-end encrypted (the Noise protocol).</li>
+<li><strong>Data leaves your devices only to services you choose and set up:</strong> the speech-to-text, language model and text-to-speech engines you configure, the connectivity provider you pick, cloud agent accounts you add, and DNSPilot if you connect it. On Android, Google ML Kit, which scans pairing QR codes, may send usage metrics to Google (section 12).</li>
+<li><strong>Diagnostics are off by default.</strong> The diagnostic log is kept only on your device, and only if you turn it on. It is never uploaded; you decide whether to copy it and send it to anyone.</li>
+</ul>
+<h2 id="2-how-vca-works">2. How VCA works</h2>
+<pre><code>phone / other computer ◄── Noise end-to-end encryption ──► vcad on your PC ──► engines you configure
+                       (LAN, Tailscale, Cloudflare,                          (STT, LLM, TTS,
+                        DNSPilot or your own provider)                        cloud agent providers)
+</code></pre>
+<p>The server <code>vcad</code> runs on your PC and owns your AI agent sessions. The VCA app on your phone or computer pairs with it once (with a one-time code and, by default, an authenticator code) and then shows those sessions. The desktop app includes the server.</p>
+<h2 id="3-data-vca-handles-and-where-it-goes">3. Data VCA handles and where it goes</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Goes to</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Session lists, chat and terminal output, your messages, attachments, dictation audio</td>
+<td>Your PC (<code>vcad</code>), over the end-to-end encrypted channel</td>
+<td>While a paired device is connected</td>
+</tr>
+<tr>
+<td>Dictation audio and the recognized text</td>
+<td>The speech-to-text engine you configured on the PC</td>
+<td>Only while you dictate, or while hands-free mode listens (section 4)</td>
+</tr>
+<tr>
+<td>Recognized text and recent dictation</td>
+<td>The correction LLM you configured</td>
+<td>Only if you turn on context correction</td>
+</tr>
+<tr>
+<td>Alert titles, briefings, summaries</td>
+<td>The text-to-speech engine you configured on the PC</td>
+<td>Only if you choose a PC engine as the voice source; the default is the device's own voice</td>
+</tr>
+<tr>
+<td>Session names written in Latin letters</td>
+<td>The correction LLM you configured</td>
+<td>Once per name, to suggest how spoken alerts pronounce it, only if a correction LLM is set up</td>
+</tr>
+<tr>
+<td>Agent replies (secrets removed first)</td>
+<td>The LLM you configured</td>
+<td>Only if you turn on spoken result summaries or LLM to-do detection</td>
+</tr>
+<tr>
+<td>Session previews and summaries (secrets removed first)</td>
+<td>The model behind the conductor (your agent's provider or your own LLM)</td>
+<td>Only while you use the conductor, which is off by default</td>
+</tr>
+<tr>
+<td>Prompts for cloud agent sessions and their replies</td>
+<td>The cloud agent provider you added an account for</td>
+<td>Only for cloud sessions you start</td>
+</tr>
+<tr>
+<td>Encrypted VCA traffic</td>
+<td>The connectivity provider you choose</td>
+<td>When a device connects from outside the PC</td>
+</tr>
+<tr>
+<td>Update checks and downloads</td>
+<td>GitHub Releases</td>
+<td>Desktop app only, while <strong>Check for updates automatically</strong> is on (the default) and when you check by hand (section 8)</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-microphone">4. Microphone</h2>
+<p>VCA uses the microphone only for features you start, and the app's lock pauses all of them.</p>
+<ul>
+<li><strong>Tap to dictate (default) or hold to talk.</strong> Recording starts when you tap the microphone button (or hold it, if you choose hold-to-talk) and stops when you tap again, discard or send. The audio goes over the encrypted channel to your PC, which passes it to the speech-to-text engine you configured. The text appears as you speak.</li>
+<li><strong>Weak network.</strong> If a recording cannot reach your PC, the app keeps it so you can tap <strong>Retry</strong>, or discard it. Nothing is sent anywhere else.</li>
+<li><strong>Hands-free mode and the "Voco" wake word</strong> (off by default). While hands-free mode is on, the microphone stays open and the app detects speech on the device. While it waits for the wake word, only a short piece (about the first 2 seconds) of each utterance is sent to your PC's speech-to-text engine to check for "Voco"; nothing else is kept or sent. After the wake word, what you say is transcribed like a dictation. The app does not listen while it is locked, while it speaks, or when you turn hands-free mode off.</li>
+<li><strong>Teach a pronunciation by voice, and dictating to the conductor</strong>, record only while you press the button, in the same way.</li>
+<li><strong>Your keyboard's own dictation</strong> (for example the iOS keyboard microphone, Gboard voice typing, Windows <strong>Win+H</strong> or macOS Dictation) is handled by your device's speech service under its own settings, not by VCA.</li>
+</ul>
+<p>VCA stores no audio. The speech-to-text engine you chose receives the audio under its own terms: a self-hosted engine keeps it on your machines, a cloud API (such as OpenAI or Google Cloud) receives it under that provider's terms. See <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/speech-engines.md" rel="noopener">Your own speech engines</a>.</p>
+<h2 id="5-alerts-and-notifications">5. Alerts and notifications</h2>
+<p><strong>In version 0.1.0, the phone apps do not use push notifications.</strong> They do not register with Apple Push Notification service or Firebase Cloud Messaging, and no push token leaves the phone. Phones show alerts while the VCA app is open, as notifications created on the phone itself. The desktop app shows system notifications while it runs in the background. While the app is locked, a notification shows only the session name and a generic line, never the request.</p>
+<p><strong>Phone approval alerts (planned, not in this release).</strong> The code contains an opt-in design for notifications while the phone app is closed, through DNSPilot's end-to-end encrypted push relay: the phone would hand its push token to your PC over the encrypted channel, the desktop app on the PC would send DNSPilot a payload encrypted to the phone's key that holds only a session reference, and the visible text would be a fixed, generic line. The server on your PC keeps such a registration (in its <code>push/</code> folder) only if a phone registers one, which 0.1.0 store builds cannot do. Before this feature is turned on in a release, this policy will be updated and the change listed in the changelog.</p>
+<h2 id="6-connectivity-and-dnspilot">6. Connectivity and DNSPilot</h2>
+<p>By default <code>vcad</code> listens only on <code>127.0.0.1</code>, so nothing outside the PC can reach it. When you choose direct LAN, Tailscale, Cloudflare Tunnel, DNSPilot or your own provider, that provider carries the connection. VCA treats every provider as an untrusted transport: the traffic inside is end-to-end encrypted between your device and <code>vcad</code>, so the provider sees only encrypted data, connection times and network addresses.</p>
+<p><strong>DNSPilot</strong> is a separate service with its own account, terms and privacy policy (it is developed by the team that maintains VCA). If you choose <strong>Connect DNSPilot</strong> in the desktop app, the app talks to the DNSPilot console (<code>dns.dnspilot.kr</code>) with your approval to create an app-mode tunnel and register the app's client key; a phone registers its own key with a one-time invite. DNSPilot tokens and the app's client key stay in the device's credential store. <strong>Disconnect DNSPilot</strong> turns off the tunnels the app created and revokes the keys and tokens it registered. To delete your DNSPilot account, its tunnels or registered devices, use the <a href="https://dns.dnspilot.kr" rel="noopener">DNSPilot console</a>.</p>
+<h2 id="7-engines-and-cloud-agents-you-connect">7. Engines and cloud agents you connect</h2>
+<p><strong>VCA ships no speech servers and no model weights</strong>, and it never sends anything to an engine you did not configure. Engine API keys stay on the PC: paired devices can never send or read them, and the apps learn only engine names, never URLs, models or keys. Stored keys are only sent to the address they were saved with, over https or on the same computer.</p>
+<p><strong>Agents.</strong> Your agent CLIs (Claude Code, Codex and others) talk to their own providers as they always do; VCA does not change that. VCA contacts a cloud agent provider (Jules, Cursor, Devin, GitHub Copilot, Claude managed agents or routines, Codex cloud) only if you add an account for it on the PC. Its credentials stay on the PC.</p>
+<h2 id="8-updates">8. Updates</h2>
+<p>The desktop app checks <code>latest.json</code> on GitHub Releases 30 seconds after it starts and then once a day, while <strong>Check for updates automatically</strong> is on (the default), and when you press <strong>Check for updates</strong>. GitHub sees the request (your IP address and the app's request) under <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub's privacy statement</a>. Updates are verified against the app's signing key and installed only when you confirm. The phone apps are updated by the App Store and Google Play.</p>
+<h2 id="9-diagnostics-and-logs">9. Diagnostics and logs</h2>
+<p><strong>Diagnostic log on the device (off by default).</strong> Settings → About → <strong>Diagnostic log</strong> keeps, only if you turn it on, a log of the last 7 days on that device: timings, counts, status and error codes for the microphone, recognition, the wake word, the app lock and the connection. It never holds audio, transcripts, prompts, file paths, keys or addresses; values that look like them are masked. It is <strong>never uploaded</strong>. You can copy it and send it to someone yourself; if you attach it to a public GitHub issue, everyone can read it. Turning it off clears it.</p>
+<p><strong>Logs on the PC.</strong> <code>vcad</code> keeps a connection log (<code>remote/audit.log</code>: connection and sign-in attempts) and an activity log (<code>audit.jsonl</code>: remote shells, the conductor, window restore and arrangement, to-do changes). For messages sent to sessions, the activity log records only their length, never their text. Remote shell commands are recorded with secrets masked. Authenticator codes are never written. The desktop app keeps the bundled server's log (<code>host/vcad.log</code>). These logs stay on the PC.</p>
+<h2 id="10-what-is-stored-on-your-pc">10. What is stored on your PC</h2>
+<p><code>vcad</code> keeps its files in your user profile. You can move them with the <code>VCA_CONFIG</code> and <code>VCA_DATA_DIR</code> environment variables.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Configuration</th>
+<th>Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows</td>
+<td><code>%APPDATA%\vca\vca\config\</code></td>
+<td><code>%APPDATA%\vca\vca\data\</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td><code>~/Library/Application Support/dev.vca.vca/</code></td>
+<td><code>~/Library/Application Support/dev.vca.vca/</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td><code>~/.config/vca/</code></td>
+<td><code>~/.local/share/vca/</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>In the data folder:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>remote/keys/</code></td>
+<td>The server's private key and the key that signs access tokens.</td>
+</tr>
+<tr>
+<td><code>remote/devices.json</code>, <code>remote/tokens.json</code></td>
+<td>Paired devices (names, public keys, permissions) and refresh tokens.</td>
+</tr>
+<tr>
+<td><code>remote/totp.json</code></td>
+<td>Your authenticator secret and hashes of your backup codes.</td>
+</tr>
+<tr>
+<td><code>remote/audit.log</code></td>
+<td>Connection and sign-in attempts.</td>
+</tr>
+<tr>
+<td><code>audit.jsonl</code> (and <code>audit.jsonl.1</code>)</td>
+<td>The activity log (section 9). Rotates at 5 MB.</td>
+</tr>
+<tr>
+<td><code>tasks.json</code></td>
+<td>Your to-do list. Done and dismissed tasks are kept for 30 days.</td>
+</tr>
+<tr>
+<td><code>restore.json</code></td>
+<td>Saved windows and screen layouts: titles, folders, positions and agent session ids.</td>
+</tr>
+<tr>
+<td><code>session-names.json</code>, <code>hidden-sessions.json</code></td>
+<td>Names you gave sessions and sessions you hid.</td>
+</tr>
+<tr>
+<td><code>conductor.json</code>, <code>conductor/</code></td>
+<td>Conductor settings, its instruction file and MCP configuration.</td>
+</tr>
+<tr>
+<td><code>speech/</code>, <code>tts/</code></td>
+<td>Speech and TTS preferences, your commonly misheard words (<code>speech/personal.json</code>), and engine API keys stored with <code>vca speech login</code> or <code>vca tts login</code>.</td>
+</tr>
+<tr>
+<td><code>pronunciations.json</code></td>
+<td>Your pronunciation dictionary for spoken alerts.</td>
+</tr>
+<tr>
+<td><code>cloud/</code></td>
+<td>Cloud agent account credentials, if you added any.</td>
+</tr>
+<tr>
+<td><code>push/</code></td>
+<td>Reserved for phone approval alerts (section 5); empty with 0.1.0 store builds.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Attachments you send to a session are saved in that project's folder under <code>.vca/attachments/</code>. VCA adds <code>/.vca/</code> to the project's <code>.git/info/exclude</code> so they are not committed by accident.</p>
+<p>On macOS and Linux these files are created readable only by your user (<code>0600</code>); on Windows they inherit the permissions of your user profile folder. Never copy the data folder to another person or machine.</p>
+<h2 id="11-what-is-stored-in-the-apps">11. What is stored in the apps</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The device's private key and tokens for each paired PC, DNSPilot tokens and the app's tunnel client key</td>
+<td>The OS credential store: Windows Credential Manager, macOS and iOS Keychain, or the Secret Service on Linux (GNOME Keyring, KWallet), under the service name <code>io.metavu.voicecommandai.app</code>. If no credential store is usable (for example a Linux session without a Secret Service) and on Android, they are stored as files in the app's private data folder.</td>
+</tr>
+<tr>
+<td>Paired PCs (names and addresses)</td>
+<td>The app's data folder, <code>machines/</code></td>
+</tr>
+<tr>
+<td>The bundled server's state and log (desktop)</td>
+<td>The app's data folder, <code>host/</code></td>
+</tr>
+<tr>
+<td>Settings, the last 100 voice answers given in hands-free mode, and the diagnostic log if you turned it on</td>
+<td>The app's local storage on that device</td>
+</tr>
+</tbody>
+</table></div>
+<p>The app's data folder is named after the app id: <code>io.metavu.voicecommandai.desktop</code> on desktops (in <code>%APPDATA%</code> on Windows, <code>~/Library/Application Support</code> on macOS, <code>~/.local/share</code> on Linux) and the app's private storage on phones.</p>
+<h2 id="12-third-parties">12. Third parties</h2>
+<p>VCA works with these services only when you use the feature named. Each processes data under its own terms.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Used for</th>
+<th>Data it receives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Speech, LLM and TTS providers you configure (self-hosted, OpenAI, Google Cloud, Anthropic or another)</td>
+<td>Speech recognition, correction, summaries, spoken alerts</td>
+<td>What section 3 lists for that engine</td>
+</tr>
+<tr>
+<td>Cloud agent providers you add (Jules, Cursor, Devin, GitHub Copilot, Anthropic, OpenAI Codex)</td>
+<td>Cloud agent sessions</td>
+<td>Your prompts for those sessions and the repository you name</td>
+</tr>
+<tr>
+<td>Connectivity providers you choose (Tailscale, Cloudflare, DNSPilot, your own)</td>
+<td>Reaching your PC from outside</td>
+<td>Encrypted traffic, connection times, network addresses</td>
+</tr>
+<tr>
+<td>DNSPilot</td>
+<td>App-mode tunnels, if you connect it</td>
+<td>Your DNSPilot account data, the app's public key, encrypted traffic</td>
+</tr>
+<tr>
+<td>Google ML Kit (Android)</td>
+<td>Scanning pairing QR codes</td>
+<td>Google's ML Kit terms say it may contact Google servers and send metrics about the performance and use of its APIs. VCA does not add to or read this data. On iOS the scanner uses the system camera framework.</td>
+</tr>
+<tr>
+<td>GitHub</td>
+<td>Desktop updates; issues you open</td>
+<td>Update requests; whatever you post</td>
+</tr>
+<tr>
+<td>Your device's keyboard dictation service</td>
+<td>Only if you dictate with the keyboard</td>
+<td>Your speech, under the device's settings</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="13-retention">13. Retention</h2>
+<p>MetaVu holds no personal data from the apps, so there is nothing for MetaVu to retain or delete. On your own devices: the activity log rotates at 5 MB (one older file is kept); done and dismissed to-dos are kept for 30 days; the diagnostic log keeps at most 7 days; hands-free mode keeps its last 100 answers; everything else stays until you delete it (section 15). Providers you connect keep data under their own policies.</p>
+<h2 id="14-mobile-permissions">14. Mobile permissions</h2>
+<p>The phone apps ask for a permission when a feature first needs it.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Permission</th>
+<th>Why</th>
+<th>When it is used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microphone</td>
+<td>Dictation, hands-free mode and the wake word, teaching a pronunciation</td>
+<td>Only while you dictate or hands-free mode listens (section 4)</td>
+</tr>
+<tr>
+<td>Camera</td>
+<td>Scanning a pairing QR code, and <strong>Take photo</strong></td>
+<td>Only while the scanner or the camera is open</td>
+</tr>
+<tr>
+<td>Photo library (iOS)</td>
+<td><strong>Photo library</strong> in the attachment menu</td>
+<td>Only the photos you pick are read and sent to your PC</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>Alerts about sessions that need you, shown by the app on the phone</td>
+<td>While the app is open</td>
+</tr>
+<tr>
+<td>Face ID or biometrics</td>
+<td>Unlocking the app; confirming it is you before a remote shell opens or a risky command runs</td>
+<td>Only for those actions</td>
+</tr>
+</tbody>
+</table></div>
+<p>Android also declares network access (to reach your PC) and vibration; these need no prompt.</p>
+<h2 id="15-your-choices-delete-everything">15. Your choices: delete everything</h2>
+<ol>
+<li><strong>Undo changes to other programs</strong> (in the desktop app on the PC): uninstall the agent hooks in <strong>Settings → Alerts → Agent connection</strong> (or <code>vca hooks uninstall</code>); turn off <strong>Start VCA when I sign in</strong> and <strong>Restore at sign-in</strong>; press <strong>Disconnect DNSPilot</strong> if you connected it. Remove the <code>vca shell-init</code> line from your shell profile if you added it.</li>
+<li><strong>Clear the diagnostic log:</strong> Settings → About → <strong>Diagnostic log</strong>, turn it off (this clears it) on each device.</li>
+<li><strong>Revoke and stop:</strong> revoke paired devices (<code>vca devices</code>, <code>vca revoke &lt;device-id&gt;</code>, or Settings → Paired devices), then stop <code>vcad</code>.</li>
+<li><strong>Delete the server's folders:</strong> the configuration and data folders in section 10 (and the folders named by <code>VCA_CONFIG</code> or <code>VCA_DATA_DIR</code>, if you set them).</li>
+<li><strong>Delete the desktop app's data:</strong> uninstall the app, delete its data folder (<code>io.metavu.voicecommandai.desktop</code>) and remove the desktop shortcut it created. Delete the credential store entries under <code>io.metavu.voicecommandai.app</code>: Windows Credential Manager (Windows Credentials), Keychain Access on macOS, or Seahorse or KWallet on Linux.</li>
+<li><strong>Delete the phone app:</strong> uninstalling the app removes its data and its keychain or keystore entries on most devices. On iOS, Keychain items can survive an uninstall; pairing again creates new keys, and revoking the old device on the PC makes them useless.</li>
+<li><strong>Delete attachments:</strong> remove the <code>.vca/</code> folder in each project, and the <code>/.vca/</code> line from <code>.git/info/exclude</code> if you like.</li>
+<li><strong>Elsewhere:</strong> delete the data your speech, LLM, TTS or cloud agent provider keeps; remove tunnels and devices, or delete your account, in the <a href="https://dns.dnspilot.kr" rel="noopener">DNSPilot console</a>; remove devices you added for VCA in your Tailscale or Cloudflare account.</li>
+</ol>
+<p>Because MetaVu holds no personal data from the apps, requests to access, correct or delete such data can be fulfilled entirely with the steps above. For anything else, contact us (section 19).</p>
+<h2 id="16-children">16. Children</h2>
+<p>VCA is a tool for software developers and is not directed to children. It collects no personal data for MetaVu from anyone, including children.</p>
+<h2 id="17-security">17. Security</h2>
+<p>Pairing uses one-time codes and, by default, an authenticator (TOTP) code. Device traffic is end-to-end encrypted with the Noise protocol, tokens are short-lived, devices can be revoked one by one, and a kill switch drops every remote connection. The apps open locked and unlock with the device's own sign-in. See <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/security-setup.md" rel="noopener">Security setup</a>. Report vulnerabilities through <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/SECURITY.md" rel="noopener">private vulnerability reporting</a>.</p>
+<h2 id="18-changes-to-this-policy">18. Changes to this policy</h2>
+<p>We publish changes to this policy in this file and on <a href="privacy.html">vca.metavu.io/privacy.html</a>, with a new effective date. Significant changes are also listed in the <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/CHANGELOG.md" rel="noopener">changelog</a>.</p>
+<h2 id="19-contact">19. Contact</h2>
+<p>MetaVu Co., Ltd.</p>
+<ul>
+<li>Questions about this policy: open an issue on <a href="https://github.com/JinsongRoh/Voice-Command-AI/issues" rel="noopener">GitHub</a>. Issues are public; do not include personal data.</li>
+<li>Security or privacy problems in VCA: use <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/SECURITY.md" rel="noopener">private vulnerability reporting</a>.</li>
+</ul>
+  </article>
+</main>
+
+<footer class="site-footer on-navy">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="assets/logo-horizontal-on-navy.svg" alt="Voice Command AI" width="184" height="44">
+        <p class="footer-slogan">Your voice. Every agent. One command center.</p>
+      </div>
+      <nav aria-label="Footer">
+        <ul class="footer-links">
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI">GitHub</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/user-guide.md">User guide</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/history/m0-report.md">M0 report</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/brand/brand-definition.md">Brand guidelines</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/open-source.md">Open-source credits</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/LICENSE">MIT License</a></li>
+          <li><a href="privacy.html">Privacy</a></li>
+          <li><a href="support.html">Support</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MetaVu</p>
+      <p>No tracking, no analytics, no cookies.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

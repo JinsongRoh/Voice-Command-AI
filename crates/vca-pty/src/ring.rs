@@ -128,11 +128,32 @@ impl OutputRing {
     pub fn retained_bytes(&self) -> usize {
         self.bytes
     }
+
+    /// Drops every retained chunk and gives its memory back. Sequence
+    /// numbers go on: a later replay reports what was dropped as a gap.
+    pub fn clear(&mut self) {
+        self.chunks = VecDeque::new();
+        self.bytes = 0;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clearing_keeps_numbering_and_reports_a_gap() {
+        let mut ring = OutputRing::new(BufferLimits::default());
+        ring.push(Bytes::from_static(b"ab"));
+        ring.push(Bytes::from_static(b"cd"));
+        ring.clear();
+        assert_eq!(ring.retained_bytes(), 0);
+        assert_eq!(ring.next_seq(), 2);
+        let replay = ring.replay_from(0);
+        assert!(replay.chunks.is_empty());
+        assert_eq!(replay.gap.map(|g| g.resumed_at), Some(2));
+        assert_eq!(ring.push(Bytes::from_static(b"e")).seq, 2);
+    }
 
     fn ring(max_bytes: usize, max_chunks: usize) -> OutputRing {
         OutputRing::new(BufferLimits {

@@ -224,6 +224,86 @@ fn numbered_menu(lines: &[String]) -> Option<HeuristicMatch> {
     ))
 }
 
+/// A selection menu on screen: numbered items, one of them marked as
+/// selected (`❯ 1. Yes, I trust this folder`), near the bottom.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuPrompt {
+    /// `(number, label)` in screen order, numbered from 1.
+    pub items: Vec<(u32, String)>,
+    /// The number of the item the cursor is on.
+    pub selected: u32,
+    /// The agent asks whether to trust the folder it starts in (Claude
+    /// Code's first-run question).
+    pub trust_folder: bool,
+}
+
+impl MenuPrompt {
+    /// Enter accepts the trust question: the cursor is on its first item
+    /// and that item says yes.
+    pub fn enter_trusts(&self) -> bool {
+        self.trust_folder
+            && self.selected == 1
+            && self
+                .items
+                .first()
+                .is_some_and(|(_, label)| label.to_lowercase().starts_with("yes"))
+    }
+}
+
+re!(SELECTED_ITEM, r"^[❯›>▶►]\s*(\d{1,2})[.)]\s+\S");
+re!(
+    TRUST_FOLDER,
+    r"(?i)trust the files in this folder|trust this folder|one you trust|do you trust"
+);
+
+/// The selection menu at the bottom of `output`, if any. Only menus with a
+/// cursor count, so a numbered list in the agent's text never does.
+pub fn menu_prompt(output: &str) -> Option<MenuPrompt> {
+    let clean = strip_ansi(output);
+    let lines: Vec<String> = clean
+        .lines()
+        .map(clean_line)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let lines = &lines[lines.len().saturating_sub(30)..];
+    let search_from = lines.len().saturating_sub(10);
+    let last_item = (search_from..lines.len())
+        .rev()
+        .find(|&i| MENU_ITEM.is_match(&lines[i]))?;
+    let mut items: Vec<(u32, String)> = Vec::new();
+    let mut selected = None;
+    let mut first = last_item;
+    for i in (0..=last_item).rev() {
+        let Some(c) = MENU_ITEM.captures(&lines[i]) else {
+            break;
+        };
+        let n: u32 = c[1].parse().ok()?;
+        if SELECTED_ITEM.is_match(&lines[i]) {
+            selected = Some(n);
+        }
+        items.push((n, c[2].to_owned()));
+        first = i;
+    }
+    items.reverse();
+    let sequential = items
+        .iter()
+        .enumerate()
+        .all(|(i, (n, _))| *n as usize == i + 1);
+    if items.len() < 2 || !sequential {
+        return None;
+    }
+    let selected = selected?;
+    let trust_folder = lines[first.saturating_sub(12)..first]
+        .iter()
+        .chain(items.iter().map(|(_, l)| l))
+        .any(|l| TRUST_FOLDER.is_match(l));
+    Some(MenuPrompt {
+        items,
+        selected,
+        trust_folder,
+    })
+}
+
 fn yes_no(lines: &[String]) -> Option<HeuristicMatch> {
     let line = lines.iter().rev().take(3).find(|l| YES_NO.is_match(l))?;
     Some(decision(
@@ -392,5 +472,57 @@ mod tests {
     fn empty_output() {
         assert!(analyze("").is_none());
         assert!(analyze("compiling crate foo\n").is_none());
+    }
+
+    /// Claude Code's first-run question in a new folder (2.x wording).
+    const TRUST_SCREEN: &str = "\x1b[2J\
+        ────────────────────────────────────────────────────────────────\n \
+        Accessing workspace:\n\n \
+        C:\\Users\\me\\AppData\\Roaming\\vca\\vca\\data\\conductor\n\n \
+        Quick safety check: Is this a project you created or one you trust? (Like your own\n \
+        code, a well-known open source project, or work from your team). If not, take a\n \
+        moment to review what's in this folder first.\n\n \
+        Claude Code'll be able to read, edit, and execute files here.\n\n \
+        Security guide\n\n \
+        \x1b[36m❯ 1. Yes, I trust this folder\x1b[0m\n   \
+        2. No, exit\n\n \
+        Enter to confirm · Esc to cancel\n";
+
+    #[test]
+    fn trust_prompt_is_a_terminal_menu() {
+        let m = menu_prompt(TRUST_SCREEN).unwrap();
+        assert!(m.trust_folder);
+        assert_eq!(m.selected, 1);
+        assert_eq!(m.items.len(), 2);
+        assert_eq!(m.items[0].1, "Yes, I trust this folder");
+        assert!(m.enter_trusts());
+        // The question does not end a line with '?': no decision either.
+        assert!(analyze(TRUST_SCREEN).is_none_or(|h| h.state != SessionState::AwaitingDecision));
+
+        // The older wording.
+        let old = "Do you trust the files in this folder?\n\n/work/app\n\n\
+            ❯ 1. Yes, proceed\n  2. No, exit\n\nEnter to confirm · Esc to exit\n";
+        let m = menu_prompt(old).unwrap();
+        assert!(m.trust_folder && m.enter_trusts());
+
+        // The cursor on "No": Enter would not trust.
+        let moved = TRUST_SCREEN
+            .replace("❯ 1. Yes", "  1. Yes")
+            .replace("  2. No, exit", "❯ 2. No, exit");
+        let m = menu_prompt(&moved).unwrap();
+        assert_eq!(m.selected, 2);
+        assert!(m.trust_folder && !m.enter_trusts());
+    }
+
+    #[test]
+    fn other_menus_and_plain_lists() {
+        let theme = "Choose the text style that looks best with your terminal\n\n\
+            ❯ 1. Dark mode ✔\n  2. Light mode\n  3. Dark mode (colorblind-friendly)\n";
+        let m = menu_prompt(theme).unwrap();
+        assert!(!m.trust_folder && !m.enter_trusts());
+        assert_eq!((m.selected, m.items.len()), (1, 3));
+        // A numbered list in the agent's text has no cursor.
+        assert!(menu_prompt("Here is the plan:\n1. Add tests\n2. Fix bug\n").is_none());
+        assert!(menu_prompt("").is_none());
     }
 }

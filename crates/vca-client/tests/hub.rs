@@ -65,10 +65,12 @@ async fn start(dir: &Path, require_totp: bool, bind: &str) -> Server {
     config.broker.policy_path = Some(dir.join("policies.toml"));
     Server::start(
         Options {
+            verifier: Some(vca_server::security::verifier::FakeVerifier::available()),
             config_file: Some(dir.join("config.toml")),
             control: Some(control_endpoint(dir)),
             data_dir: Some(dir.join("data")),
             process_control: Some(Arc::new(NoProcessControl)),
+            restore_backend: None,
         },
         Some(config),
     )
@@ -85,8 +87,9 @@ async fn local_call(server: &Server, make: impl FnOnce(u64) -> LocalRequest) -> 
 }
 
 async fn pairing_uri(server: &Server) -> String {
-    let resp = local_call(server, |id| LocalRequest::Pair {
+    let resp = local_verified(server, |id, step_up| LocalRequest::Pair {
         id,
+        step_up,
         scope: "command".into(),
         endpoints: Vec::new(),
     })
@@ -111,8 +114,9 @@ fn totp_code(secret_base32: &str, steps: i64) -> String {
 
 /// Enrolls TOTP; returns the base32 secret and the backup codes.
 async fn enroll_totp(server: &Server) -> (String, Vec<String>) {
-    let resp = local_call(server, |id| LocalRequest::TotpBegin {
+    let resp = local_verified(server, |id, step_up| LocalRequest::TotpBegin {
         id,
+        step_up,
         account: "owner".into(),
     })
     .await;
@@ -122,7 +126,13 @@ async fn enroll_totp(server: &Server) -> (String, Vec<String>) {
     // Confirm with the previous step's code (accepted as clock skew), so
     // the current and next steps stay available for pairing and login.
     let code = totp_code(&secret_base32, -1);
-    let resp = local_call(server, |id| LocalRequest::TotpConfirm { id, code }).await;
+    let resp = local_verified(server, |id, step_up| LocalRequest::TotpConfirm {
+        id,
+        code: code.clone(),
+        current_code: None,
+        step_up,
+    })
+    .await;
     let LocalResponse::TotpEnrolled { backup_codes, .. } = resp else {
         panic!("{resp:?}");
     };
@@ -137,6 +147,7 @@ fn options() -> ClientOptions {
             initial: Duration::from_millis(100),
             max: Duration::from_secs(1),
         },
+        ..ClientOptions::default()
     }
 }
 
@@ -490,8 +501,8 @@ async fn totp_server_requires_login_after_token_loss() {
     let err = hub.pair(&uri, "phone", "test", None).await.unwrap_err();
     assert_eq!(err.code(), "totp_required", "{err:?}");
     assert!(hub.machines().is_empty());
-    let uri = pairing_uri(&server).await;
-    // The enrollment used the previous step; pair with the current one.
+    // The same link still works: a missing code does not spend it. The
+    // enrollment used the previous step; pair with the current one.
     let info = hub
         .pair(&uri, "phone", "test", Some(totp_code(&secret, 0)))
         .await
@@ -565,4 +576,124 @@ async fn wss_endpoints_have_a_tls_provider() {
     )
     .await;
     assert!(result.is_err());
+}
+
+// --- Local machine management: alias, default, order, forget. ---
+
+#[tokio::test(flavor = "multi_thread")]
+async fn alias_default_and_order_persist_and_forget_removes_keys() {
+    let dir = tempfile::tempdir().unwrap();
+    let desk = start(&dir.path().join("desk"), false, "127.0.0.1:0").await;
+    let laptop = start(&dir.path().join("laptop"), false, "127.0.0.1:0").await;
+    let client_dir = dir.path().join("client");
+    let keys: Arc<FileKeyStore> = Arc::new(FileKeyStore::new(dir.path().join("keys")));
+    let hub = ClientHub::open_with(&client_dir, keys.clone(), options()).unwrap();
+    let a = hub
+        .pair(&pairing_uri(&desk).await, "phone", "test", None)
+        .await
+        .unwrap();
+    let b = hub
+        .pair(&pairing_uri(&laptop).await, "phone", "test", None)
+        .await
+        .unwrap();
+    assert_eq!(a.server_fingerprint.len(), 19, "{a:?}");
+    assert!(a.last_connected.is_some());
+    assert!(!a.is_default && a.alias.is_none());
+    assert_eq!(hub.default_machine(), None);
+
+    // Alias: sanitized; blank clears it.
+    hub.set_alias(&a.id, Some("  Desk\u{1b} PC ")).unwrap();
+    hub.set_alias(&b.id, Some("Laptop")).unwrap();
+    hub.set_alias(&b.id, Some("   ")).unwrap();
+    // Default: exactly one.
+    hub.set_default(Some(&a.id)).unwrap();
+    hub.set_default(Some(&b.id)).unwrap();
+    // Order: move the laptop up; offsets are clamped.
+    hub.move_machine(&b.id, -5).unwrap();
+    assert!(matches!(
+        hub.set_alias("0123456789abcdef", Some("x")),
+        Err(ClientError::NotFound(_))
+    ));
+    assert!(hub.move_machine("0123456789abcdef", 1).is_err());
+    assert!(hub.set_default(Some("0123456789abcdef")).is_err());
+
+    // Everything survives a reopen.
+    drop(hub);
+    let hub = ClientHub::open_with(&client_dir, keys.clone(), options()).unwrap();
+    let ms = hub.machines();
+    assert_eq!(
+        ms.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        [b.id.as_str(), a.id.as_str()]
+    );
+    assert_eq!(ms[1].alias.as_deref(), Some("Desk PC"));
+    assert_eq!(ms[0].alias, None);
+    assert!(ms[0].is_default && !ms[1].is_default);
+    assert_eq!(hub.default_machine().unwrap().id, b.id);
+    hub.move_machine(&b.id, 1).unwrap();
+    assert_eq!(hub.machines()[1].id, b.id);
+    hub.set_default(None).unwrap();
+    assert_eq!(hub.default_machine(), None);
+    hub.set_default(Some(&b.id)).unwrap();
+
+    // Re-pairing keeps the alias, default and position.
+    let again = hub
+        .pair(&pairing_uri(&desk).await, "phone", "test", None)
+        .await
+        .unwrap();
+    assert_eq!(again.alias.as_deref(), Some("Desk PC"));
+    assert_eq!(hub.machines()[0].id, a.id);
+
+    // Forget removes the keys and the entry (and with it the default).
+    assert!(keys.load(&device_key_name(&b.id)).unwrap().is_some());
+    hub.forget(&b.id).await.unwrap();
+    assert!(keys.load(&device_key_name(&b.id)).unwrap().is_none());
+    assert!(keys.load(&refresh_token_name(&b.id)).unwrap().is_none());
+    assert_eq!(hub.machines().len(), 1);
+    assert_eq!(hub.default_machine(), None);
+    desk.shutdown().await;
+    laptop.shutdown().await;
+}
+
+/// Runs a gated request through the whole flow: the challenge, local
+/// verification through the fake verifier of this test server, the retry.
+async fn local_verified(
+    server: &vca_server::daemon::Server,
+    make: impl Fn(u64, Option<vca_server::security::Sensitive>) -> LocalRequest,
+) -> LocalResponse {
+    let first = local_call(server, |id| make(id, None)).await;
+    let LocalResponse::StepUpRequired { challenge, .. } = first else {
+        return first;
+    };
+    let token = test_step_up(server, challenge).await;
+    local_call(server, |id| make(id, token)).await
+}
+
+/// Local verification through the fake verifier of this test server.
+async fn test_step_up(
+    server: &vca_server::daemon::Server,
+    challenge: vca_server::security::StepUpChallenge,
+) -> Option<vca_server::security::Sensitive> {
+    let call = vca_server::security::SecurityCall::StepUp {
+        nonce: vca_server::security::Sensitive(challenge.nonce),
+        window: None,
+        totp: None,
+        presence: None,
+        language: None,
+    };
+    // As the process that got the challenge: a step-up bound to a process
+    // never answers an unnamed caller.
+    let me = vca_server::security::Caller {
+        pid: Some(std::process::id()),
+        ..Default::default()
+    };
+    match server
+        .api
+        .security()
+        .expect("security")
+        .handle_from(call, &me)
+        .await
+    {
+        vca_server::security::SecurityReply::StepUp { token, .. } => Some(token),
+        other => panic!("step-up failed: {other:?}"),
+    }
 }

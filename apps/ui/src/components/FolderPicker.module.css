@@ -1,0 +1,190 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(46dvh, 360px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.main:hover,
+.main:focus-visible {
+  background: var(--surface-2);
+}
+.main[aria-pressed='true'] {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: ltr;
+}
+.tag {
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.check {
+  flex: none;
+  color: var(--accent);
+}
+.chev {
+  flex: none;
+  color: var(--text-muted);
+}
+.select {
+  flex: none;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crumbs li + li::before {
+  content: '›';
+  margin: 0 2px;
+  color: var(--text-muted);
+}
+.crumbs button {
+  max-width: 14em;
+  overflow: hidden;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.crumbs button[aria-current] {
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.filter {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.useThis {
+  align-self: flex-start;
+}
+.create {
+  display: flex;
+  flex-direction: column;
+}
+.createIn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.selected {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+
+/* The folder that will be used, in words. */
+.chosen {
+  margin: 4px 0 8px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

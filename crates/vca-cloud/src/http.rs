@@ -16,8 +16,26 @@ pub fn default_client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(DEFAULT_TIMEOUT)
         .user_agent(concat!("vca-cloud/", env!("CARGO_PKG_VERSION")))
+        .redirect(redirect_policy())
         .build()
         .unwrap_or_else(|_| reqwest::Client::new())
+}
+
+/// Adapters send provider keys in custom headers, which reqwest keeps on a
+/// redirect to another host. Such a redirect is not followed.
+fn redirect_policy() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(|attempt| {
+        let same_place = attempt.previous().first().is_some_and(|first| {
+            first.scheme() == attempt.url().scheme()
+                && first.host_str() == attempt.url().host_str()
+                && first.port_or_known_default() == attempt.url().port_or_known_default()
+        });
+        if same_place && attempt.previous().len() <= 5 {
+            attempt.follow()
+        } else {
+            attempt.stop()
+        }
+    })
 }
 
 /// Joins a base URL (without trailing slash) and a path (with leading slash).
@@ -166,5 +184,32 @@ mod tests {
     fn truncates_on_char_boundary() {
         assert_eq!(truncate("héllo", 2), "h…");
         assert_eq!(truncate("abc", 5), "abc");
+    }
+
+    #[tokio::test]
+    async fn keys_do_not_follow_a_redirect_to_another_host() {
+        use wiremock::matchers::any;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let thief = MockServer::start().await;
+        Mock::given(any())
+            .respond_with(ResponseTemplate::new(200))
+            .expect(0)
+            .mount(&thief)
+            .await;
+        let origin = MockServer::start().await;
+        Mock::given(any())
+            .respond_with(
+                ResponseTemplate::new(302).insert_header("location", thief.uri().as_str()),
+            )
+            .mount(&origin)
+            .await;
+        let resp = default_client()
+            .get(origin.uri())
+            .header("X-Api-Key", "secret-key")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), 302, "the redirect stops here");
+        thief.verify().await;
     }
 }

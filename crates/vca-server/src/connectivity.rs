@@ -10,6 +10,8 @@ use std::net::SocketAddr;
 
 use anyhow::bail;
 use tokio::sync::Mutex;
+use vca_providers::dnspilot::local::{LocalApiClient, LocalEndpoint};
+use vca_providers::dnspilot::{DnsPilotProvider, DnsPilotSettings};
 use vca_providers::{
     CloudflareMode, CloudflareProvider, ConnectivityProvider, CustomProvider, Diagnostic,
     DiagnosticLevel, Endpoint, LanProvider, NamedTunnel, ProviderStatus, Secret, TailscaleMode,
@@ -113,13 +115,29 @@ impl Connectivity {
                 }
                 Box::new(p)
             }
-            // The DNS Pilot APIs are not public yet (vca-providers'
-            // `dnspilot/contract.rs` holds placeholder field names), and VCA
-            // never calls undocumented provider APIs.
-            ProviderKind::Dnspilot => bail!(
-                "the DNS Pilot provider is not available yet: its API contract is still \
-                 unconfirmed (see docs/handoff.md)"
-            ),
+            ProviderKind::Dnspilot => {
+                // The Agent forwards the tunnel to 127.0.0.1; vcad stays on
+                // loopback so nothing else on the network can reach it.
+                if !listen.ip().is_loopback() {
+                    bail!(
+                        "the DNSPilot provider forwards to 127.0.0.1:{port}; keep remote.bind on \
+                         loopback (\"127.0.0.1:{port}\") so the port is not exposed to the network",
+                        port = listen.port()
+                    );
+                }
+                let dp = &cfg.dnspilot;
+                let local = match dp.local_api.as_deref().filter(|s| !s.is_empty()) {
+                    Some(location) => LocalApiClient::new(LocalEndpoint::parse(location)),
+                    None => LocalApiClient::default(),
+                };
+                Box::new(DnsPilotProvider::new(
+                    local,
+                    DnsPilotSettings {
+                        hostname: dp.hostname.clone().filter(|h| !h.trim().is_empty()),
+                        public_port: dp.public_port,
+                    },
+                )?)
+            }
             ProviderKind::Custom => {
                 let Some(url) = cfg.url.as_deref().filter(|u| !u.is_empty()) else {
                     bail!("the custom provider needs remote.provider.url");
@@ -281,13 +299,29 @@ mod tests {
     }
 
     #[test]
-    fn dnspilot_is_refused_until_its_contract_is_public() {
-        let cfg = ProviderConfig {
+    fn dnspilot_needs_loopback_and_a_valid_hostname() {
+        let mut cfg = ProviderConfig {
             kind: ProviderKind::Dnspilot,
             ..ProviderConfig::default()
         };
-        let err = Connectivity::from_config(&cfg, loopback()).unwrap_err();
-        assert!(err.to_string().contains("DNS Pilot"), "{err}");
+        let err = Connectivity::from_config(&cfg, "0.0.0.0:47800".parse().unwrap()).unwrap_err();
+        assert!(err.to_string().contains("loopback"), "{err}");
+        // Without a hostname vcad still starts; pairing reports what is missing.
+        assert!(
+            Connectivity::from_config(&cfg, loopback())
+                .unwrap()
+                .is_some()
+        );
+        cfg.dnspilot.hostname = Some("not a host".into());
+        assert!(Connectivity::from_config(&cfg, loopback()).is_err());
+        cfg.dnspilot.hostname = Some("vca-k3x9q2ab4m.example.com".into());
+        cfg.dnspilot.public_port = 8443;
+        assert!(Connectivity::from_config(&cfg, loopback()).is_err());
+        cfg.dnspilot.public_port = 9443;
+        let c = Connectivity::from_config(&cfg, loopback())
+            .unwrap()
+            .unwrap();
+        assert_eq!(c.provider_name(), "DNSPilot");
     }
 
     #[test]

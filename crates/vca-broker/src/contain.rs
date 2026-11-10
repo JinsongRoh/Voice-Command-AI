@@ -432,6 +432,16 @@ mod windows {
         }
     }
 
+    /// Lets a process be created inside the job
+    /// (`PROC_THREAD_ATTRIBUTE_JOB_LIST`) instead of assigned afterwards.
+    impl std::os::windows::io::AsHandle for JobGroup {
+        fn as_handle(&self) -> std::os::windows::io::BorrowedHandle<'_> {
+            // SAFETY: `self.0` is a valid job handle that lives as long as
+            // `self`, which bounds the borrow.
+            unsafe { std::os::windows::io::BorrowedHandle::borrow_raw((self.0).0) }
+        }
+    }
+
     // SAFETY: a job handle may be used from any thread.
     unsafe impl Send for JobGroup {}
     // SAFETY: the Win32 job APIs used here are thread-safe.

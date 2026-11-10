@@ -37,6 +37,15 @@ use crate::cloud::Secret;
 pub const CONTROL_ENV: &str = "VCA_CONTROL";
 /// Environment variable carrying the VCA session id inside managed sessions.
 pub const SESSION_ENV: &str = "VCA_SESSION_ID";
+/// Environment variable carrying a managed session's hook token: it proves
+/// a hook event comes from inside that session.
+pub const HOOK_TOKEN_ENV: &str = "VCA_HOOK_TOKEN";
+/// Marks processes of a remote shell. An environment variable can be unset,
+/// so this only stops well-behaved programs; `crate::peer` is the real check.
+pub const REMOTE_SHELL_ENV: &str = "VCA_REMOTE_SHELL";
+/// Environment variable carrying the token of one conductor run. It is set
+/// for `vca mcp` only, in the MCP configuration of the conductor's agent.
+pub const CONDUCTOR_TOKEN_ENV: &str = "VCA_CONDUCTOR_TOKEN";
 
 /// Longest accepted line, in bytes.
 pub const MAX_LINE: usize = 4 * 1024 * 1024;
@@ -68,17 +77,30 @@ pub struct RunRequest {
 }
 
 /// A request on the local channel.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// `Debug` shows the kind and id only: requests carry codes and tokens.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum LocalRequest {
     /// A message of the transport-agnostic API.
     Api { id: u64, body: ClientMsg },
+    /// A message of the API that needs local verification on this channel
+    /// (see [`crate::local::gated_api_target`]). Otherwise like `Api`.
+    GatedApi {
+        id: u64,
+        body: ClientMsg,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
     /// An agent hook event from `vca hook`. Answered with
     /// [`LocalResponse::Hook`]. `session_id` comes from [`SESSION_ENV`]
-    /// when the agent runs in a managed session.
+    /// and `hook_token` from [`HOOK_TOKEN_ENV`] when the agent runs in a
+    /// managed session; hooks of observed sessions have neither.
     Hook {
         id: u64,
         session_id: Option<SessionId>,
+        #[serde(default)]
+        hook_token: Option<crate::security::Sensitive>,
         event: Box<AgentHookEvent>,
     },
     /// Answered with [`LocalResponse::Run`].
@@ -93,15 +115,57 @@ pub enum LocalRequest {
         scope: String,
         #[serde(default)]
         endpoints: Vec<String>,
+        /// Local verification (`crate::security`); `StepUpRequired` without.
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
     },
     /// Starts TOTP enrollment. Answered with [`LocalResponse::TotpPending`].
-    TotpBegin { id: u64, account: String },
+    /// Needs `step_up`, like the three requests after it.
+    TotpBegin {
+        id: u64,
+        account: String,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
     /// Finishes the pending enrollment with a code from the authenticator
-    /// app. Answered with [`LocalResponse::TotpEnrolled`].
-    TotpConfirm { id: u64, code: String },
+    /// app. Answered with [`LocalResponse::TotpEnrolled`]. Replacing an
+    /// authenticator also needs `current_code`, or a completed recovery.
+    TotpConfirm {
+        id: u64,
+        code: String,
+        #[serde(default)]
+        current_code: Option<crate::security::Sensitive>,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
+    /// Replaces the backup codes of the enrolled authenticator. Answered
+    /// with [`LocalResponse::TotpEnrolled`] (the new codes, shown once), or
+    /// `Conflict` when nothing is enrolled.
+    TotpBackupCodes {
+        id: u64,
+        /// A code of the current authenticator (or a backup code).
+        #[serde(default)]
+        current_code: Option<crate::security::Sensitive>,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
     /// Re-allows remote connections after the kill switch was tripped.
     /// Answered with [`LocalResponse::Done`].
-    KillSwitchReset { id: u64 },
+    KillSwitchReset {
+        id: u64,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
+    /// Changes a device's permission. The only way to widen one: that
+    /// needs `step_up`, and the API refuses it for every client. Answered
+    /// with [`LocalResponse::Api`].
+    DeviceScope {
+        id: u64,
+        device_id: String,
+        scope: vca_core::DeviceScope,
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
     /// State of the remote transport. Answered with
     /// [`LocalResponse::RemoteStatus`].
     RemoteStatus { id: u64 },
@@ -121,28 +185,226 @@ pub enum LocalRequest {
         provider: CloudProvider,
         account: String,
     },
+    /// Stores the API key of a speech engine or correction LLM profile
+    /// (`vca speech login <profile>`). Local channel only: remote devices
+    /// can never send secrets. Answered with [`LocalResponse::Done`].
+    SpeechCredentialSet {
+        id: u64,
+        profile: String,
+        #[serde(with = "crate::cloud::secret_serde")]
+        secret: Secret,
+    },
+    /// Deletes a stored speech profile key (`vca speech logout`). Answered
+    /// with [`LocalResponse::Done`], or `NotFound` when none was stored.
+    SpeechCredentialDelete { id: u64, profile: String },
+    /// Stores the API key of a `[[tts.engines]]` entry (`vca tts login
+    /// <name>`). Local channel only. Answered with [`LocalResponse::Done`].
+    TtsCredentialSet {
+        id: u64,
+        engine: String,
+        #[serde(with = "crate::cloud::secret_serde")]
+        secret: Secret,
+    },
+    /// Deletes a stored TTS engine key (`vca tts logout`). Answered with
+    /// [`LocalResponse::Done`], or `NotFound` when none was stored.
+    TtsCredentialDelete { id: u64, engine: String },
+    /// Asks vcad to stop gracefully, exactly as on Ctrl-C (managed sessions
+    /// are handled per `[shutdown]`). The desktop app uses it to stop the
+    /// server it started. Answered with [`LocalResponse::Done`] (the
+    /// connection may close before the answer arrives).
+    Shutdown { id: u64 },
+    /// The owner-only parts of session restore: the desktop shortcut and
+    /// restore at sign-in. Never reachable from a paired device. Answered
+    /// with [`LocalResponse::RestoreLocal`].
+    RestoreLocal { id: u64, action: RestoreLocalAction },
+    // --- Speech engine setup (`crate::engines`). This channel only: every
+    // other client is refused with `forbidden`. Keys are never returned. ---
+    /// The speech-to-text, LLM and TTS engine profiles of `config.toml`.
+    /// Answered with [`LocalResponse::Engines`].
+    EnginesGet { id: u64 },
+    /// Adds a profile, or changes the one named `original_id`. `secret`
+    /// is stored in the credential store, never in the file. Answered with
+    /// [`LocalResponse::Engines`].
+    EngineSave {
+        id: u64,
+        kind: crate::engines::EngineType,
+        #[serde(default)]
+        original_id: Option<String>,
+        profile: crate::engines::EngineForm,
+        #[serde(default, with = "crate::engines::opt_secret")]
+        secret: Option<Secret>,
+        #[serde(default)]
+        make_default: bool,
+        /// Stores or replaces the gateway token (credential store only).
+        #[serde(default, with = "crate::engines::opt_secret")]
+        gateway_token: Option<Secret>,
+        /// Deletes the stored gateway token (ignored with `gateway_token`).
+        #[serde(default)]
+        clear_gateway_token: bool,
+        /// Needed when existing credentials would go to a new URL.
+        #[serde(default)]
+        step_up: Option<crate::security::Sensitive>,
+    },
+    /// Stores, replaces (`token`) or deletes (no `token`) the gateway token
+    /// of a saved profile whose key travels in its own header
+    /// (`vca speech gateway-login`, `vca tts gateway-login`). Answered with
+    /// [`LocalResponse::Engines`].
+    EngineGatewayToken {
+        id: u64,
+        kind: crate::engines::EngineType,
+        profile_id: String,
+        #[serde(default, with = "crate::engines::opt_secret")]
+        token: Option<Secret>,
+    },
+    /// Removes a profile (and, with `delete_key`, its stored key).
+    /// Answered with [`LocalResponse::Engines`].
+    EngineRemove {
+        id: u64,
+        kind: crate::engines::EngineType,
+        profile_id: String,
+        #[serde(default)]
+        delete_key: bool,
+    },
+    /// Sets the default profile (`None`: the first one, or no LLM).
+    /// Answered with [`LocalResponse::Engines`].
+    EngineSetDefault {
+        id: u64,
+        kind: crate::engines::EngineType,
+        #[serde(default)]
+        profile_id: Option<String>,
+    },
+    /// Sends one tiny request to a draft `profile` or the saved
+    /// `profile_id`. Answered with [`LocalResponse::EngineTest`].
+    EngineTest {
+        id: u64,
+        kind: crate::engines::EngineType,
+        #[serde(default)]
+        profile: Option<crate::engines::EngineForm>,
+        #[serde(default)]
+        profile_id: Option<String>,
+        #[serde(default, with = "crate::engines::opt_secret")]
+        secret: Option<Secret>,
+        /// A gateway token to test with instead of the stored one.
+        #[serde(default, with = "crate::engines::opt_secret")]
+        gateway_token: Option<Secret>,
+    },
+    /// One tool call of the conductor (`vca mcp`). Owner-only channel;
+    /// vcad applies every conductor rule (`crate::conductor`). Answered
+    /// with [`LocalResponse::Conductor`], possibly after the person decided.
+    Conductor {
+        id: u64,
+        /// The run's token ([`CONDUCTOR_TOKEN_ENV`]).
+        #[serde(default)]
+        token: Option<crate::security::Sensitive>,
+        call: crate::conductor::ConductorCall,
+    },
+    /// Local verification, mail, recovery and first-run state
+    /// (`crate::security`). This channel only. Answered with
+    /// [`LocalResponse::Security`].
+    Security {
+        id: u64,
+        call: Box<crate::security::SecurityCall>,
+    },
+}
+
+/// See [`LocalRequest::RestoreLocal`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RestoreLocalAction {
+    Status,
+    /// `name` is the shortcut's (localized) label.
+    CreateShortcut {
+        name: String,
+    },
+    /// Off by default; `delay_secs` is the pause after sign-in.
+    SetSignIn {
+        enabled: bool,
+        delay_secs: u32,
+    },
 }
 
 impl LocalRequest {
     pub fn id(&self) -> u64 {
         match self {
             Self::Api { id, .. }
+            | Self::GatedApi { id, .. }
             | Self::Hook { id, .. }
             | Self::Run { id, .. }
             | Self::Attach { id, .. }
             | Self::Pair { id, .. }
             | Self::TotpBegin { id, .. }
             | Self::TotpConfirm { id, .. }
-            | Self::KillSwitchReset { id }
+            | Self::TotpBackupCodes { id, .. }
+            | Self::KillSwitchReset { id, .. }
+            | Self::DeviceScope { id, .. }
             | Self::RemoteStatus { id }
             | Self::CloudCredentialSet { id, .. }
-            | Self::CloudCredentialDelete { id, .. } => *id,
+            | Self::CloudCredentialDelete { id, .. }
+            | Self::SpeechCredentialSet { id, .. }
+            | Self::SpeechCredentialDelete { id, .. }
+            | Self::TtsCredentialSet { id, .. }
+            | Self::TtsCredentialDelete { id, .. }
+            | Self::Shutdown { id }
+            | Self::RestoreLocal { id, .. }
+            | Self::EnginesGet { id }
+            | Self::EngineSave { id, .. }
+            | Self::EngineGatewayToken { id, .. }
+            | Self::EngineRemove { id, .. }
+            | Self::EngineSetDefault { id, .. }
+            | Self::EngineTest { id, .. }
+            | Self::Conductor { id, .. }
+            | Self::Security { id, .. } => *id,
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Api { .. } => "api",
+            Self::GatedApi { .. } => "gated_api",
+            Self::Hook { .. } => "hook",
+            Self::Run { .. } => "run",
+            Self::Attach { .. } => "attach",
+            Self::Pair { .. } => "pair",
+            Self::TotpBegin { .. } => "totp_begin",
+            Self::TotpConfirm { .. } => "totp_confirm",
+            Self::TotpBackupCodes { .. } => "totp_backup_codes",
+            Self::KillSwitchReset { .. } => "kill_switch_reset",
+            Self::DeviceScope { .. } => "device_scope",
+            Self::RemoteStatus { .. } => "remote_status",
+            Self::CloudCredentialSet { .. } => "cloud_credential_set",
+            Self::CloudCredentialDelete { .. } => "cloud_credential_delete",
+            Self::SpeechCredentialSet { .. } => "speech_credential_set",
+            Self::SpeechCredentialDelete { .. } => "speech_credential_delete",
+            Self::TtsCredentialSet { .. } => "tts_credential_set",
+            Self::TtsCredentialDelete { .. } => "tts_credential_delete",
+            Self::Shutdown { .. } => "shutdown",
+            Self::RestoreLocal { .. } => "restore_local",
+            Self::EnginesGet { .. } => "engines_get",
+            Self::EngineSave { .. } => "engine_save",
+            Self::EngineGatewayToken { .. } => "engine_gateway_token",
+            Self::EngineRemove { .. } => "engine_remove",
+            Self::EngineSetDefault { .. } => "engine_set_default",
+            Self::EngineTest { .. } => "engine_test",
+            Self::Conductor { .. } => "conductor",
+            Self::Security { .. } => "security",
         }
     }
 }
 
+impl std::fmt::Debug for LocalRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalRequest")
+            .field("op", &self.kind())
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+
 /// A response or push on the local channel.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// `Debug` shows the kind and id, and the code and text of an error: other
+/// responses can carry pairing links and authenticator secrets.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum LocalResponse {
     Api {
@@ -190,6 +452,20 @@ pub enum LocalResponse {
         listen: Option<String>,
         server_fingerprint: Option<String>,
         totp_enrolled: bool,
+        /// When the authenticator was enrolled (Unix ms).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        totp_enrolled_at: Option<u64>,
+        /// The authenticator app entry: issuer and account label (absent
+        /// for enrollments made before they were recorded).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        totp_issuer: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        totp_account: Option<String>,
+        /// Unused and total backup codes.
+        #[serde(default)]
+        backup_codes_remaining: usize,
+        #[serde(default)]
+        backup_codes_total: usize,
         require_totp: bool,
         kill_switch_tripped: bool,
         paired_devices: usize,
@@ -204,6 +480,40 @@ pub enum LocalResponse {
     },
     Done {
         id: u64,
+    },
+    RestoreLocal {
+        id: u64,
+        /// Shortcuts work on this computer.
+        supported: bool,
+        sign_in: bool,
+        sign_in_delay_secs: u32,
+    },
+    /// The engine setup (no secrets).
+    Engines {
+        id: u64,
+        setup: Box<crate::engines::EngineSetup>,
+    },
+    /// The outcome of an engine test.
+    EngineTest {
+        id: u64,
+        result: crate::engines::EngineTestResult,
+    },
+    /// The result of a conductor tool call (unlabelled; `vca mcp` labels
+    /// session content as untrusted).
+    Conductor {
+        id: u64,
+        result: serde_json::Value,
+    },
+    /// The answer to a security request; failures are answers too.
+    Security {
+        id: u64,
+        reply: Box<crate::security::SecurityReply>,
+    },
+    /// A gated request needs a local verification first: verify for
+    /// `challenge`, then repeat the request with the token.
+    StepUpRequired {
+        id: u64,
+        challenge: crate::security::StepUpChallenge,
     },
     /// A local request failed (API errors use `Api` with
     /// [`ServerMsg::Error`]).
@@ -226,7 +536,34 @@ impl LocalResponse {
             | Self::TotpEnrolled { id, .. }
             | Self::RemoteStatus { id, .. }
             | Self::Done { id }
+            | Self::RestoreLocal { id, .. }
+            | Self::Engines { id, .. }
+            | Self::EngineTest { id, .. }
+            | Self::Conductor { id, .. }
+            | Self::Security { id, .. }
+            | Self::StepUpRequired { id, .. }
             | Self::Error { id, .. } => *id,
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Api { .. } => "api",
+            Self::Hook { .. } => "hook",
+            Self::Run { .. } => "run",
+            Self::Attach { .. } => "attach",
+            Self::Pairing { .. } => "pairing",
+            Self::TotpPending { .. } => "totp_pending",
+            Self::TotpEnrolled { .. } => "totp_enrolled",
+            Self::RemoteStatus { .. } => "remote_status",
+            Self::Done { .. } => "done",
+            Self::RestoreLocal { .. } => "restore_local",
+            Self::Engines { .. } => "engines",
+            Self::EngineTest { .. } => "engine_test",
+            Self::Conductor { .. } => "conductor",
+            Self::Security { .. } => "security",
+            Self::StepUpRequired { .. } => "step_up_required",
+            Self::Error { .. } => "error",
         }
     }
 
@@ -236,6 +573,17 @@ impl LocalResponse {
             code,
             message: message.into(),
         }
+    }
+}
+
+impl std::fmt::Debug for LocalResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut out = f.debug_struct("LocalResponse");
+        out.field("op", &self.kind()).field("id", &self.id());
+        if let Self::Error { code, message, .. } = self {
+            out.field("code", code).field("message", message);
+        }
+        out.finish_non_exhaustive()
     }
 }
 
@@ -477,6 +825,7 @@ mod tests {
                 input: Input::Text {
                     text: "hi".into(),
                     submit: true,
+                    at_prompt: false,
                 },
             },
         };
@@ -486,6 +835,10 @@ mod tests {
         assert_eq!(v["body"]["type"], "send_input");
         let back: LocalRequest = serde_json::from_value(v).unwrap();
         assert_eq!(back, req);
+
+        let v = serde_json::to_value(LocalRequest::Shutdown { id: 9 }).unwrap();
+        assert_eq!(v, serde_json::json!({ "op": "shutdown", "id": 9 }));
+        assert_eq!(serde_json::from_value::<LocalRequest>(v).unwrap().id(), 9);
     }
 
     #[test]
@@ -509,6 +862,50 @@ mod tests {
     }
 
     #[test]
+    fn debug_output_hides_codes_tokens_and_secrets() {
+        let requests = [
+            LocalRequest::TotpConfirm {
+                id: 1,
+                code: "123456".into(),
+                current_code: Some("654321".into()),
+                step_up: Some("token-secret".into()),
+            },
+            LocalRequest::CloudCredentialSet {
+                id: 2,
+                provider: CloudProvider::Devin,
+                account: "acct".into(),
+                secret: Secret::new("sk-very-secret"),
+            },
+        ];
+        for req in requests {
+            let shown = format!("{req:?}");
+            for secret in ["123456", "654321", "token-secret", "sk-very-secret"] {
+                assert!(!shown.contains(secret), "{shown}");
+            }
+        }
+        let responses = [
+            LocalResponse::TotpPending {
+                id: 1,
+                otpauth_uri: "otpauth://secret-uri".into(),
+                secret_base32: "SECRETBASE32".into(),
+            },
+            LocalResponse::Pairing {
+                id: 2,
+                uri: "vca://pair?secret".into(),
+                expires_at: 0,
+                server_fingerprint: "ab".into(),
+            },
+        ];
+        for resp in responses {
+            let shown = format!("{resp:?}");
+            assert!(!shown.contains("secret"), "{shown}");
+            assert!(!shown.contains("SECRET"), "{shown}");
+        }
+        let error = format!("{:?}", LocalResponse::error(3, ErrorCode::NotFound, "nope"));
+        assert!(error.contains("nope"), "{error}");
+    }
+
+    #[test]
     fn response_ids() {
         let r = LocalResponse::Api {
             id: 0,
@@ -516,6 +913,7 @@ mod tests {
                 protocol_version: PROTOCOL_VERSION,
                 server_version: "0".into(),
                 server_name: "x".into(),
+                features: Vec::new(),
             },
         };
         assert_eq!(r.id(), 0);

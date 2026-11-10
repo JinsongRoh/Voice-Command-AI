@@ -107,6 +107,8 @@ pub enum TotpError {
 #[derive(Clone)]
 pub struct PendingEnrollment {
     secret: Zeroizing<Vec<u8>>,
+    issuer: String,
+    account: String,
     /// URI to show as a QR code to the authenticator app.
     pub otpauth_uri: Zeroizing<String>,
 }
@@ -138,6 +140,45 @@ struct Enrollment {
     enrolled_at: UnixMillis,
     last_used_step: Option<u64>,
     backup_codes: Vec<BackupCode>,
+    /// The entry name in the authenticator app (absent in files written
+    /// before it was recorded).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    issuer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    account: Option<String>,
+}
+
+/// What the owner may see about the enrollment (never the secret).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TotpStatus {
+    pub enrolled_at: UnixMillis,
+    /// Issuer of the authenticator entry (`None` for older enrollments).
+    pub issuer: Option<String>,
+    /// Account label of the authenticator entry (`None` for older
+    /// enrollments).
+    pub account: Option<String>,
+    pub backup_codes_remaining: usize,
+    pub backup_codes_total: usize,
+}
+
+/// Which kind of code [`TotpManager::verify_code_or_backup`] accepted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CodeKind {
+    Totp,
+    BackupCode,
+}
+
+/// True when `code` has the shape of an authenticator code (six digits,
+/// spaces ignored) rather than a backup code.
+pub fn looks_like_totp(code: &str) -> bool {
+    let mut n = 0;
+    for c in code.chars().filter(|c| !c.is_whitespace()) {
+        if !c.is_ascii_digit() {
+            return false;
+        }
+        n += 1;
+    }
+    n == TOTP_DIGITS as usize
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -246,12 +287,15 @@ impl TotpManager {
         let uri = Zeroizing::new(otpauth_uri(&secret, issuer, account));
         PendingEnrollment {
             secret,
+            issuer: issuer.to_owned(),
+            account: account.to_owned(),
             otpauth_uri: uri,
         }
     }
 
     /// Confirms enrollment with a code from the authenticator app, replacing
-    /// any previous enrollment. Returns the plaintext backup codes, which
+    /// any previous enrollment (which stays valid until this succeeds, so a
+    /// failed re-enrollment never locks the owner out). Returns the plaintext backup codes, which
     /// must be shown to the user once and are not stored.
     pub fn confirm_enrollment(
         &self,
@@ -266,10 +310,18 @@ impl TotpManager {
             enrolled_at: self.clock.now_millis(),
             last_used_step: Some(step),
             backup_codes: stored,
+            issuer: Some(pending.issuer.clone()),
+            account: Some(pending.account.clone()),
         };
         self.mutate(|s| s.enrollment = Some(enrollment))
             .map_err(|_| TotpError::Storage)?;
         Ok(codes)
+    }
+
+    /// Does `code` fit the enrollment in progress? Checks only: nothing is
+    /// stored, so the code still works for [`Self::confirm_enrollment`].
+    pub fn enrollment_code_fits(&self, pending: &PendingEnrollment, code: &str) -> bool {
+        match_step(&pending.secret, code, self.clock.now_secs()).is_some()
     }
 
     /// Removes the enrollment.
@@ -277,10 +329,47 @@ impl TotpManager {
         self.mutate(|s| s.enrollment = None)
     }
 
-    /// Verifies a TOTP code. A code is accepted at most once.
+    /// Takes in what another manager on the same file already used (the
+    /// last accepted step, spent backup codes) for the same secret, so a
+    /// second instance (an overlapping server during a restart or update)
+    /// cannot accept a code the first one took. Only ever adds markers: an
+    /// unreadable file or another secret changes nothing here.
+    fn merge_used_from_disk(&self, state: &mut TotpState) {
+        let Some(path) = &self.path else { return };
+        let Ok(bytes) = std::fs::read(path) else {
+            return;
+        };
+        let bytes = Zeroizing::new(bytes);
+        let Ok(disk) = serde_json::from_slice::<TotpState>(&bytes) else {
+            return;
+        };
+        let (Some(mine), Some(theirs)) = (state.enrollment.as_mut(), disk.enrollment.as_ref())
+        else {
+            return;
+        };
+        if !bool::from(mine.secret.as_bytes().ct_eq(theirs.secret.as_bytes())) {
+            return;
+        }
+        mine.last_used_step = mine.last_used_step.max(theirs.last_used_step);
+        for bc in &mut mine.backup_codes {
+            if bc.used_at.is_none()
+                && let Some(used) = theirs
+                    .backup_codes
+                    .iter()
+                    .find(|t| t.salt == bc.salt && t.hash == bc.hash)
+                    .and_then(|t| t.used_at)
+            {
+                bc.used_at = Some(used);
+            }
+        }
+    }
+
+    /// Verifies a TOTP code. A code is accepted at most once, also across
+    /// managers sharing the same file.
     pub fn verify(&self, code: &str) -> Result<(), TotpError> {
         let now_secs = self.clock.now_secs();
         let mut guard = self.state.lock().expect("poisoned");
+        self.merge_used_from_disk(&mut guard);
         let enrollment = guard.enrollment.as_ref().ok_or(TotpError::NotEnrolled)?;
         let secret = Zeroizing::new(
             data_encoding::BASE32_NOPAD
@@ -305,6 +394,7 @@ impl TotpManager {
         let normalized = Zeroizing::new(normalize_backup(code));
         let now = self.clock.now_millis();
         let mut guard = self.state.lock().expect("poisoned");
+        self.merge_used_from_disk(&mut guard);
         let enrollment = guard.enrollment.as_ref().ok_or(TotpError::NotEnrolled)?;
         let mut found = None;
         for (i, bc) in enrollment.backup_codes.iter().enumerate() {
@@ -327,6 +417,35 @@ impl TotpManager {
         self.persist(&next).map_err(|_| TotpError::Storage)?;
         *guard = next;
         Ok(())
+    }
+
+    /// Verifies an authenticator code, or else consumes a backup code: six
+    /// digits are an authenticator code, anything else a backup code. Both
+    /// keep their single-use rules.
+    pub fn verify_code_or_backup(&self, code: &str) -> Result<CodeKind, TotpError> {
+        if looks_like_totp(code) {
+            self.verify(code).map(|()| CodeKind::Totp)
+        } else {
+            self.verify_backup_code(code).map(|()| CodeKind::BackupCode)
+        }
+    }
+
+    /// The enrollment's date, authenticator entry and backup code count;
+    /// `None` when nothing is enrolled.
+    pub fn status(&self) -> Option<TotpStatus> {
+        let guard = self.state.lock().expect("poisoned");
+        let e = guard.enrollment.as_ref()?;
+        Some(TotpStatus {
+            enrolled_at: e.enrolled_at,
+            issuer: e.issuer.clone(),
+            account: e.account.clone(),
+            backup_codes_remaining: e
+                .backup_codes
+                .iter()
+                .filter(|c| c.used_at.is_none())
+                .count(),
+            backup_codes_total: e.backup_codes.len(),
+        })
     }
 
     /// Number of unused backup codes.
@@ -535,6 +654,107 @@ mod tests {
         let fresh = mgr.regenerate_backup_codes().unwrap();
         assert_eq!(mgr.verify_backup_code(&backups[0]), Err(TotpError::Invalid));
         assert_eq!(mgr.verify_backup_code(&fresh[0]), Ok(()));
+    }
+
+    #[test]
+    fn re_enrollment_keeps_the_old_secret_until_confirmed() {
+        let clock = ManualClock::new(1_700_000_000_000);
+        let (mgr, old, old_backups) = enrolled(&clock);
+        let first = mgr.status().unwrap();
+        assert_eq!(first.issuer.as_deref(), Some("VCA"));
+        assert_eq!(first.account.as_deref(), Some("owner"));
+
+        // Starting again changes nothing yet.
+        let pending = mgr.begin_enrollment("Voice Command AI", "owner");
+        let new = pending.secret.to_vec();
+        clock.advance_secs(30);
+        assert_eq!(mgr.verify(&totp_code_at(&old, clock.now_secs())), Ok(()));
+        // A wrong confirmation keeps the old enrollment.
+        assert_eq!(
+            mgr.confirm_enrollment(&pending, "abcdef"),
+            Err(TotpError::Invalid)
+        );
+        clock.advance_secs(30);
+        assert_eq!(mgr.verify(&totp_code_at(&old, clock.now_secs())), Ok(()));
+        assert_eq!(mgr.status().unwrap(), first);
+
+        // Confirming replaces the secret and the backup codes.
+        clock.advance_secs(30);
+        let fresh = mgr
+            .confirm_enrollment(&pending, &totp_code_at(&new, clock.now_secs()))
+            .unwrap();
+        let status = mgr.status().unwrap();
+        assert_eq!(status.issuer.as_deref(), Some("Voice Command AI"));
+        assert_eq!(status.backup_codes_remaining, BACKUP_CODE_COUNT);
+        clock.advance_secs(30);
+        let old_code = totp_code_at(&old, clock.now_secs());
+        if old_code != totp_code_at(&new, clock.now_secs()) {
+            assert_eq!(mgr.verify(&old_code), Err(TotpError::Invalid));
+        }
+        assert_eq!(mgr.verify(&totp_code_at(&new, clock.now_secs())), Ok(()));
+        assert_eq!(
+            mgr.verify_backup_code(&old_backups[0]),
+            Err(TotpError::Invalid)
+        );
+        assert_eq!(mgr.verify_backup_code(&fresh[0]), Ok(()));
+    }
+
+    #[test]
+    fn one_field_takes_an_authenticator_or_a_backup_code() {
+        let clock = ManualClock::new(1_700_000_000_000);
+        let (mgr, secret, backups) = enrolled(&clock);
+        assert!(looks_like_totp("123 456"));
+        assert!(!looks_like_totp("1234567"));
+        assert!(!looks_like_totp(&backups[0]));
+        clock.advance_secs(30);
+        let code = totp_code_at(&secret, clock.now_secs());
+        assert_eq!(mgr.verify_code_or_backup(&code), Ok(CodeKind::Totp));
+        assert_eq!(mgr.verify_code_or_backup(&code), Err(TotpError::Replayed));
+        let backup = backups[1].to_lowercase();
+        assert_eq!(mgr.verify_code_or_backup(&backup), Ok(CodeKind::BackupCode));
+        assert_eq!(mgr.verify_code_or_backup(&backup), Err(TotpError::Invalid));
+        assert_eq!(
+            mgr.status().unwrap().backup_codes_remaining,
+            BACKUP_CODE_COUNT - 1
+        );
+        assert_eq!(
+            mgr.verify_code_or_backup("not-a-code"),
+            Err(TotpError::Invalid)
+        );
+        assert!(TotpManager::in_memory(clock).status().is_none());
+    }
+
+    #[test]
+    fn a_code_is_single_use_across_managers_on_the_same_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("totp.json");
+        let clock = ManualClock::new(1_700_000_000_000);
+        let first = TotpManager::open(&path, clock.clone()).unwrap();
+        let pending = first.begin_enrollment("VCA", "owner");
+        let secret = pending.secret.to_vec();
+        let backups = first
+            .confirm_enrollment(&pending, &totp_code_at(&secret, clock.now_secs()))
+            .unwrap();
+        // A second server on the same file (an overlapping restart).
+        let second = TotpManager::open(&path, clock.clone()).unwrap();
+        clock.advance_secs(30);
+        let code = totp_code_at(&secret, clock.now_secs());
+        assert_eq!(first.verify(&code), Ok(()));
+        assert_eq!(second.verify(&code), Err(TotpError::Replayed));
+        assert_eq!(first.verify(&code), Err(TotpError::Replayed));
+        // An earlier step is refused too; the next one works once.
+        let earlier = totp_code_at(&secret, clock.now_secs() - 30);
+        assert_eq!(second.verify(&earlier), Err(TotpError::Replayed));
+        clock.advance_secs(30);
+        let next = totp_code_at(&secret, clock.now_secs());
+        assert_eq!(second.verify(&next), Ok(()));
+        assert_eq!(first.verify(&next), Err(TotpError::Replayed));
+        // Backup codes stay single-use across managers as well.
+        assert_eq!(second.verify_backup_code(&backups[2]), Ok(()));
+        assert_eq!(
+            first.verify_backup_code(&backups[2]),
+            Err(TotpError::Invalid)
+        );
     }
 
     #[test]

@@ -85,6 +85,7 @@ impl GoogleSttEngine {
         }
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(config.timeout_secs))
+            .redirect(crate::auth::redirect_policy())
             .build()?;
         Ok(Self { config, client })
     }
@@ -195,15 +196,20 @@ impl SttEngine for GoogleSttEngine {
         options: &TranscribeOptions,
     ) -> Result<Transcript> {
         let body = self.request_body(audio, options);
-        let mut req = self.client.post(self.endpoint()).json(&body);
-        req = match &self.config.auth {
-            GoogleAuth::ApiKey { key } => req.query(&[("key", key)]),
-            GoogleAuth::Bearer { token } => req.bearer_auth(token),
-        };
-        if let Some(p) = &self.config.quota_project {
-            req = req.header("x-goog-user-project", p);
-        }
-        let resp = req.send().await?;
+        // Recognition is idempotent: a connection that dropped before the
+        // server answered is retried once.
+        let resp = crate::retry::send_idempotent(|| {
+            let mut req = self.client.post(self.endpoint()).json(&body);
+            req = match &self.config.auth {
+                GoogleAuth::ApiKey { key } => req.query(&[("key", key)]),
+                GoogleAuth::Bearer { token } => req.bearer_auth(token),
+            };
+            if let Some(p) = &self.config.quota_project {
+                req = req.header("x-goog-user-project", p);
+            }
+            req.send()
+        })
+        .await?;
         let status = resp.status();
         let text = resp.text().await?;
         if !status.is_success() {

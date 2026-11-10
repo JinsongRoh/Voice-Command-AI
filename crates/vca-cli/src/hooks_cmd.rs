@@ -82,6 +82,9 @@ pub fn format_status(agent: &str, status: &HookStatus) -> String {
             state_label(entry.state)
         );
     }
+    for program in &status.programs {
+        let _ = writeln!(out, "  runs: {program}");
+    }
     if let Some(backup) = &status.backup_path {
         let _ = writeln!(out, "  backup: {}", backup.display());
     }
@@ -156,10 +159,66 @@ mod tests {
                 },
             ],
             backup_path: None,
+            programs: Vec::new(),
         };
         assert_eq!(
             format_status("claude", &status),
             "claude: /home/u/.claude/settings.json\n  Stop        installed\n  PreToolUse  missing\n"
+        );
+    }
+
+    #[tokio::test]
+    async fn hooks_of_an_old_vca_show_missing_and_install_replaces_them() {
+        // A temporary Claude config dir; never the real `~/.claude`.
+        let dir = tempfile::tempdir().unwrap();
+        let adapter = ClaudeAdapter::with_config_dir(dir.path());
+        let old = HookOptions {
+            command: vec![
+                dir.path()
+                    .join("deleted")
+                    .join("vca")
+                    .to_string_lossy()
+                    .into_owned(),
+            ],
+        };
+        adapter.install_hooks(&HookScope::User, &old).await.unwrap();
+        let current = hook_options();
+        let st = adapter
+            .hooks_status(&HookScope::User, &current)
+            .await
+            .unwrap();
+        assert!(st.entries.iter().all(|e| e.state == HookState::Missing));
+        let text = format_status("claude", &st);
+        assert!(
+            text.lines()
+                .any(|l| l.trim_start().starts_with("Stop ") && l.ends_with(" missing")),
+            "{text}"
+        );
+
+        let st = adapter
+            .install_hooks(&HookScope::User, &current)
+            .await
+            .unwrap();
+        assert!(st.all_installed(), "{st:?}");
+        assert_eq!(st.programs, current.command);
+        let text = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
+        assert_eq!(text.matches(" hook claude stop").count(), 1, "{text}");
+    }
+
+    #[test]
+    fn status_format_names_the_program() {
+        let status = HookStatus {
+            config_path: "/home/u/.codex/config.toml".into(),
+            entries: vec![HookEntryStatus {
+                event: "notify".into(),
+                state: HookState::Outdated,
+            }],
+            backup_path: Some("/home/u/.codex/config.toml.vca-backup-1".into()),
+            programs: vec!["/opt/old/vca".into()],
+        };
+        assert_eq!(
+            format_status("codex", &status),
+            "codex: /home/u/.codex/config.toml\n  notify  outdated\n  runs: /opt/old/vca\n  backup: /home/u/.codex/config.toml.vca-backup-1\n"
         );
     }
 }

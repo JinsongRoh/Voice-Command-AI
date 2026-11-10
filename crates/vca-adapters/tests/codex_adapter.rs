@@ -42,6 +42,14 @@ fn describe(items: &[HistoryItem]) -> Vec<String> {
             HistoryItem::Message { role, text, .. } => format!("{role:?}: {text}"),
             HistoryItem::ToolCall { name, summary, .. } => format!("call {name}: {summary}"),
             HistoryItem::ToolResult { text, is_error, .. } => format!("result({is_error}): {text}"),
+            HistoryItem::Subagent { id, running, .. } => format!("subagent {id:?}: {running}"),
+            HistoryItem::Question { id, questions, .. } => {
+                format!("question {id}: {}", questions.len())
+            }
+            HistoryItem::Rewritten => "rewritten".into(),
+            HistoryItem::PermissionMode { mode, .. } => format!("mode {mode}"),
+            HistoryItem::TurnEnd { .. } => "turn end".into(),
+            HistoryItem::Thinking { .. } => "thinking".into(),
         })
         .collect()
 }

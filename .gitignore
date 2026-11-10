@@ -6,3 +6,11 @@ dist/
 .claude/worktrees/
 /apps/target
 /docs/Voice Command AI(VCA)_Brand_Definition/
+# The vcad sidecar, built by apps/desktop/scripts/build-vcad.mjs
+/apps/desktop/src-tauri/binaries/
+
+# VCA per-project data (attachments, notes) in any folder
+.vca/
+
+# Python bytecode
+__pycache__/

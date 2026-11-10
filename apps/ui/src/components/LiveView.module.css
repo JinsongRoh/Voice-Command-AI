@@ -1,12 +1,42 @@
 .live {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   background: var(--bg);
 }
+/* Files dragged over the session: the whole pane takes them. The overlay
+   lets the drag events through to the pane underneath. */
+.dropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  pointer-events: none;
+}
+.dropCard {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--accent-ink);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+}
 .header {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -25,6 +55,68 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.title {
+  min-width: 0;
+}
+/* The session title opens the quick switcher (Ctrl+K). */
+.titleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 4px;
+  margin-inline-start: -4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.titleButton:hover {
+  background: var(--surface-2);
+}
+.titleButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.titleChevron {
+  flex: none;
+  color: var(--text-muted);
+}
+@media (pointer: coarse) {
+  .titleButton {
+    min-height: 44px;
+  }
+}
+.backToKeys {
+  align-self: flex-start;
+  margin: 4px 12px 0;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.rename {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  color: var(--text-muted);
+}
+@media (pointer: coarse) {
+  .rename {
+    width: 44px;
+    height: 44px;
+  }
 }
 .sub {
   display: flex;
@@ -47,7 +139,9 @@
   border-radius: 4px;
 }
 .toolbar {
+  position: relative;
   display: flex;
+  flex: none;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
@@ -72,9 +166,22 @@
 .actions :global(a.btn) {
   text-decoration: none;
 }
-.error {
-  margin: 0 12px;
-  color: var(--danger);
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-1) var(--space-3) 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.notice :global(svg) {
+  flex: none;
+  margin-top: 3px;
+}
+/* Actions this session does not support: dimmed, but they explain why. */
+.actions :global(.btn[data-unavailable]) {
+  opacity: 0.45;
+  cursor: help;
 }
 .content {
   flex: 1;
@@ -101,6 +208,18 @@
   color: var(--text-muted);
 }
 
+.noScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 16px;
+}
+.noScreen p {
+  margin: 0;
+  max-width: 60ch;
+}
 .viewError {
   display: flex;
   flex-direction: column;
@@ -110,4 +229,374 @@
 .viewErrorActions {
   display: flex;
   gap: 8px;
+}
+
+/* Short phone screens: tighter chrome so the composer always fits. */
+@media (max-width: 899px) and (max-height: 760px) {
+  /* One line: the selected card above already shows the agent and folder. */
+  .header {
+    gap: 8px;
+    padding: 6px 12px;
+  }
+  .header > [role='img'],
+  .location,
+  .tier {
+    display: none;
+  }
+  .titles {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .titleRow {
+    flex: 0 1 auto;
+  }
+  .sub {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+  .toolbar {
+    padding: 4px 12px;
+  }
+  .toolbar :global(.segmented) button,
+  .actions :global(.btn) {
+    min-height: 30px;
+  }
+}
+
+/* Phones: the selected card in the row above carries the session details
+   (name, state, folder, tier, rename), so the header is not repeated and the
+   chat gets the room. */
+@media (max-width: 899px) {
+  /* Only the title stays: a tap on it opens the session switcher sheet
+     (instead of swiping through the cards). */
+  .header {
+    gap: 6px;
+    padding: 2px 8px;
+  }
+  .header > [role='img'],
+  .sub,
+  .rename {
+    display: none;
+  }
+  .title {
+    font-size: 15px;
+  }
+  .toolbar {
+    padding: 6px 12px;
+  }
+  .toolbar :global(.segmented) button {
+    min-height: 34px;
+  }
+  .actions :global(.btn) {
+    min-height: 34px;
+  }
+}
+
+/* Phones, typing in the composer with the keyboard open: the view switch and
+   session actions step aside so the text box stays above the keyboard. */
+@media (max-width: 899px) {
+  .live:has([data-keyboard-compact]) .toolbar,
+  .live:has([data-keyboard-compact]) .header {
+    display: none;
+  }
+}
+
+/* Touch screens: the view switch and the session actions are 44 px targets
+   (after the phone rules above, which make them slimmer for mouse use). */
+@media (pointer: coarse) {
+  .toolbar :global(.segmented) button,
+  .actions :global(.btn) {
+    min-height: var(--control-h);
+  }
+}
+
+/*
+ * Phones (LiveView `chrome`): one slim top bar floats over the chat instead
+ * of the app header, the session header and the toolbar. It slides away
+ * (transform only, no reflow) while older messages are read, and the chat
+ * scrolls under it; `--chrome-h` (measured) keeps the first message below.
+ */
+.live[data-chrome='phone'] {
+  --bar-h: calc(var(--control-h) + 2 * var(--bar-pad));
+  --chrome-h: calc(var(--bar-h) + env(safe-area-inset-top));
+  overflow: hidden;
+}
+/* The notch / status bar strip stays put; the bar slides under it. */
+.live[data-chrome='phone']::before {
+  content: '';
+  position: absolute;
+  z-index: 17;
+  inset-inline: 0;
+  top: 0;
+  height: env(safe-area-inset-top);
+  background: var(--surface);
+  pointer-events: none;
+}
+.live[data-chrome='phone'] .content {
+  position: relative;
+  --chat-inset-top: var(--chrome-h);
+}
+/* Terminal and shell tabs keep the bar: their screen starts below it. */
+.live[data-chrome='phone']:not([data-mode='chat']) .content {
+  padding-top: var(--chrome-h);
+}
+/* Typing with the keyboard open: the bar steps aside like the old header
+   (the composer keeps a "To: session" strip). */
+.live[data-chrome='phone']:has([data-keyboard-compact]) .topChrome {
+  display: none;
+}
+.live[data-chrome='phone']:has([data-keyboard-compact]) .content {
+  --chat-inset-top: env(safe-area-inset-top);
+  padding-top: 0;
+}
+.topChrome {
+  position: absolute;
+  z-index: 16;
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
+  transition:
+    transform 0.22s ease,
+    visibility 0s linear 0s;
+}
+.topChrome[data-hidden] {
+  transform: translateY(calc(-100% - 12px));
+}
+/* Keyboard focus inside the bar always brings it back. */
+.topChrome[data-hidden]:focus-within {
+  transform: none;
+}
+/* Reading mode: the bar is gone (not focusable) until reading mode ends. */
+.live[data-reading] .topChrome {
+  transform: translateY(calc(-100% - 12px));
+  visibility: hidden;
+  transition:
+    transform 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .topChrome,
+  .live[data-reading] .topChrome {
+    transition: none;
+  }
+}
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--bar-h);
+  padding-inline: max(4px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-right));
+}
+.barButton {
+  flex: none;
+  width: var(--control-h);
+  height: var(--control-h);
+}
+/* Title and state; the whole block is the switcher button's tap area. */
+.barTitles {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  height: var(--control-h);
+  padding-inline: 4px;
+  /* A sideways swipe here steps between sessions: the browser keeps only
+     vertical panning, so the pointer events reach the app. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.barTitle {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barTitle:focus {
+  outline: none;
+}
+.barSub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.barSub > * {
+  flex: none;
+  max-width: 100%;
+  padding-block: 0;
+  font-size: 11px;
+}
+/* The connection lamp (its text is for screen readers). */
+.barConn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: var(--control-h);
+}
+.barConnText {
+  margin-inline-start: 5px;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.barConn:has(.barConnText) {
+  width: auto;
+}
+.barDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st-idle);
+  box-shadow: 0 0 0 3px var(--st-idle-bg);
+}
+.barConn[data-state='connected'] .barDot {
+  background: var(--st-done);
+  box-shadow: 0 0 0 3px var(--st-done-bg);
+}
+.barConn[data-state='connecting'] .barDot,
+.barConn[data-state='reconnecting'] .barDot {
+  background: var(--st-input);
+  box-shadow: 0 0 0 3px var(--st-input-bg);
+}
+.barConn[data-state='disconnected'] .barDot {
+  background: var(--st-error);
+  box-shadow: 0 0 0 3px var(--st-error-bg);
+}
+/* The tab menu: Chat / Terminal / Shell as full-width rows. */
+.tabMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tabMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-h);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.tabMenu button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: var(--fw-semibold);
+}
+.tabMenu button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Session actions inside "more": a column with their labels. */
+.menuActions {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.menuActions .btnLabel {
+  display: inline;
+}
+.menuActions :global(.btn) {
+  min-height: var(--control-h);
+  justify-content: flex-start;
+}
+.menuRule {
+  width: 100%;
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.searchRow {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2) var(--bar-pad);
+}
+.searchRow > * {
+  flex: 1;
+}
+.banners:empty {
+  display: none;
+}
+.banners {
+  padding-bottom: var(--bar-pad);
+}
+/* Reading mode: "jump to latest" sits above the floating dictate button. */
+.live:has(> section[data-reading]) .content {
+  --chat-jump-lift: calc(64px + env(safe-area-inset-bottom));
+}
+/* Reading mode: a small button to leave it, clear of the notch. */
+.exitReading {
+  position: absolute;
+  z-index: 18;
+  top: calc(env(safe-area-inset-top) + 8px);
+  inset-inline-end: max(8px, env(safe-area-inset-right));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
+  cursor: pointer;
+}
+.exitReading:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+/* Pending alerts while the bar is hidden. */
+.exitReadingBadge {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+}
+
+/* The session strip under the bar: always shown on phones. */
+.strip {
+  border-top: 1px solid var(--border);
+}
+/* The full switcher sheet (search, pins, filters) for long lists. */
+.stripSearch {
+  flex: none;
+  width: var(--control-h);
+  height: var(--control-h);
+  margin-inline-end: 4px;
+  color: var(--text-muted);
+}
+/* "Switched to ..." after a title swipe: a short pill under the bar. */
+.switchNote {
+  align-self: center;
+  margin: 0 0 var(--space-1, 4px);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
 }

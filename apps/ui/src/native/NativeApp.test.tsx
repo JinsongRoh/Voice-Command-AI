@@ -7,6 +7,8 @@ import { defaultSettings } from '../state/settings';
 import { fakeServer, status, tauri } from '../test/tauriMock';
 import type { MachineInfo } from './bridge';
 import { NativeApp } from './NativeApp';
+import { PairLinks } from './pairLinks';
+import type { QrScanner, QrScanResult } from './qrScanner';
 import { MachineRegistry } from './registry';
 
 vi.mock('@tauri-apps/api/core', () => import('../test/tauriMock'));
@@ -42,14 +44,31 @@ const INFO: MachineInfo = {
 
 const URI = 'vca://pair?v=1&pk=abc&ep=tcp%3A%2F%2F192.168.0.10%3A7420';
 
-function renderNative() {
+function renderNative(extra: { qrScanner?: QrScanner; pairLinks?: PairLinks } = {}) {
   return render(
     <NativeApp
       registry={new MachineRegistry()}
       speech={speech}
       settings={{ ...defaultSettings(), language: 'en' }}
+      {...extra}
     />,
   );
+}
+
+/** A camera scanner whose scan resolves when the test says so. */
+function fakeScanner() {
+  let finish: (r: QrScanResult) => void = () => {};
+  const scanner = {
+    scan: vi.fn(
+      () =>
+        new Promise<QrScanResult>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+    cancel: vi.fn(async () => finish({ kind: 'cancelled' })),
+    openSettings: vi.fn(async () => {}),
+  } satisfies QrScanner;
+  return { scanner, finish: (r: QrScanResult) => finish(r) };
 }
 
 describe('NativeApp', () => {
@@ -57,6 +76,7 @@ describe('NativeApp', () => {
 
   beforeEach(() => {
     tauri.reset();
+    tauri.handlers.set('vca_pairing_code', () => 'ABCD-EFGH');
     deepLink.launch = null;
     deepLink.open = null;
     machines = [];
@@ -69,7 +89,99 @@ describe('NativeApp', () => {
     expect(await screen.findByRole('heading', { name: 'Pair a device' })).toBeInTheDocument();
     expect(screen.getByText(/No machine is paired yet/)).toBeInTheDocument();
     expect(await screen.findByDisplayValue('My Android')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Scan QR code/ })).toBeEnabled();
+  });
+
+  it('keeps the paste flow on desktops: no camera scanning', async () => {
+    tauri.handlers.set('vca_platform', () => 'windows');
+    const { scanner } = fakeScanner();
+    renderNative({ qrScanner: scanner });
+    expect(await screen.findByDisplayValue('My Windows')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Scan QR code/ })).toBeDisabled();
+    expect(screen.getByText(/paste the pairing link/)).toBeInTheDocument();
+  });
+
+  it('fills the pairing link from a scanned QR code but waits for the tap', async () => {
+    tauri.handlers.set('vca_platform', () => 'ios');
+    const { scanner, finish } = fakeScanner();
+    renderNative({ qrScanner: scanner });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    // The camera runs behind a transparent page with a cancel overlay.
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Point the camera at the pairing QR code.',
+    );
+    expect(document.documentElement).toHaveClass('vca-scanning');
+    finish({ kind: 'link', uri: URI });
+    expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.documentElement).not.toHaveClass('vca-scanning');
+    expect(screen.getByText('Pairing link scanned. Check it, then tap Pair.')).toBeInTheDocument();
+    expect(tauri.callsOf('vca_pair')).toHaveLength(0);
+  });
+
+  it('cancels a scan from the overlay', async () => {
+    tauri.handlers.set('vca_platform', () => 'android');
+    const { scanner } = fakeScanner();
+    renderNative({ qrScanner: scanner });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(scanner.cancel).toHaveBeenCalled();
+    expect(await screen.findByText('Scanning cancelled.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Pairing link')).toHaveValue('');
+  });
+
+  it('explains a refused camera and offers the settings', async () => {
+    tauri.handlers.set('vca_platform', () => 'ios');
+    const { scanner, finish } = fakeScanner();
+    renderNative({ qrScanner: scanner });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    finish({ kind: 'denied' });
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Camera access is off/);
+    await user.click(screen.getByRole('button', { name: 'Open Settings' }));
+    expect(scanner.openSettings).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a QR code that is not a pairing link', async () => {
+    tauri.handlers.set('vca_platform', () => 'ios');
+    const { scanner, finish } = fakeScanner();
+    renderNative({ qrScanner: scanner });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    finish({ kind: 'invalid' });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /not a Voice Command AI pairing code/,
+    );
+    expect(screen.getByLabelText('Pairing link')).toHaveValue('');
+  });
+
+  it('stops the camera when the pairing screen goes away', async () => {
+    tauri.handlers.set('vca_platform', () => 'ios');
+    const { scanner } = fakeScanner();
+    const view = renderNative({ qrScanner: scanner });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    view.unmount();
+    expect(scanner.cancel).toHaveBeenCalled();
+    expect(document.documentElement).not.toHaveClass('vca-scanning');
+  });
+
+  it('fills the form from a link buffered before the app rendered (cold start)', async () => {
+    const links = new PairLinks();
+    links.pushLaunch(URI);
+    renderNative({ pairLinks: links });
+    expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
+    expect(tauri.callsOf('vca_pair')).toHaveLength(0);
+  });
+
+  it('fills the form from a launch link captured natively', async () => {
+    tauri.handlers.set('vca_launch_links', () => [URI]);
+    renderNative();
+    expect(await screen.findByDisplayValue(URI)).toBeInTheDocument();
+    expect(tauri.callsOf('vca_pair')).toHaveLength(0);
   });
 
   it('pairs a machine and opens it', async () => {
@@ -81,7 +193,8 @@ describe('NativeApp', () => {
     renderNative();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText('Pairing link'), URI);
-    await user.type(screen.getByLabelText('Authenticator code (optional)'), '123456');
+    await user.click(await screen.findByRole('checkbox', { name: /same code/ }));
+    await user.type(screen.getByLabelText('VCA 2-step verification code (6 digits)'), '123456');
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     expect(tauri.callsOf('vca_pair')[0]!.args).toEqual({
       uri: URI,
@@ -108,13 +221,15 @@ describe('NativeApp', () => {
     expect(tauri.callsOf('vca_pair')).toHaveLength(0);
 
     await user.clear(input);
-    await user.type(input, URI);
+    await user.click(input);
+    await user.paste(URI);
+    await user.click(await screen.findByRole('checkbox', { name: /same code/ }));
     await user.click(screen.getByRole('button', { name: 'Pair' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The authenticator code is incorrect.',
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('That code was not accepted.');
 
+    // The code is now known to be needed; a pasted link still needs the tap.
     reject = 'handshake failed';
+    await user.type(screen.getByLabelText('VCA 2-step verification code (6 digits)'), '123456');
     await user.click(screen.getByRole('button', { name: 'Pair' }));
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong: handshake failed'),
@@ -157,6 +272,7 @@ describe('NativeApp', () => {
     const user = userEvent.setup();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Connected'));
     await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(screen.getByRole('tab', { name: 'Connection & security' }));
     await user.click(screen.getByRole('button', { name: 'Forget this machine' }));
     await user.click(screen.getByRole('button', { name: 'Forget' }));
     expect(await screen.findByText(/No machine is paired yet/)).toBeInTheDocument();

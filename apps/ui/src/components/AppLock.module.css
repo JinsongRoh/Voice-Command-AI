@@ -1,0 +1,135 @@
+/* Full-screen lock: covers everything, including the notch / status bar area. */
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--vvh, 100dvh);
+  width: 100%;
+  overflow: auto;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: var(--bg);
+  color: var(--text);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(400px, 100%);
+  text-align: center;
+}
+.card > p {
+  margin: 0;
+}
+.logo {
+  width: 72px;
+  height: 72px;
+}
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: var(--fw-semibold);
+}
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+.panel > p {
+  margin: 0;
+}
+.unlock {
+  min-height: 48px;
+  min-width: 180px;
+  padding-inline: 22px;
+  justify-content: center;
+}
+.codeForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.codeForm input {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  max-width: 14ch;
+  text-align: center;
+}
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.serverDown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.serverDown > p {
+  margin: 0;
+}
+.error {
+  color: var(--danger);
+}
+.warning {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  text-align: start;
+}
+/* Verification dialog (turning the lock off). */
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: min(360px, 100%);
+}
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+.reason svg {
+  flex: none;
+}
+/* Command Center gate, inside the main area. */
+.gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 100%;
+  padding: 32px 20px;
+}
+.gateTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 20px;
+}

@@ -110,12 +110,22 @@ async fn reads_normalized_history() {
             HistoryItem::Message { role, text, .. } => format!("{role:?}: {text}"),
             HistoryItem::ToolCall { name, summary, .. } => format!("call {name}: {summary}"),
             HistoryItem::ToolResult { text, is_error, .. } => format!("result({is_error}): {text}"),
+            HistoryItem::Subagent { id, running, .. } => format!("subagent {id:?}: {running}"),
+            HistoryItem::Question { id, questions, .. } => {
+                format!("question {id}: {}", questions.len())
+            }
+            HistoryItem::Rewritten => "rewritten".into(),
+            HistoryItem::PermissionMode { mode, .. } => format!("mode {mode}"),
+            HistoryItem::TurnEnd { .. } => "turn end".into(),
+            HistoryItem::Thinking { .. } => "thinking".into(),
         })
         .collect();
     assert_eq!(
         summary,
         [
             "User: Fix the failing date parser test",
+            // A thinking block: only that it happened, never its text.
+            "thinking",
             "Assistant: I'll run the test suite to see what fails.",
             "call Bash: npm test -- date-parser",
             "result(true): FAIL src/parser.test.ts\n  ✕ parses ISO week dates (4 ms)",

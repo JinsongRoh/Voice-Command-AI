@@ -21,7 +21,14 @@ use crate::ring::{BufferLimits, Gap, OutputChunk, OutputRing};
 use crate::screen::{Screen, ScreenOptions, ScreenSnapshot};
 
 const READ_BUF_SIZE: usize = 16 * 1024;
-const BROADCAST_CAPACITY: usize = 1024;
+/// Live chunks a subscriber may fall behind by before it reads the rest
+/// from the ring (see [`OutputSubscription`]). Every slot can hold a chunk
+/// of up to [`READ_BUF_SIZE`] bytes until all receivers saw it.
+const BROADCAST_CAPACITY: usize = 128;
+/// How long a write may wait for the PTY to take it. A child that stops
+/// reading its input fills the PTY buffer and blocks the writer thread;
+/// the caller gets an error instead of waiting forever.
+pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Terminal size in character cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,7 +120,9 @@ impl SpawnOptions {
             size: PtySize::default(),
             buffer: BufferLimits::default(),
             screen: Some(ScreenOptions::default()),
-            submit_delay: Duration::from_millis(30),
+            // Long enough that agents which treat a burst of input as a paste
+            // (Claude Code) see the Enter as a separate key press.
+            submit_delay: Duration::from_millis(150),
             answer_cursor_queries: true,
         }
     }
@@ -295,19 +304,40 @@ impl PtySession {
         let pair = native_pty_system()
             .openpty(opts.size.into())
             .map_err(|e| PtyError::Spawn(e.to_string()))?;
-        let mut child = pair
+        let child = pair
             .slave
             .spawn_command(opts.command()?)
             .map_err(|e| PtyError::Spawn(format!("{:?}: {e}", opts.program)))?;
         // Close our copy of the slave so that EOF is seen when the child exits.
         drop(pair.slave);
+        Self::start(opts, pair.master, child)
+    }
 
-        let reader = pair
-            .master
+    /// Like [`Self::spawn`], but the child is created inside the Job Object
+    /// `job` (`PROC_THREAD_ATTRIBUTE_JOB_LIST`), so nothing it starts can
+    /// escape the job. Returns whether that worked: when the attribute is
+    /// refused the child is started without it (and a warning is logged),
+    /// and the caller should assign the job after the fact.
+    #[cfg(windows)]
+    pub fn spawn_in_job(
+        opts: SpawnOptions,
+        job: std::os::windows::io::BorrowedHandle<'_>,
+    ) -> Result<(Self, bool), PtyError> {
+        let spawned = crate::conpty::spawn(&opts.command()?, opts.size.into(), Some(job))
+            .map_err(|e| PtyError::Spawn(format!("{:?}: {e}", opts.program)))?;
+        let in_job = spawned.in_job;
+        Ok((Self::start(opts, spawned.master, spawned.child)?, in_job))
+    }
+
+    fn start(
+        opts: SpawnOptions,
+        master: Box<dyn MasterPty + Send>,
+        mut child: Box<dyn portable_pty::Child + Send + Sync>,
+    ) -> Result<Self, PtyError> {
+        let reader = master
             .try_clone_reader()
             .map_err(|e| PtyError::Spawn(e.to_string()))?;
-        let writer = pair
-            .master
+        let writer = master
             .take_writer()
             .map_err(|e| PtyError::Spawn(e.to_string()))?;
         let killer = child.clone_killer();
@@ -321,7 +351,7 @@ impl PtySession {
             tx: Some(tx),
             size: opts.size,
         }));
-        let master = Arc::new(Mutex::new(Some(pair.master)));
+        let master = Arc::new(Mutex::new(Some(master)));
 
         let (write_tx, write_rx) = std_mpsc::channel::<WriteCmd>();
         let reader_shared = Arc::clone(&shared);
@@ -386,24 +416,47 @@ impl PtySession {
                 ack,
             })
             .map_err(|_| PtyError::Closed)?;
-        done.await.map_err(|_| PtyError::Closed)??;
+        match tokio::time::timeout(WRITE_TIMEOUT, done).await {
+            Ok(result) => result.map_err(|_| PtyError::Closed)??,
+            Err(_) => {
+                return Err(PtyError::Io(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    format!(
+                        "the program did not read its input within {} s",
+                        WRITE_TIMEOUT.as_secs()
+                    ),
+                )));
+            }
+        }
         Ok(())
     }
 
     /// Delivers structured input, encoded for the session's current modes
     /// (bracketed paste, application cursor keys).
     pub async fn send_input(&self, input: &Input) -> Result<(), PtyError> {
+        if self.send_body(input).await? {
+            self.press_enter().await?;
+        }
+        Ok(())
+    }
+
+    /// The first half of [`Self::send_input`] for a caller that decides
+    /// about Enter in between: writes the body and waits out the pause
+    /// before Enter. Returns whether the input asks for Enter.
+    pub async fn send_body(&self, input: &Input) -> Result<bool, PtyError> {
         let encoded = encode_input(input, self.modes())?;
         if !encoded.body.is_empty() {
             self.write(encoded.body.clone()).await?;
         }
-        if encoded.submit {
-            if !encoded.body.is_empty() && !self.inner.submit_delay.is_zero() {
-                tokio::time::sleep(self.inner.submit_delay).await;
-            }
-            self.write(ENTER).await?;
+        if encoded.submit && !encoded.body.is_empty() && !self.inner.submit_delay.is_zero() {
+            tokio::time::sleep(self.inner.submit_delay).await;
         }
-        Ok(())
+        Ok(encoded.submit)
+    }
+
+    /// Presses Enter.
+    pub async fn press_enter(&self) -> Result<(), PtyError> {
+        self.write(ENTER).await
     }
 
     /// Input modes most recently switched by the application.
@@ -499,6 +552,15 @@ impl PtySession {
         let redraw = shared.screen.as_ref().map(Screen::redraw);
         let from = shared.ring.next_seq();
         (redraw, self.subscription(&shared, from))
+    }
+
+    /// Releases the output ring and the screen of a session whose program
+    /// exited: nothing redraws or replays it any more. Later output (the
+    /// last bytes after the exit) is still buffered and delivered.
+    pub fn release_buffers(&self) {
+        let mut shared = lock(&self.inner.shared);
+        shared.ring.clear();
+        shared.screen = None;
     }
 
     /// Plain-text snapshot of the screen, if screen tracking is enabled.

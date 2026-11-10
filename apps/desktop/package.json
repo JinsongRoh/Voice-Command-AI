@@ -8,8 +8,13 @@
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "tauri": "tauri",
+    "vcad": "node scripts/build-vcad.mjs",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "dev:vcad": "node scripts/build-vcad.mjs --debug && tauri dev --config src-tauri/tauri.vcad.conf.json",
+    "build": "node scripts/build-vcad.mjs && tauri build --config src-tauri/tauri.vcad.conf.json",
+    "build:unsigned": "node scripts/build-vcad.mjs && tauri build --config src-tauri/tauri.vcad.conf.json --config src-tauri/tauri.unsigned.conf.json",
+    "build:no-vcad": "tauri build --config src-tauri/tauri.unsigned.conf.json",
+    "test": "node --test scripts/sidecars.test.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0"

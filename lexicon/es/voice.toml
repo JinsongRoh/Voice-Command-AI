@@ -1,0 +1,19 @@
+# Spanish radio-style voice words of hands-free mode: the wake word, the send
+# word and the app's reply. They are sent to the speech engine as hints.
+# Plain words ("cambio") are never rewritten (see `match_term`).
+# Format: see lexicon/README.md.
+language = "es"
+category = "voice"
+tags = ["voice"]
+
+[[entry]]
+term = "Voco"
+weight = 2.0
+
+[[entry]]
+term = "Cambio"
+weight = 2.0
+
+[[entry]]
+term = "Roger"
+weight = 2.0

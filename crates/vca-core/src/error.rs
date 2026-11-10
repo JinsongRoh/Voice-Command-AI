@@ -12,6 +12,17 @@ pub enum ErrorCode {
     Unsupported,
     Unavailable,
     Internal,
+    /// The action needs a TOTP code (remote shells: step-up). Resend the
+    /// request with one.
+    TotpRequired,
+    /// The TOTP code was wrong or already used.
+    TotpInvalid,
+    /// Local channel: verify on this computer first, then resend with the
+    /// step-up token.
+    StepUpRequired,
+    /// Local channel: replacing an authenticator needs a code from the
+    /// current one (or a completed recovery).
+    CurrentCodeRequired,
 }
 
 #[derive(Debug, thiserror::Error)]

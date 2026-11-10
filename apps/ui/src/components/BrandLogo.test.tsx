@@ -35,6 +35,13 @@ describe('BrandLogo', () => {
     expect(stops()).toEqual(['var(--brand-cyan)', 'var(--brand-blue)']);
   });
 
+  it('draws the single-color symbol in currentColor without a gradient', () => {
+    const { container } = render(<BrandLogo variant="symbol" tone="mono" />);
+    expect(container.querySelector('linearGradient')).toBeNull();
+    expect(container.querySelector('[data-part="symbol"]')).toHaveAttribute('fill', 'currentColor');
+    expect(container.querySelectorAll('[data-part="symbol"] path')).toHaveLength(5);
+  });
+
   it('is an image with an accessible name when titled', () => {
     render(<BrandLogo variant="vertical" title="Voice Command AI" />);
     const img = screen.getByRole('img', { name: 'Voice Command AI' });

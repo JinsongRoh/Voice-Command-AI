@@ -1,0 +1,552 @@
+/*
+ * The dictation button's symbol in motion (MicSymbol.tsx). The styles are the
+ * two prototypes the CEO reviewed: light assembly (A–H) and stroke motion
+ * (1–10). Sizes are relative so the same rules serve the 64 px composer
+ * button, its smaller phone variants and the 44 px Settings previews.
+ *
+ * State on the root:
+ * - `.rec`: recording with motion allowed (never with reduced motion);
+ * - `.play` / `data-assembling`: a light assembly is running;
+ * - `data-sent`: the stroke styles' converge motion after a send.
+ */
+.root {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  pointer-events: none;
+}
+/* Inner clip: light flies in from outside the circle but never spills over
+   it, and the button's focus ring (on the button itself) stays whole. */
+.clip {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.root[data-kind='light'] .clip {
+  overflow: hidden;
+}
+.logo {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: auto;
+  aspect-ratio: 1178 / 1073;
+  overflow: visible;
+}
+.logo path {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* ---------- Light assembly ---------- */
+.ghost path {
+  fill: #e9fdff;
+  opacity: 0;
+}
+.burst {
+  position: absolute;
+  inset: 15%;
+  z-index: 0;
+  border: 2px solid var(--brand-cyan);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.scan {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 6%;
+  z-index: 2;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, #e9fdff, var(--brand-cyan), #e9fdff, transparent);
+  box-shadow: 0 0 12px var(--brand-cyan);
+  opacity: 0;
+  pointer-events: none;
+}
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Recording after the assembly: the symbol shimmers with the voice. */
+.rec[data-kind='light']:not(.play) .logo {
+  filter: drop-shadow(0 0 calc(2px + var(--level, 0.2) * 10px) rgb(0 207 232 / 85%));
+  transition: filter 0.08s;
+}
+
+/* The flight: each stroke starts outside as a stretched streak and snaps in. */
+.play .main path,
+.play .ghost path {
+  animation: mic-fly var(--dur, 0.62s) var(--ease, cubic-bezier(0.18, 0.9, 0.25, 1.12)) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger, 70ms) + var(--lag, 0ms));
+}
+.play .g1 path {
+  --lag: 40ms;
+}
+.play .g2 path {
+  --lag: 85ms;
+}
+.play .ghost path {
+  animation-name: mic-fly-ghost;
+}
+/* Arrival: one flash and a ring burst. */
+.play .logo {
+  animation: mic-flash 0.95s ease-out both;
+}
+.play .burst {
+  animation: mic-burst 0.5s ease-out both;
+  animation-delay: 0.7s;
+}
+
+/* F: burst from the center, then reassemble. */
+.play[data-anim='light-burst'] .main path,
+.play[data-anim='light-burst'] .ghost path {
+  animation-name: mic-explode;
+  animation-duration: 0.9s;
+  animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1.05);
+}
+.play[data-anim='light-burst'] .ghost path {
+  animation-name: mic-explode-ghost;
+}
+
+/* G: canvas particles converge, then the symbol appears. */
+.play[data-anim='light-particles'] .logo {
+  animation: mic-appear 0.95s ease-out both;
+}
+.play[data-anim='light-particles'] .logo path {
+  animation: none;
+}
+
+/* H: a beam sweeps down and reveals the symbol. */
+.play[data-anim='light-scan'] .scan {
+  animation: mic-scan 0.8s cubic-bezier(0.5, 0, 0.3, 1) both;
+}
+.play[data-anim='light-scan'] .logo {
+  animation:
+    mic-reveal 0.8s cubic-bezier(0.5, 0, 0.3, 1) both,
+    mic-flash 0.95s ease-out both;
+}
+.play[data-anim='light-scan'] .logo path {
+  animation: none;
+}
+
+@keyframes mic-fly {
+  0% {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg))
+      scale(var(--sx, 1), var(--sy, 1));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mic-fly-ghost {
+  0% {
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg))
+      scale(var(--sx, 1), var(--sy, 1));
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.55;
+  }
+  80% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: none;
+    opacity: 0;
+  }
+}
+@keyframes mic-flash {
+  0%,
+  72% {
+    filter: none;
+  }
+  82% {
+    filter: brightness(2.1) drop-shadow(0 0 10px rgb(0 207 232 / 95%));
+  }
+  100% {
+    filter: none;
+  }
+}
+@keyframes mic-burst {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+@keyframes mic-explode {
+  0% {
+    transform: scale(0.15);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(var(--fx, 0), var(--fy, 0)) scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mic-explode-ghost {
+  0% {
+    transform: scale(0.15);
+    opacity: 0;
+  }
+  38% {
+    transform: translate(var(--fx, 0), var(--fy, 0)) scale(0.6);
+    opacity: 0.5;
+  }
+  100% {
+    transform: none;
+    opacity: 0;
+  }
+}
+@keyframes mic-appear {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  82% {
+    opacity: 1;
+    filter: brightness(2) drop-shadow(0 0 10px rgb(0 207 232 / 95%));
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+}
+@keyframes mic-scan {
+  0% {
+    top: 6%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 90%;
+    opacity: 0;
+  }
+}
+@keyframes mic-reveal {
+  0% {
+    clip-path: inset(0 0 100% 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ---------- Stroke motion ---------- */
+
+/* 1. Amplitude: the app's original motion (the landing page's `rec`). */
+.rec[data-anim='stroke-amplitude'] .logo path {
+  animation: mic-rec 0.9s ease-in-out infinite alternate;
+}
+.rec[data-anim='stroke-amplitude'] .logo path:nth-child(1) {
+  animation-delay: -0.3s;
+  animation-duration: 0.82s;
+}
+.rec[data-anim='stroke-amplitude'] .logo path:nth-child(2) {
+  animation-delay: -0.7s;
+  animation-duration: 1s;
+}
+.rec[data-anim='stroke-amplitude'] .logo path:nth-child(3) {
+  animation-delay: -0.15s;
+  animation-duration: 0.9s;
+}
+.rec[data-anim='stroke-amplitude'] .logo path:nth-child(4) {
+  animation-delay: -0.55s;
+  animation-duration: 1.06s;
+}
+.rec[data-anim='stroke-amplitude'] .logo path:nth-child(5) {
+  animation-delay: -0.4s;
+  animation-duration: 0.86s;
+}
+
+/* 2. Voice-driven: the level loop sets each stroke's height. */
+.root[data-anim='stroke-voice'] .logo path {
+  transition: transform 0.08s linear;
+}
+
+/* 3. Travelling wave: strokes rise left to right in turn. */
+.rec[data-anim='stroke-wave'] .logo path {
+  animation: mic-wave 1.1s ease-in-out infinite;
+}
+.rec[data-anim='stroke-wave'] .logo path:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.rec[data-anim='stroke-wave'] .logo path:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.rec[data-anim='stroke-wave'] .logo path:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.rec[data-anim='stroke-wave'] .logo path:nth-child(5) {
+  animation-delay: 0.48s;
+}
+
+/* 4. Center out: the middle stroke leads, the outer pairs follow. */
+.rec[data-anim='stroke-center'] .logo path {
+  animation: mic-wave 1s ease-in-out infinite;
+}
+.rec[data-anim='stroke-center'] .logo path:nth-child(2),
+.rec[data-anim='stroke-center'] .logo path:nth-child(4) {
+  animation-delay: 0.14s;
+}
+.rec[data-anim='stroke-center'] .logo path:nth-child(1),
+.rec[data-anim='stroke-center'] .logo path:nth-child(5) {
+  animation-delay: 0.28s;
+}
+
+/* 5. Light flow: an SVG gradient animation in MicSymbol.tsx (recording only). */
+
+/* 6. Glow breath: the symbol shines brighter and grows with the voice. */
+.halo {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-cyan) 30%, transparent) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+.rec[data-anim='stroke-glow'] .halo {
+  opacity: calc(0.6 + var(--level, 0.2) * 0.4);
+  transform: scale(calc(1 + var(--level, 0.2) * 0.6));
+}
+.rec[data-anim='stroke-glow'] .logo {
+  filter: drop-shadow(0 0 calc(2px + var(--level, 0.2) * 14px) rgb(0 207 232 / 90%));
+  transform: scale(calc(1 + var(--level, 0.2) * 0.1));
+  transition:
+    filter 0.08s,
+    transform 0.08s;
+}
+
+/* 7. Stroke writing: the outlines draw themselves, the fill follows. */
+.rec[data-anim='stroke-writing'] .logo path {
+  fill: transparent;
+  stroke: var(--brand-cyan);
+  stroke-width: 34;
+  stroke-dasharray: 2600;
+  animation: mic-write 1.8s ease-in-out infinite;
+}
+.rec[data-anim='stroke-writing'] .logo path:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.rec[data-anim='stroke-writing'] .logo path:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.rec[data-anim='stroke-writing'] .logo path:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.rec[data-anim='stroke-writing'] .logo path:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+/* 8. Logo echo: copies of the symbol spread out and fade. */
+.echo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+}
+.rec .echo {
+  animation: mic-echo 1.8s ease-out infinite;
+  animation-delay: calc(var(--k, 0) * 0.6s);
+}
+
+/* 9. Spread apart: strokes fan out with the voice and gather when done. */
+.root[data-anim='stroke-spread'] .logo path {
+  transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.rec[data-anim='stroke-spread'] .logo path {
+  transition: transform 0.1s linear;
+}
+.rec[data-anim='stroke-spread'] .logo path:nth-child(1) {
+  transform: translateX(calc(-30% - var(--level, 0.2) * 30%))
+    scaleY(calc(0.7 + var(--level, 0.2) * 0.5));
+}
+.rec[data-anim='stroke-spread'] .logo path:nth-child(2) {
+  transform: translateX(calc(-15% - var(--level, 0.2) * 15%))
+    scaleY(calc(0.8 + var(--level, 0.2) * 0.4));
+}
+.rec[data-anim='stroke-spread'] .logo path:nth-child(3) {
+  transform: scaleY(calc(0.85 + var(--level, 0.2) * 0.35));
+}
+.rec[data-anim='stroke-spread'] .logo path:nth-child(4) {
+  transform: translateX(calc(15% + var(--level, 0.2) * 15%))
+    scaleY(calc(0.8 + var(--level, 0.2) * 0.4));
+}
+.rec[data-anim='stroke-spread'] .logo path:nth-child(5) {
+  transform: translateX(calc(30% + var(--level, 0.2) * 30%))
+    scaleY(calc(0.7 + var(--level, 0.2) * 0.5));
+}
+
+/* 10. Ring of bars: the symbol stays, short bars around it reach with the sound. */
+.ring {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.rec .ring {
+  opacity: 1;
+  animation: mic-spin 9s linear infinite;
+}
+.bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6%;
+  height: 10%;
+  margin-left: -3%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--brand-cyan), var(--brand-blue));
+  transform-origin: 50% 0;
+  transform: rotate(var(--a, 0deg)) translateY(var(--ring-r, 40px));
+}
+
+/* Sent (stroke styles): the strokes pull together into the compact symbol. */
+.logo path:nth-child(1) {
+  --cx: 24%;
+}
+.logo path:nth-child(2) {
+  --cx: 12%;
+}
+.logo path:nth-child(4) {
+  --cx: -12%;
+}
+.logo path:nth-child(5) {
+  --cx: -24%;
+}
+.root[data-sent] .logo path {
+  animation: mic-converge 0.8s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+.root[data-sent] .logo {
+  animation: mic-gather 0.8s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+@keyframes mic-rec {
+  from {
+    transform: scaleY(0.5);
+  }
+  to {
+    transform: scaleY(1.06);
+  }
+}
+@keyframes mic-wave {
+  0%,
+  60%,
+  100% {
+    transform: scaleY(0.62);
+  }
+  30% {
+    transform: scaleY(1.12);
+  }
+}
+@keyframes mic-write {
+  0% {
+    stroke-dashoffset: 2600;
+    fill: transparent;
+  }
+  55% {
+    stroke-dashoffset: 0;
+    fill: transparent;
+  }
+  80%,
+  100% {
+    stroke-dashoffset: 0;
+    fill: rgb(0 207 232 / 55%);
+  }
+}
+@keyframes mic-echo {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes mic-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mic-converge {
+  0% {
+    transform: scaleY(0.85);
+  }
+  45% {
+    transform: translateX(var(--cx, 0)) scale(0.72);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes mic-gather {
+  0%,
+  100% {
+    transform: none;
+  }
+  45% {
+    transform: scale(0.8);
+  }
+}
+
+/* Reduced motion: the still symbol (the component also never starts motion). */
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .root * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ring,
+  .echo,
+  .halo,
+  .burst,
+  .scan,
+  .canvas {
+    display: none;
+  }
+}
+.root[data-motion='reduced'] .ring,
+.root[data-motion='reduced'] .echo,
+.root[data-motion='reduced'] .halo,
+.root[data-motion='reduced'] .burst,
+.root[data-motion='reduced'] .scan,
+.root[data-motion='reduced'] .canvas {
+  display: none;
+}

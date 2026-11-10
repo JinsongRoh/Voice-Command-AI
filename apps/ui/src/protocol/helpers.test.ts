@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   agentLabel,
+  checkSessionName,
   executableName,
   folderName,
   hasChatTranscript,
@@ -74,6 +75,16 @@ describe('helpers', () => {
     expect(originMonogram(generic('C:\\tools\\my_tool.exe'))).toBe('MT');
     expect(originMonogram(generic('aider2'))).toBe('AI');
     expect(originMonogram(generic('/'))).not.toContain('/');
+  });
+
+  it('checks session names like the server', () => {
+    expect(checkSessionName('   ')).toEqual({ name: null, problem: null });
+    expect(checkSessionName('  API work ')).toEqual({ name: 'API work', problem: null });
+    expect(checkSessionName('a\nb').problem).toBe('control_chars');
+    expect(checkSessionName('a\u0085b').problem).toBe('control_chars');
+    // Code points, not UTF-16 units: 80 emoji are fine.
+    expect(checkSessionName('🎙'.repeat(80)).problem).toBeNull();
+    expect(checkSessionName('가'.repeat(81)).problem).toBe('too_long');
   });
 
   it('knows which origins have a chat transcript', () => {

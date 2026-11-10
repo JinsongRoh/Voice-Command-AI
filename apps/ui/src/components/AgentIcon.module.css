@@ -10,7 +10,8 @@
   color: hsl(var(--hue) 70% 22%);
   background: hsl(var(--hue) 75% 88%);
 }
-:global(:root[data-theme='dark']) .icon {
+:global(:root[data-theme='dark']) .icon,
+:global(:root[data-theme='black']) .icon {
   color: hsl(var(--hue) 80% 85%);
   background: hsl(var(--hue) 35% 24%);
 }

@@ -17,6 +17,8 @@
 //!   commands through `vca run`.
 
 pub mod attach;
+#[cfg(windows)]
+mod conpty;
 mod cpr;
 mod error;
 pub mod input;

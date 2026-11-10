@@ -42,6 +42,50 @@ pub struct AgentHookEvent {
     /// (for example `PreToolUse`), so the reply should come quickly or the
     /// agent stays blocked.
     pub blocking: bool,
+    /// The sub-agent a `SubagentStop` event reports as stopped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagent_id: Option<String>,
+    /// The agent's id of the tool call the event is about, when it names
+    /// one. Pairs a decision with the call's later progress (hooks and
+    /// transcript results).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    /// The agent's permission mode when the event fired (Claude Code's
+    /// `permission_mode`: `default`, `acceptEdits`, `plan`, `auto`,
+    /// `dontAsk`, `bypassPermissions`). `None` when the payload has none
+    /// (not every event carries it) and from older `vca` binaries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permission_mode: Option<String>,
+    /// The full text of the agent's final message of the turn (Claude
+    /// Code's `Stop.last_assistant_message`, Codex's turn-complete
+    /// message), for telling a turn that ends in a question to the person.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_message: Option<String>,
+}
+
+impl AgentHookEvent {
+    /// True for a permission prompt the agent's own notification reports
+    /// as shown to the person (Claude Code's `Notification` hook of type
+    /// `permission_prompt`, sent once the prompt has waited about six
+    /// seconds).
+    pub fn is_prompt_notification(&self) -> bool {
+        self.event_name == "Notification" && self.decision.is_some()
+    }
+}
+
+/// Whether a permission mode settles tool calls without showing the person
+/// a prompt (`auto`: a classifier decides; `dontAsk`: denies what is not
+/// allowed; `bypassPermissions`: allows everything). A `PermissionRequest`
+/// in such a mode is only real once the agent's prompt notification
+/// confirms it.
+pub fn mode_settles_without_prompt(mode: &str) -> bool {
+    matches!(mode, "auto" | "dontAsk" | "bypassPermissions")
+}
+
+/// Whether a permission mode shows the person a prompt for a call that
+/// needs permission (`default`, `acceptEdits`, `plan`).
+pub fn mode_prompts(mode: &str) -> bool {
+    matches!(mode, "default" | "acceptEdits" | "plan" | "manual")
 }
 
 /// What a hook tells the agent about a pending action.

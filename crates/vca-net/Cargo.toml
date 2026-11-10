@@ -14,6 +14,9 @@ getrandom = "0.4.3"
 hmac = "0.13.0"
 keyring = { version = "3.6.3", optional = true, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 regex = "1.13.1"
+# TLS client configuration (client certificates) for `client-tls`.
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = { version = "1", optional = true }
 sha1 = "0.11.0"
 sha2 = "0.11.0"
 snow = { version = "0.10.0", default-features = false, features = ["default-resolver", "use-chacha20poly1305", "use-sha2", "use-curve25519", "use-getrandom"] }
@@ -41,7 +44,7 @@ default = []
 # OS keychain key storage (Windows Credential Manager, macOS Keychain, Secret Service).
 keychain = ["dep:keyring"]
 # TLS for `wss://` client connections (the server itself listens on plain loopback HTTP).
-client-tls = ["tokio-tungstenite/rustls-tls-webpki-roots"]
+client-tls = ["tokio-tungstenite/rustls-tls-webpki-roots", "dep:rustls", "dep:webpki-roots"]
 
 [dev-dependencies]
 tempfile = "3.27.0"

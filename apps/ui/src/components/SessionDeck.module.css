@@ -26,3 +26,26 @@
   margin: 0;
   padding: 0;
 }
+
+/* Phone: the compact carousel deck. */
+.compact {
+  min-width: 0;
+}
+.newIcon {
+  flex: none;
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+.empty {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+/* The phone session strip under the top bar (always shown). */
+.strip {
+  min-width: 0;
+  padding: 2px 0 4px 8px;
+  --carousel-gutter: 8px;
+}

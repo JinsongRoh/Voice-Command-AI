@@ -42,6 +42,16 @@ export class RequestIds {
 /** One id sequence per transport, so that every `Client` on it allocates unique ids. */
 const idsByTransport = new WeakMap<Transport, RequestIds>();
 
+/** The id sequence shared by every `Client` of `transport` (and the transport's own probes). */
+export function requestIdsOf(transport: Transport): RequestIds {
+  let ids = idsByTransport.get(transport);
+  if (!ids) {
+    ids = new RequestIds();
+    idsByTransport.set(transport, ids);
+  }
+  return ids;
+}
+
 /**
  * Convenience wrapper that assigns envelope ids. Clients created for the same
  * transport share the id sequence, so their requests never collide.
@@ -50,12 +60,7 @@ export class Client {
   private readonly ids: RequestIds;
 
   constructor(readonly transport: Transport) {
-    let ids = idsByTransport.get(transport);
-    if (!ids) {
-      ids = new RequestIds();
-      idsByTransport.set(transport, ids);
-    }
-    this.ids = ids;
+    this.ids = requestIdsOf(transport);
   }
 
   request(body: ClientMsg): Promise<ServerMsg> {

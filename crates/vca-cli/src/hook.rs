@@ -18,7 +18,10 @@ use vca_adapters::claude::{ClaudeHookEventName, ClaudeHookPayload, render_respon
 use vca_adapters::codex::{CodexNotifyPayload, parse_notify_args};
 use vca_adapters::{AgentHookEvent, HookDecision, HookResponse};
 use vca_core::SessionId;
-use vca_server::control::{ControlClient, LocalRequest, LocalResponse, SESSION_ENV};
+use vca_server::control::{
+    ControlClient, HOOK_TOKEN_ENV, LocalRequest, LocalResponse, SESSION_ENV,
+};
+use vca_server::security::Sensitive;
 
 const DEBUG_ENV: &str = "VCA_HOOK_DEBUG";
 /// Total time a blocking hook (for example `PreToolUse`) waits for vcad.
@@ -160,6 +163,11 @@ fn forward(endpoint: &Path, event: AgentHookEvent) -> anyhow::Result<HookDecisio
         .ok()
         .filter(|s| !s.is_empty())
         .map(SessionId);
+    // Observed sessions have none; the hook works the same without it.
+    let hook_token = std::env::var(HOOK_TOKEN_ENV)
+        .ok()
+        .filter(|s| !s.is_empty())
+        .map(Sensitive);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -170,6 +178,7 @@ fn forward(endpoint: &Path, event: AgentHookEvent) -> anyhow::Result<HookDecisio
             let req = LocalRequest::Hook {
                 id,
                 session_id,
+                hook_token,
                 event: Box::new(event),
             };
             match client.call(&req).await? {

@@ -37,10 +37,7 @@ pub fn list_panes_command(socket: Option<&Path>) -> CommandSpec {
         "-F".into(),
         LIST_FORMAT.into(),
     ]);
-    CommandSpec {
-        program: "tmux".into(),
-        args,
-    }
+    CommandSpec::new("tmux", args)
 }
 
 pub fn parse_list_panes(output: &str) -> Vec<TmuxPane> {
@@ -90,32 +87,28 @@ pub fn send_text_commands(
             "--".into(),
             escape_trailing_semicolon(text),
         ]);
-        out.push(CommandSpec {
-            program: "tmux".into(),
-            args,
-        });
+        out.push(CommandSpec::new("tmux", args));
     }
     if submit {
         let mut args = base_args(socket);
         args.extend(["send-keys".into(), "-t".into(), pane.into(), "Enter".into()]);
-        out.push(CommandSpec {
-            program: "tmux".into(),
-            args,
-        });
+        out.push(CommandSpec::new("tmux", args));
     }
     out
+}
+
+/// `tmux send-keys -t <pane> <key>` for one named key (`Down`, `Enter`, ...).
+pub fn send_key_command(socket: Option<&Path>, pane: &str, key: &str) -> Vec<CommandSpec> {
+    let mut args = base_args(socket);
+    args.extend(["send-keys".into(), "-t".into(), pane.into(), key.into()]);
+    vec![CommandSpec::new("tmux", args)]
 }
 
 /// `tmux capture-pane -p` (visible screen as text), useful for heuristics.
 pub async fn capture_pane(socket: Option<&Path>, pane: &str) -> Result<String> {
     let mut args = base_args(socket);
     args.extend(["capture-pane".into(), "-p".into(), "-t".into(), pane.into()]);
-    CommandSpec {
-        program: "tmux".into(),
-        args,
-    }
-    .run()
-    .await
+    CommandSpec::new("tmux", args).run().await
 }
 
 #[cfg(test)]

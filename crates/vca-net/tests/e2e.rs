@@ -178,6 +178,7 @@ async fn pairing_reconnect_and_envelope_exchange() {
                 protocol_version: PROTOCOL_VERSION,
                 server_version: "0".into(),
                 server_name: "Test Desk".into(),
+                features: Vec::new(),
             },
         })
         .await
@@ -298,6 +299,177 @@ async fn pairing_requires_totp_when_enrolled() {
     // Pairing is atomic with sign-in: nothing was registered.
     assert!(ts.server.registry().list().unwrap().is_empty());
     assert!(!ts.audit_contains(|e| matches!(e, AuditEvent::DevicePaired { .. })));
+}
+
+/// One pairing attempt with a fresh device key, as the phone app makes it.
+async fn try_pair(qr: &PairingPayload, totp: Option<String>) -> Result<ClientConnection, NetError> {
+    try_pair_as(qr, totp, StaticKeypair::generate()).await
+}
+
+/// A pairing try with the device key `key` (a retry of the same link keeps
+/// its key).
+async fn try_pair_as(
+    qr: &PairingPayload,
+    totp: Option<String>,
+    key: StaticKeypair,
+) -> Result<ClientConnection, NetError> {
+    ClientConnection::connect(
+        ClientConfig::from_pairing(qr, 0, key).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "Beam Pro".into(),
+            platform: "android".into(),
+            totp,
+        },
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pairing_link_carries_the_totp_hint() {
+    let ts = TestServer::start(ServerConfig::default()).await;
+    assert!(ts.qr(Scope::View).totp_required);
+    let off = TestServer::start(ServerConfig {
+        require_totp: false,
+        ..Default::default()
+    })
+    .await;
+    assert!(!off.qr(Scope::View).totp_required);
+}
+
+#[tokio::test]
+async fn missing_totp_does_not_spend_the_pairing_secret() {
+    let mut ts = TestServer::start(ServerConfig::default()).await;
+    let qr = ts.qr(Scope::Command);
+    // The phone first tries without the code (field left empty).
+    let r = try_pair(&qr, None).await;
+    assert_eq!(auth_err(r), AuthFailure::TotpRequired);
+    assert!(ts.server.registry().list().unwrap().is_empty());
+    // And with a mistyped one.
+    let r = try_pair(&qr, Some("000000".into())).await;
+    assert_eq!(auth_err(r), AuthFailure::InvalidTotp);
+    assert!(ts.server.registry().list().unwrap().is_empty());
+    // The same link with the right code still pairs.
+    let ok = try_pair(&qr, Some(ts.totp_now())).await.unwrap();
+    let _ = ts.next_conn().await;
+    let devices = ts.server.registry().list().unwrap();
+    assert_eq!(devices.len(), 1);
+    assert_eq!(devices[0].id, ok.session.device_id);
+    assert!(ts.audit_contains(|e| matches!(e, AuditEvent::DevicePaired { .. })));
+    // Now the secret is spent, even with a fresh valid code.
+    ts.clock.advance_secs(30);
+    let again = try_pair(&qr, Some(ts.totp_now())).await;
+    assert_eq!(auth_err(again), AuthFailure::InvalidPairingSecret);
+    assert_eq!(ts.server.registry().list().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn presented_secret_survives_the_qr_expiry_for_totp_retries() {
+    let mut ts = TestServer::start(ServerConfig::default()).await;
+    let qr = ts.qr(Scope::Command);
+    ts.clock.advance_secs(50);
+    let phone = StaticKeypair::generate();
+    // Presented in time, but the code is missing.
+    let r = try_pair_as(&qr, None, phone.clone()).await;
+    assert_eq!(auth_err(r), AuthFailure::TotpRequired);
+    // The QR code's 60 s are over; the attempt started in time may finish
+    // within 2 minutes of the first presentation, by the same device only.
+    ts.clock.advance_secs(60);
+    assert!(qr.is_expired(ts.clock.now_secs()));
+    let stranger = try_pair(&qr, Some(ts.totp_now())).await;
+    assert_eq!(auth_err(stranger), AuthFailure::InvalidPairingSecret);
+    let _ok = try_pair_as(&qr, Some(ts.totp_now()), phone).await.unwrap();
+    let _ = ts.next_conn().await;
+    assert_eq!(ts.server.registry().list().unwrap().len(), 1);
+
+    // A link never presented before its expiry is not re-opened.
+    let stale = ts.qr(Scope::Command);
+    ts.clock.advance_secs(61);
+    let r = try_pair(&stale, Some(ts.totp_now())).await;
+    assert_eq!(auth_err(r), AuthFailure::InvalidPairingSecret);
+}
+
+#[tokio::test]
+async fn wrong_totp_codes_revoke_the_pairing_secret() {
+    // A generous per-IP limit, so the per-secret limit is what triggers.
+    let config = ServerConfig {
+        auth_rate_limit: vca_net::RateLimitConfig {
+            max_failures: 100,
+            window_ms: 60_000,
+            lockout_ms: 60_000,
+        },
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let qr = ts.qr(Scope::Command);
+    // Missing codes are not guesses and do not count.
+    for _ in 0..3 {
+        let r = try_pair(&qr, None).await;
+        assert_eq!(auth_err(r), AuthFailure::TotpRequired);
+    }
+    for _ in 1..vca_net::MAX_PAIRING_CODE_ATTEMPTS {
+        let r = try_pair(&qr, Some("000000".into())).await;
+        assert_eq!(auth_err(r), AuthFailure::InvalidTotp);
+    }
+    let r = try_pair(&qr, Some("000000".into())).await;
+    assert_eq!(auth_err(r), AuthFailure::PairingAttemptsExhausted);
+    assert!(ts.audit_contains(|e| matches!(
+        e,
+        AuditEvent::AuthFailed {
+            failure: AuthFailure::PairingAttemptsExhausted,
+            ..
+        }
+    )));
+    // Revoked: even the right code no longer pairs with this link.
+    let r = try_pair(&qr, Some(ts.totp_now())).await;
+    assert_eq!(auth_err(r), AuthFailure::InvalidPairingSecret);
+    // No device was left behind by any of the failures.
+    assert!(ts.server.registry().list().unwrap().is_empty());
+    assert!(!ts.audit_contains(|e| matches!(e, AuditEvent::DevicePaired { .. })));
+}
+
+#[tokio::test]
+async fn a_missing_code_does_not_count_against_the_ip() {
+    let config = ServerConfig {
+        auth_rate_limit: vca_net::RateLimitConfig {
+            max_failures: 5,
+            window_ms: 60_000,
+            lockout_ms: 60_000,
+        },
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let qr = ts.qr(Scope::Command);
+    // The app's first try has no code: that is not a guess.
+    for _ in 0..3 {
+        let r = try_pair(&qr, None).await;
+        assert_eq!(auth_err(r), AuthFailure::TotpRequired);
+    }
+    // Four wrong codes used to lock the IP after one blind attempt. Here the
+    // per-secret limit is still what ends this link.
+    for _ in 0..4 {
+        let r = try_pair(&qr, Some("000000".into())).await;
+        assert_eq!(auth_err(r), AuthFailure::InvalidTotp);
+    }
+    assert!(!ts.audit_contains(|e| matches!(e, AuditEvent::RateLimited { .. })));
+    let r = try_pair(&qr, Some(ts.totp_now())).await;
+    assert!(r.is_ok(), "the owner still gets in");
+    let _ = ts;
+}
+
+#[tokio::test]
+async fn pairing_without_totp_policy_spends_the_secret_once() {
+    let mut ts = TestServer::start(ServerConfig {
+        require_totp: false,
+        ..Default::default()
+    })
+    .await;
+    let qr = ts.qr(Scope::View);
+    let _ok = try_pair(&qr, None).await.unwrap();
+    let _ = ts.next_conn().await;
+    let again = try_pair(&qr, None).await;
+    assert_eq!(auth_err(again), AuthFailure::InvalidPairingSecret);
+    assert_eq!(ts.server.registry().list().unwrap().len(), 1);
 }
 
 #[tokio::test]
@@ -571,7 +743,11 @@ async fn large_messages_are_chunked() {
         id: 5,
         body: ClientMsg::SendInput {
             session_id: "s1".into(),
-            input: Input::Text { text, submit: true },
+            input: Input::Text {
+                text,
+                submit: true,
+                at_prompt: false,
+            },
         },
     };
     client.send(&up).await.unwrap();
@@ -669,7 +845,8 @@ async fn failed_attempts_are_rate_limited() {
         auth_rate_limit: vca_net::RateLimitConfig {
             max_failures: 3,
             window_ms: 60_000,
-            lockout_ms: 60_000,
+            // Shorter than the 60 s pairing TTL, so the QR code outlives it.
+            lockout_ms: 30_000,
         },
         ..Default::default()
     };
@@ -702,7 +879,7 @@ async fn failed_attempts_are_rate_limited() {
     assert_eq!(auth_err(r), AuthFailure::RateLimited);
     assert!(ts.audit_contains(|e| matches!(e, AuditEvent::RateLimited { .. })));
     // After the lockout the genuine secret works.
-    ts.clock.advance_secs(61);
+    ts.clock.advance_secs(31);
     let r = ClientConnection::connect(
         ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
         ClientAuth::Pair {
@@ -714,6 +891,195 @@ async fn failed_attempts_are_rate_limited() {
     )
     .await;
     assert!(r.is_ok());
+}
+
+/// Failures from an address must not lock out a device that proved its key:
+/// anyone can fail from a shared address, and behind a tunnel everybody
+/// shares one.
+#[tokio::test]
+async fn a_lockout_of_the_address_leaves_paired_devices_alone() {
+    let config = ServerConfig {
+        auth_rate_limit: vca_net::RateLimitConfig {
+            max_failures: 3,
+            window_ms: 600_000,
+            lockout_ms: 600_000,
+        },
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let qr = ts.qr(Scope::View);
+    let device = StaticKeypair::generate();
+    let mut paired = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, device.clone()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "p".into(),
+            platform: "test".into(),
+            totp: Some(ts.totp_now()),
+        },
+    )
+    .await
+    .unwrap();
+    let tokens = paired.session.tokens.clone().unwrap();
+    paired.close().await;
+
+    let qr = ts.qr(Scope::View);
+    for _ in 0..3 {
+        let r = ClientConnection::connect(
+            ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+            ClientAuth::Pair {
+                secret: Zeroizing::new(vec![0; 18]),
+                device_name: "x".into(),
+                platform: "test".into(),
+                totp: None,
+            },
+        )
+        .await;
+        assert_eq!(auth_err(r), AuthFailure::InvalidPairingSecret);
+    }
+    // The address is locked for strangers...
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "x".into(),
+            platform: "test".into(),
+            totp: None,
+        },
+    )
+    .await;
+    assert_eq!(auth_err(r), AuthFailure::RateLimited);
+    // ...and not for the device, by token or by key.
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, device.clone()).unwrap(),
+        ClientAuth::AccessToken(tokens.access_token.clone()),
+    )
+    .await;
+    assert!(r.is_ok(), "the token flow stays open");
+    r.unwrap().close().await;
+    // A code of a new time step: the one used for pairing cannot repeat.
+    ts.clock.advance_secs(30);
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, device).unwrap(),
+        ClientAuth::Login {
+            totp: Some(ts.totp_now()),
+            backup_code: None,
+        },
+    )
+    .await;
+    assert!(r.is_ok(), "the device key flow stays open");
+}
+
+/// A peer that connects and never starts the upgrade gives its slot back.
+#[tokio::test]
+async fn a_silent_peer_gives_its_slot_back() {
+    let config = ServerConfig {
+        max_pre_auth: 1,
+        upgrade_timeout: Duration::from_millis(100),
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let qr = ts.qr(Scope::View);
+    let url = url::Url::parse(&qr.endpoints[0]).unwrap();
+    let addr = format!("{}:{}", url.host_str().unwrap(), url.port().unwrap());
+    let _silent = tokio::net::TcpStream::connect(addr).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "p".into(),
+            platform: "test".into(),
+            totp: Some(ts.totp_now()),
+        },
+    )
+    .await;
+    assert!(r.is_ok());
+}
+
+/// Junk must not stop the owner's real code: the secret is what counts.
+#[tokio::test]
+async fn wrong_secrets_do_not_lock_out_the_right_one() {
+    let config = ServerConfig {
+        pairing_rate_limit: vca_net::RateLimitConfig {
+            max_failures: 2,
+            window_ms: 600_000,
+            lockout_ms: 600_000,
+        },
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let qr = ts.qr(Scope::View);
+    let mut failures = Vec::new();
+    for _ in 0..3 {
+        let r = ClientConnection::connect(
+            ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+            ClientAuth::Pair {
+                secret: Zeroizing::new(vec![0; 18]),
+                device_name: "x".into(),
+                platform: "test".into(),
+                totp: None,
+            },
+        )
+        .await;
+        failures.push(auth_err(r));
+    }
+    assert_eq!(failures[2], AuthFailure::RateLimited);
+    ts.clock.advance_secs(1);
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "p".into(),
+            platform: "test".into(),
+            totp: Some(ts.totp_now()),
+        },
+    )
+    .await;
+    assert!(r.is_ok(), "the owner's code still works");
+}
+
+/// Connections that never sign in cannot fill the slots of devices.
+#[tokio::test]
+async fn anonymous_connections_do_not_take_the_slots_of_devices() {
+    let config = ServerConfig {
+        max_connections: 1,
+        max_pre_auth: 1,
+        ..Default::default()
+    };
+    let ts = TestServer::start(config).await;
+    let url = ts.qr(Scope::View).endpoints[0].clone();
+    // One connection from this address sits in the handshake...
+    let (_idle, _) = tokio_tungstenite::connect_async(url.as_str())
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    // ...and with the pool this small a second one is turned away.
+    let qr = ts.qr(Scope::View);
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "p".into(),
+            platform: "test".into(),
+            totp: Some(ts.totp_now()),
+        },
+    )
+    .await;
+    assert!(r.is_err(), "one source holds at most its own share");
+    drop(_idle);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let r = ClientConnection::connect(
+        ClientConfig::from_pairing(&qr, 0, StaticKeypair::generate()).unwrap(),
+        ClientAuth::Pair {
+            secret: qr.secret.clone(),
+            device_name: "p".into(),
+            platform: "test".into(),
+            totp: Some(ts.totp_now()),
+        },
+    )
+    .await;
+    assert!(r.is_ok(), "the only slot was not taken by the stranger");
 }
 
 #[tokio::test]
@@ -784,6 +1150,7 @@ async fn login_without_totp_when_policy_allows() {
             profile: None,
             args: vec![],
             display_name: None,
+            fresh: false,
         }
     }));
 }

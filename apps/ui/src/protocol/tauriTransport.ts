@@ -3,9 +3,10 @@
  * side owns the Noise channel; this class only (de)serializes envelopes and
  * matches responses to requests.
  */
+import { diag } from '../diag/log';
 import { bridge, NativeError, type LinkState, type LinkStatus } from '../native/bridge';
 import { decodeMsgpack, encodeMsgpack } from './codec';
-import type { ConnectionState, Transport, Unsubscribe } from './transport';
+import { requestIdsOf, type ConnectionState, type Transport, type Unsubscribe } from './transport';
 import type { ClientMsg, Envelope, ServerMsg } from './types';
 
 export interface TauriTransportOptions {
@@ -13,9 +14,55 @@ export interface TauriTransportOptions {
   connectTimeoutMs?: number;
   /** Default request timeout (default 30 s). */
   requestTimeoutMs?: number;
-  /** Timeout for `transcribe` requests, which upload audio (default 120 s). */
+  /**
+   * A fixed timeout for `transcribe` requests. By default it is sized for
+   * the audio (`transcribeTimeoutFor`).
+   */
   transcribeTimeoutMs?: number;
+  /**
+   * A request sent after the link has been silent this long is preceded by a
+   * `ping` (default `QUIET_PROBE_MS`; `0` turns the probe off).
+   */
+  quietProbeMs?: number;
+  /** How long that `ping` may take before the link counts as dead (default `PROBE_TIMEOUT_MS`). */
+  probeTimeoutMs?: number;
+  /** Injectable clock (tests). */
+  now?: () => number;
 }
+
+/**
+ * Upload rate a `transcribe` timeout allows for: 8 bytes per ms (64 kbit/s,
+ * a weak mobile uplink). 16 kHz 16-bit WAV is 32 bytes per ms of speech.
+ */
+export const SLOW_UPLINK_BYTES_PER_MS = 8;
+/** Recognition time allowed on top of the upload: a final chunk may get an LLM pass. */
+export const TRANSCRIBE_BASE_MS = { final: 45_000, interim: 20_000 } as const;
+/** Longest `transcribe` timeout. */
+export const TRANSCRIBE_MAX_MS = 120_000;
+
+/**
+ * Timeout for a `transcribe` request, sized for its audio: a 0.5 s wake check
+ * gets ~22 s, a 5 s final chunk ~65 s, a 15 s chunk ~105 s. A
+ * fixed two minutes left a wake check or a preview on a dead link hanging
+ * (the Voco listener handles one utterance at a time).
+ */
+export function transcribeTimeoutFor(body: ClientMsg): number {
+  if (body.type !== 'transcribe') return TRANSCRIBE_MAX_MS;
+  const base = body.final ? TRANSCRIBE_BASE_MS.final : TRANSCRIBE_BASE_MS.interim;
+  return Math.min(
+    TRANSCRIBE_MAX_MS,
+    Math.round(base + body.audio.length / SLOW_UPLINK_BYTES_PER_MS),
+  );
+}
+
+/**
+ * Silence after which the next request first checks the link. A phone that
+ * slept or changed networks keeps a dead link "connected" until the
+ * heartbeat gives up (up to a minute): a dictation sent then was lost.
+ */
+export const QUIET_PROBE_MS = 30_000;
+/** A `pong` slower than this means the link is dead: it is reopened. */
+export const PROBE_TIMEOUT_MS = 8_000;
 
 interface Pending {
   resolve(msg: ServerMsg): void;
@@ -47,7 +94,14 @@ export class TauriTransport implements Transport {
   private generation = 0;
   private readonly connectTimeoutMs: number;
   private readonly requestTimeoutMs: number;
-  private readonly transcribeTimeoutMs: number;
+  private readonly transcribeTimeoutMs: number | null;
+  private readonly quietProbeMs: number;
+  private readonly probeTimeoutMs: number;
+  private readonly now: () => number;
+  /** When the link last delivered something (or came up). */
+  private lastRxAt = 0;
+  /** The running liveness probe, sent ahead of the request that started it. */
+  private probe: Promise<void> | null = null;
 
   constructor(
     readonly machineId: string,
@@ -55,7 +109,10 @@ export class TauriTransport implements Transport {
   ) {
     this.connectTimeoutMs = options.connectTimeoutMs ?? 20_000;
     this.requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
-    this.transcribeTimeoutMs = options.transcribeTimeoutMs ?? 120_000;
+    this.transcribeTimeoutMs = options.transcribeTimeoutMs ?? null;
+    this.quietProbeMs = options.quietProbeMs ?? QUIET_PROBE_MS;
+    this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
+    this.now = options.now ?? Date.now;
   }
 
   get state(): ConnectionState {
@@ -89,7 +146,12 @@ export class TauriTransport implements Transport {
       if (this.connecting === promise) this.connecting = null;
     };
     promise.then(settle, settle);
+    this.open(generation);
+    return promise;
+  }
 
+  /** Opens the native link for `generation` once the previous one is closed. */
+  private open(generation: number): void {
     void this.disconnecting.then(() => {
       if (generation !== this.generation) return;
       bridge
@@ -108,11 +170,65 @@ export class TauriTransport implements Transport {
           if (this._state !== 'connected') this.setState('disconnected');
         });
     });
-    return promise;
+  }
+
+  /**
+   * Replaces a link that stopped answering with a fresh one. Its pending
+   * requests fail now (callers may retry once it is back) instead of waiting
+   * for the heartbeat; listeners see `reconnecting`, then `connected`.
+   */
+  private recycle(): void {
+    diag('link.recycle', { pending: this.pending.size });
+    const generation = ++this.generation;
+    this.probe = null;
+    this.rejectAll(new Error('connection lost (no answer)'));
+    this.setState('reconnecting');
+    this.disconnecting = bridge.disconnect(this.machineId).catch(() => {});
+    this.open(generation);
+  }
+
+  /**
+   * After a quiet spell, a `ping` goes out ahead of the next request. No
+   * `pong` within `probeTimeoutMs` (while nothing else arrived either) means
+   * the link is dead: it is recycled.
+   */
+  private probeIfQuiet(): Promise<void> | null {
+    if (this.quietProbeMs <= 0 || this.probe) return this.probe;
+    const quietMs = this.now() - this.lastRxAt;
+    // With a request still pending the silence may be a slow server (the
+    // ping would queue behind it), not a dead link.
+    if (quietMs < this.quietProbeMs || this.pending.size > 0) return null;
+    const generation = this.generation;
+    const sentAt = this.now();
+    const ping: Envelope<ClientMsg> = {
+      id: requestIdsOf(this).allocate(),
+      body: { type: 'ping', at: sentAt },
+    };
+    const sent = this.dispatch(ping, this.probeTimeoutMs);
+    const done = sent.reply.then(
+      () => diag('link.probe.ok', { quietMs, ms: this.now() - sentAt }),
+      (err: Error) => {
+        if (generation !== this.generation || this._state !== 'connected') return;
+        // Anything heard meanwhile (e.g. a slow server answered something
+        // else) shows the link itself is alive.
+        if (this.lastRxAt > sentAt) return;
+        diag('link.probe.dead', { quietMs, error: err.message });
+        this.recycle();
+      },
+    );
+    // The request waits only until the ping is handed to the link (so it goes
+    // first), not for the pong.
+    const handedOver = sent.handedOver;
+    this.probe = handedOver;
+    void done.finally(() => {
+      if (this.probe === handedOver) this.probe = null;
+    });
+    return handedOver;
   }
 
   disconnect(): void {
     this.generation += 1;
+    this.probe = null;
     this.failWaiter(new NativeError('disconnected', 'disconnected'));
     this.rejectAll(new Error('disconnected'));
     this.setState('disconnected');
@@ -124,28 +240,51 @@ export class TauriTransport implements Transport {
     if (this.pending.has(envelope.id)) {
       return Promise.reject(new Error(`request id ${envelope.id} is already pending`));
     }
+    const timeoutMs =
+      envelope.body.type === 'transcribe'
+        ? (this.transcribeTimeoutMs ?? transcribeTimeoutFor(envelope.body))
+        : this.requestTimeoutMs;
+    const probe = envelope.body.type === 'ping' ? null : this.probeIfQuiet();
+    return this.dispatch(envelope, timeoutMs, probe).reply;
+  }
+
+  /**
+   * Registers `envelope` as pending and hands it to the native link (after
+   * `after`, when given). `handedOver` settles once the link took it.
+   */
+  private dispatch(
+    envelope: Envelope<ClientMsg>,
+    timeoutMs: number,
+    after: Promise<void> | null = null,
+  ): { reply: Promise<ServerMsg>; handedOver: Promise<void> } {
     let bytes: Uint8Array;
     try {
       bytes = encodeMsgpack(envelope);
     } catch (err) {
-      return Promise.reject(err as Error);
+      return { reply: Promise.reject(err as Error), handedOver: Promise.resolve() };
     }
-    const timeoutMs =
-      envelope.body.type === 'transcribe' ? this.transcribeTimeoutMs : this.requestTimeoutMs;
-    return new Promise<ServerMsg>((resolve, reject) => {
+    let handedOver: Promise<void> = Promise.resolve();
+    const reply = new Promise<ServerMsg>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(envelope.id);
         reject(new Error(`request timed out (${envelope.body.type})`));
       }, timeoutMs);
       this.pending.set(envelope.id, { resolve, reject, timer });
-      bridge.send(this.machineId, bytes).catch((err: Error) => {
+      const fail = (err: Error) => {
         const entry = this.pending.get(envelope.id);
         if (!entry) return;
         clearTimeout(entry.timer);
         this.pending.delete(envelope.id);
         reject(err);
-      });
+      };
+      const hand = () => {
+        // Failed or answered meanwhile (e.g. the link was recycled).
+        if (!this.pending.has(envelope.id)) return Promise.resolve();
+        return bridge.send(this.machineId, bytes).then(() => undefined, fail);
+      };
+      handedOver = after ? after.then(hand, hand) : hand();
     });
+    return { reply, handedOver };
   }
 
   onMessage(listener: (envelope: Envelope<ServerMsg>) => void): Unsubscribe {
@@ -171,6 +310,7 @@ export class TauriTransport implements Transport {
     if (next !== 'connected') this.rejectAll(new Error(status.error ?? status.state));
     this.setState(next);
     if (status.state === 'connected') {
+      this.lastRxAt = this.now();
       const waiter = this.waiter;
       if (waiter) {
         clearTimeout(waiter.timer);
@@ -188,6 +328,7 @@ export class TauriTransport implements Transport {
   }
 
   private handleBytes(bytes: Uint8Array): void {
+    this.lastRxAt = this.now();
     let envelope: Envelope<ServerMsg>;
     try {
       envelope = decodeMsgpack(bytes);
@@ -225,6 +366,7 @@ export class TauriTransport implements Transport {
 
   private setState(state: ConnectionState): void {
     if (state === this._state) return;
+    diag('link.state', { from: this._state, to: state, pending: this.pending.size });
     this._state = state;
     for (const l of [...this.stateListeners]) l(state);
   }

@@ -82,6 +82,24 @@ export class MachineRegistry {
     }
   }
 
+  // Local machine management: the shell returns the new list.
+  async rename(machineId: string, alias: string | null): Promise<void> {
+    this.apply(await bridge.renameMachine(machineId, alias?.trim() || null), null);
+  }
+
+  async setDefault(machineId: string | null): Promise<void> {
+    this.apply(await bridge.setDefaultMachine(machineId), null);
+  }
+
+  async move(machineId: string, offset: number): Promise<void> {
+    this.apply(await bridge.moveMachine(machineId, offset), null);
+  }
+
+  /** The machine chosen to open on launch, if any. */
+  defaultId(): string | undefined {
+    return this.infos().find((i) => i.isDefault)?.id;
+  }
+
   private infos(): MachineInfo[] {
     return this.snapshot.machines.flatMap((m) => (m.native ? [m.native.info] : []));
   }
@@ -97,7 +115,8 @@ export class MachineRegistry {
       const transport = existing?.transport ?? new TauriTransport(info.id, this.transportOptions);
       const machine: Machine = {
         id: info.id,
-        name: info.name,
+        // The local alias wins over the server's name everywhere.
+        name: info.alias || info.name,
         connectivity: describeEndpoints(info.endpoints),
         transport,
         native: {

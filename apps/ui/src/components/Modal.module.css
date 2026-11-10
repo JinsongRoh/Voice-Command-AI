@@ -17,6 +17,14 @@
   box-shadow: var(--shadow-lg);
   outline: none;
 }
+@media (max-width: 639px) {
+  .full {
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+  }
+}
 @media (min-width: 640px) {
   .backdrop {
     align-items: center;
@@ -25,6 +33,9 @@
   .dialog {
     max-width: 520px;
     border-radius: var(--radius);
+  }
+  .wide {
+    max-width: 760px;
   }
 }
 .header {

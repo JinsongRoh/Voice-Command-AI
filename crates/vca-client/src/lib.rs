@@ -12,11 +12,17 @@
 //!   with jitter, and clear terminal states ([`LinkState::LoginRequired`],
 //!   revoked device, kill switch) reported through a [`LinkSink`].
 //!
+//! * **DNSPilot app-mode tunnels** ([`dnspilot`]): the per-install TLS
+//!   client certificate presented to known tunnel hosts, the DNSPilot OAuth
+//!   device flow and the tunnel setup steps.
+//!
 //! It does not depend on any UI framework.
 
 mod backoff;
+pub mod dnspilot;
 mod error;
 mod hub;
+pub mod push;
 mod store;
 
 use serde::{Deserialize, Serialize};
@@ -46,6 +52,21 @@ pub struct MachineInfo {
     pub scope: Scope,
     /// When the device was paired, Unix milliseconds.
     pub paired_at: u64,
+    // --- Local machine management (client-side only; all default so older
+    // files load). ---
+    /// Display alias chosen on this device (sanitized, 1-64 characters).
+    #[serde(default)]
+    pub alias: Option<String>,
+    /// The machine the app opens on launch (at most one).
+    #[serde(default)]
+    pub is_default: bool,
+    /// Last successful authentication, Unix milliseconds.
+    #[serde(default)]
+    pub last_connected: Option<u64>,
+    /// Short fingerprint of the pinned server key (derived from the stored
+    /// key whenever machines are listed; display only).
+    #[serde(default)]
+    pub server_fingerprint: String,
 }
 
 /// State of one machine connection.

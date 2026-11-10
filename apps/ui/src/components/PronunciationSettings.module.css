@@ -1,0 +1,95 @@
+.box {
+  margin: 8px 0 12px;
+}
+.box > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.hint {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.problem {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.item {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+.term {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.arrow {
+  color: var(--text-muted);
+}
+.spoken {
+  overflow-wrap: anywhere;
+}
+.source {
+  font-size: 11px;
+}
+.buttons {
+  margin-inline-start: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+.spokenRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.spokenRow input {
+  flex: 1;
+  min-width: 0;
+}
+.editor > button {
+  align-self: flex-start;
+}
+.recording {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

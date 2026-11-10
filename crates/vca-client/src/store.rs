@@ -60,6 +60,14 @@ pub(crate) struct StoredMachine {
 }
 
 impl StoredMachine {
+    /// The metadata handed to the UI, with the derived key fingerprint.
+    pub fn public_info(&self) -> MachineInfo {
+        MachineInfo {
+            server_fingerprint: self.server_key.fingerprint().short(),
+            ..self.info.clone()
+        }
+    }
+
     fn is_consistent(&self) -> bool {
         is_valid_server_id(&self.info.id) && server_id(&self.server_key) == self.info.id
     }
@@ -135,17 +143,20 @@ pub(crate) fn load(dir: &Path) -> Result<Vec<StoredMachine>, ClientError> {
 /// Writes the machines atomically (temporary file + rename), owner-only on
 /// Unix.
 pub(crate) fn save(dir: &Path, machines: &[StoredMachine]) -> Result<(), ClientError> {
-    create_private_dir(dir)?;
     let file = MachinesFile {
         version: FILE_VERSION,
         machines: machines.to_vec(),
     };
     let data = serde_json::to_vec_pretty(&file).map_err(ClientError::storage)?;
-    let path = machines_path(dir);
-    let tmp = dir.join(format!(
-        ".{MACHINES_FILE}.{}.tmp",
-        uuid::Uuid::new_v4().simple()
-    ));
+    write_private(dir, MACHINES_FILE, &data)
+}
+
+/// Writes `dir/name` atomically (temporary file + rename), owner-only on
+/// Unix. For non-secret metadata only.
+pub(crate) fn write_private(dir: &Path, name: &str, data: &[u8]) -> Result<(), ClientError> {
+    create_private_dir(dir)?;
+    let path = dir.join(name);
+    let tmp = dir.join(format!(".{name}.{}.tmp", uuid::Uuid::new_v4().simple()));
     let mut opts = std::fs::OpenOptions::new();
     opts.write(true).create_new(true);
     #[cfg(unix)]
@@ -155,7 +166,7 @@ pub(crate) fn save(dir: &Path, machines: &[StoredMachine]) -> Result<(), ClientE
     }
     let result = (|| -> std::io::Result<()> {
         let mut f = opts.open(&tmp)?;
-        f.write_all(&data)?;
+        f.write_all(data)?;
         f.sync_all()?;
         drop(f);
         std::fs::rename(&tmp, &path)
@@ -184,6 +195,10 @@ mod tests {
                 device_id: "dev1".into(),
                 scope: Scope::Command,
                 paired_at: 1,
+                alias: None,
+                is_default: false,
+                last_connected: None,
+                server_fingerprint: String::new(),
             },
             server_key: *key.public(),
         }

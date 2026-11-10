@@ -35,6 +35,36 @@ impl From<&DiscoveredSession> for SessionLocator {
     }
 }
 
+/// Slack for clocks and file systems that round times (FAT keeps two
+/// seconds).
+const NEW_TRANSCRIPT_SLACK_MS: u64 = 2_000;
+
+/// The newest of `files` created at or after `since` (Unix milliseconds).
+/// Where the file system has no creation time the last write counts.
+pub(crate) fn newest_file_since(
+    files: impl IntoIterator<Item = PathBuf>,
+    since: vca_core::UnixMillis,
+) -> Option<PathBuf> {
+    let millis = |t: std::time::SystemTime| {
+        t.duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+    };
+    let floor = since.saturating_sub(NEW_TRANSCRIPT_SLACK_MS);
+    files
+        .into_iter()
+        .filter_map(|p| {
+            let meta = std::fs::metadata(&p).ok()?;
+            if !meta.is_file() {
+                return None;
+            }
+            let modified = meta.modified().ok().map(millis)?;
+            let born = meta.created().ok().map_or(modified, millis);
+            (born >= floor).then_some((modified, p))
+        })
+        .max_by_key(|(modified, _)| *modified)
+        .map(|(_, p)| p)
+}
+
 /// Integration with one local coding agent (architecture §5).
 ///
 /// Adapters are independent of the server: they do not own PTYs or
@@ -61,6 +91,20 @@ pub trait AgentAdapter: Send + Sync {
     /// Reads the full stored history of a session.
     async fn read_history(&self, _session: &SessionLocator) -> Result<Vec<HistoryItem>> {
         Err(self.unsupported("reading history"))
+    }
+
+    /// The transcript of a session this agent started in `cwd` at or after
+    /// `since` (Unix milliseconds), for a session VCA launched whose hooks
+    /// never reported it. The newest such transcript wins; transcripts of
+    /// the agent session ids in `taken` belong to other sessions and are
+    /// skipped. Blocking (reads folders).
+    fn new_transcript_since(
+        &self,
+        _cwd: &std::path::Path,
+        _since: vca_core::UnixMillis,
+        _taken: &[String],
+    ) -> Option<SessionLocator> {
+        None
     }
 
     /// Follows a session's transcript and streams new items. With

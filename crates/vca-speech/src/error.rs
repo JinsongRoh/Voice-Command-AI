@@ -15,8 +15,9 @@ pub enum SpeechError {
     #[error("configuration error: {0}")]
     Config(String),
     /// Transport-level HTTP failure (connection refused, timeout, ...).
+    /// Built through `From`, which drops the URL (it can carry an API key).
     #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(#[source] reqwest::Error),
     /// The remote STT service answered with an error status.
     #[error("speech service returned {status}: {message}")]
     Api { status: u16, message: String },
@@ -34,6 +35,13 @@ pub enum SpeechError {
 }
 
 impl SpeechError {
+    /// The speech server could not be reached (connection refused or
+    /// reset, or no answer before the timeout), as opposed to a server that
+    /// answered with an error. Usually brief: the user can simply retry.
+    pub fn is_unreachable(&self) -> bool {
+        matches!(self, Self::Http(e) if crate::retry::is_transient(e))
+    }
+
     /// Maps the error to the shared protocol error code.
     pub fn code(&self) -> ErrorCode {
         match self {
@@ -50,6 +58,14 @@ impl SpeechError {
             },
             Self::Decode(_) | Self::Engine(_) | Self::Io(_) => ErrorCode::Internal,
         }
+    }
+}
+
+impl From<reqwest::Error> for SpeechError {
+    /// Without the URL: a Google API key travels as `?key=`, and this
+    /// error's text reaches logs and clients.
+    fn from(err: reqwest::Error) -> Self {
+        Self::Http(err.without_url())
     }
 }
 

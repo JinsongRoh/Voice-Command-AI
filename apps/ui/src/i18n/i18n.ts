@@ -1,6 +1,12 @@
 /**
  * Tiny dictionary-based i18n. English (`en.json`) is the source language and
  * the fallback for every missing key. Placeholders use `{name}` syntax.
+ *
+ * Plurals: with a numeric `{count}`, a key `<key>_one` (etc., by
+ * `Intl.PluralRules`) of the same language is used when it exists, so
+ * "1 unhandled alert" and "3 unhandled alerts" come from `alerts.count_one`
+ * and `alerts.count`. Languages without plural forms (ko, ja) always use the
+ * plain key; their `_one` entries only mirror it to keep the key sets equal.
  */
 import en from './en.json';
 import es from './es.json';
@@ -47,8 +53,28 @@ export function interpolate(template: string, vars?: Vars): string {
   );
 }
 
+const pluralRules = new Map<Locale, Intl.PluralRules>();
+
+/** The plural variant of `key` for `count` in this language, if it has one. */
+function pluralTemplate(locale: Locale, key: MessageKey, count: number): string | undefined {
+  let rules = pluralRules.get(locale);
+  if (!rules) {
+    rules = new Intl.PluralRules(locale);
+    pluralRules.set(locale, rules);
+  }
+  const form = rules.select(count);
+  if (form === 'other') return undefined;
+  // Never another language's variant: a missing one falls back to the plain key.
+  return DICTIONARIES[locale][`${key}_${form}` as MessageKey];
+}
+
 export function translate(locale: Locale, key: MessageKey, vars?: Vars): string {
-  const template = DICTIONARIES[locale][key] ?? en[key] ?? key;
+  const count = vars?.count;
+  const template =
+    (typeof count === 'number' ? pluralTemplate(locale, key, count) : undefined) ??
+    DICTIONARIES[locale][key] ??
+    en[key] ??
+    key;
   return interpolate(template, vars);
 }
 

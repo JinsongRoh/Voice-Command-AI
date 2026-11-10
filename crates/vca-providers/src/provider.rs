@@ -64,7 +64,7 @@ pub enum EndpointKind {
     CloudflareQuick,
     /// Cloudflare named tunnel with the user's hostname.
     CloudflareNamed,
-    /// DNS Pilot tunnel in `app` access mode.
+    /// DNSPilot tunnel in `app` access mode.
     DnsPilotApp,
     /// User-supplied URL.
     Custom,
@@ -72,7 +72,7 @@ pub enum EndpointKind {
 
 /// An address paired devices use to reach the server.
 ///
-/// Every endpoint is an untrusted transport (DNS Pilot design consequence
+/// Every endpoint is an untrusted transport (DNSPilot design consequence
 /// C1): VCA's Noise channel and device authentication apply on top of it,
 /// whether or not the transport has TLS.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -89,6 +89,13 @@
   margin: 0 0 12px;
   color: var(--danger);
 }
+/* The raw error code, for support. */
+.errorCode {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 .success {
   margin: 0 0 12px;
   font-weight: var(--fw-semibold);
@@ -97,4 +104,68 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.dnspilot {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.dnspilot h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.notice {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+}
+.cameraSettings {
+  margin: 0 0 12px;
+}
+
+/* QR scanning (phone apps). The camera is drawn natively *behind* the
+   webview, so while it runs the page is made transparent and hidden; only
+   this overlay (viewfinder, hint, Cancel) stays visible. */
+:global(html.vca-scanning),
+:global(html.vca-scanning body),
+:global(html.vca-scanning #root) {
+  background: transparent !important;
+}
+:global(html.vca-scanning #root) {
+  visibility: hidden;
+}
+.scanOverlay {
+  visibility: visible;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: max(env(safe-area-inset-top), var(--space-6)) var(--space-4)
+    max(env(safe-area-inset-bottom), var(--space-6));
+  color: #ffffff;
+  text-align: center;
+}
+.scanFrame {
+  width: min(70vw, 280px);
+  aspect-ratio: 1;
+  border: 3px solid #ffffff;
+  border-radius: var(--radius-lg);
+  /* Dims the camera picture around the viewfinder. */
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 45%);
+}
+.scanHint {
+  position: relative;
+  margin: 0;
+  max-width: 32ch;
+  font-weight: var(--fw-semibold);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+.scanOverlay > button {
+  position: relative;
 }

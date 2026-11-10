@@ -13,7 +13,10 @@ use crate::admission::{AdmissionController, AdmissionEvent, Liveness, MachineInf
 use crate::clock::{Clock, LoadSample, LoadSource, SystemClock};
 use crate::contain::{ContainError, OsProcessControl, Priority, ProcessControl, Scope};
 use crate::ipc::{ConnectionOptions, IpcEndpoint, IpcServer};
-use crate::monitor::{Monitor, MonitorConfig, QueueProvider, SessionRegistry};
+use crate::monitor::{
+    Activity, BusyProvider, Monitor, MonitorConfig, MonitorOnlyRegistry, QueueProvider,
+    ResourceDemand, ResourceViewer, SessionRegistry,
+};
 use crate::policy::{Policy, ThresholdAction};
 use crate::watcher::{AlertLevel, Decision, ThresholdWatcher};
 
@@ -103,6 +106,11 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 /// The resource broker. Dropping it stops its background tasks.
 pub struct Broker {
+    /// Display only. Kept out of `Inner` on purpose: the code that acts on
+    /// processes has no access to it.
+    monitored: MonitorOnlyRegistry,
+    /// Clients looking at the resource figures; sets the monitor's pace.
+    demand: ResourceDemand,
     inner: Arc<Inner>,
     monitor: Option<Monitor>,
     tasks: Vec<JoinHandle<()>>,
@@ -135,7 +143,20 @@ impl Broker {
         );
         let admission = broker.inner.admission.clone();
         let queue: QueueProvider = Arc::new(move || admission.queue());
-        let monitor = Monitor::spawn(config.monitor, sessions, Some(queue));
+        // Queued or running jobs wait on load figures: keep them fresh.
+        let admission = broker.inner.admission.clone();
+        let busy: BusyProvider =
+            Arc::new(move || !admission.queue().is_empty() || !admission.slots().is_empty());
+        let monitor = Monitor::spawn(
+            config.monitor,
+            sessions,
+            broker.monitored.clone(),
+            Some(queue),
+            Activity {
+                demand: broker.demand.clone(),
+                busy: Some(busy),
+            },
+        );
 
         let mut snapshots = monitor.subscribe();
         let monitor_load = monitor.load();
@@ -216,6 +237,8 @@ impl Broker {
         });
         Self {
             inner,
+            monitored: MonitorOnlyRegistry::default(),
+            demand: ResourceDemand::default(),
             monitor: None,
             tasks: vec![forward],
         }
@@ -235,6 +258,17 @@ impl Broker {
     pub fn unregister_session(&self, session_id: &SessionId) {
         self.inner.sessions.unregister(session_id);
         lock(&self.inner.watcher).forget(session_id);
+    }
+
+    /// Adds a session VCA did not start to the snapshots, for display only.
+    /// It is not registered: pause, resume, terminate and priority answer
+    /// `UnknownSession`, and the watcher never sees it.
+    pub fn monitor_session(&self, session_id: SessionId, root_pid: u32) {
+        self.monitored.add(session_id, root_pid);
+    }
+
+    pub fn unmonitor_session(&self, session_id: &SessionId) {
+        self.monitored.remove(session_id);
     }
 
     /// Marks the session the user is looking at; it is admitted first and
@@ -275,6 +309,18 @@ impl Broker {
         };
         snap.queue = self.inner.admission.queue();
         snap
+    }
+
+    /// Registers a client that looks at the resource figures, for as long
+    /// as the guard lives: the monitor samples at its full pace, disk and
+    /// network included, while any viewer exists.
+    pub fn resources_viewer(&self) -> ResourceViewer {
+        self.demand.viewer()
+    }
+
+    /// Clients looking at the resource figures now.
+    pub fn resource_viewers(&self) -> usize {
+        self.demand.viewers()
     }
 
     /// Snapshot updates (one per monitor interval), if a monitor runs.
@@ -409,11 +455,19 @@ impl Inner {
     async fn process_sample(&self, snapshot: &ResourceSnapshot, load: LoadSample) {
         let policy = lock(&self.policy).clone();
         let foreground = lock(&self.foreground).clone();
+        // Sessions VCA did not start never reach the watcher: no alert, no
+        // action is ever decided about them.
+        let managed: Vec<vca_core::SessionUsage> = snapshot
+            .sessions
+            .iter()
+            .filter(|s| !s.monitor_only)
+            .cloned()
+            .collect();
         let decisions = lock(&self.watcher).step(
             &policy,
             self.clock.now(),
             load,
-            &snapshot.sessions,
+            &managed,
             foreground.as_ref(),
         );
         for decision in decisions {
@@ -498,6 +552,53 @@ mod tests {
     use crate::contain::ContainResult;
     use vca_core::SessionUsage;
 
+    #[tokio::test]
+    async fn monitored_sessions_cannot_be_acted_on_by_hand() {
+        let (broker, rec, _) = make(Policy::default());
+        broker.monitor_session("seen".into(), 200);
+        let id: SessionId = "seen".into();
+        let refused = |r: Result<Vec<u32>, BrokerError>| {
+            assert!(matches!(r, Err(BrokerError::UnknownSession(_))), "{r:?}");
+        };
+        refused(broker.pause_session(&id, Scope::WholeTree).await);
+        refused(broker.resume_session(&id, Scope::WholeTree).await);
+        refused(broker.terminate_session(&id, Scope::WholeTree).await);
+        refused(
+            broker
+                .set_session_priority(&id, Scope::WholeTree, Priority::Low)
+                .await,
+        );
+        assert!(lock(&rec.0).is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_monitored_session_has_no_root_pid_to_act_on() {
+        // Every path that acts on a process needs a registered root pid.
+        let (broker, _, _) = make(Policy::default());
+        broker.monitor_session("seen".into(), 200);
+        assert_eq!(broker.inner.sessions.root_pid(&"seen".into()), None);
+        assert_eq!(broker.inner.sessions.root_pid(&"a".into()), Some(100));
+    }
+
+    #[tokio::test]
+    async fn pressure_never_touches_a_monitored_session() {
+        let mut policy = Policy::default();
+        policy.threshold.sustain_secs = 0;
+        policy.threshold.cooldown_secs = 0;
+        let (broker, rec, clock) = make(policy);
+        broker.unregister_session(&"a".into());
+        broker.monitor_session("a".into(), 100);
+        let mut heavy = snapshot();
+        heavy.sessions[0].monitor_only = true;
+        let mut rx = broker.subscribe_events();
+        for _ in 0..5 {
+            clock.advance_ms(1000);
+            broker.process_sample(&heavy, HIGH).await;
+        }
+        assert!(lock(&rec.0).is_empty());
+        assert!(actions(&mut rx).is_empty());
+    }
+
     #[derive(Default)]
     struct Recorder(Mutex<Vec<String>>);
 
@@ -559,6 +660,7 @@ mod tests {
                 cpu_percent: 50.0,
                 memory_bytes: 1 << 30,
                 process_count: 4,
+                monitor_only: false,
             }],
             queue: vec![],
         }
@@ -690,6 +792,49 @@ mod tests {
             }
         ));
         assert!(broker.snapshot().queue.is_empty());
+    }
+
+    #[tokio::test]
+    async fn started_broker_samples_slowly_without_viewers_or_sessions() {
+        let broker = Broker::start_with_control(
+            BrokerConfig {
+                monitor: MonitorConfig {
+                    interval: Duration::from_millis(20),
+                    idle_interval: Duration::from_secs(3600),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            Arc::new(Recorder::default()),
+        );
+        let rx = broker.subscribe_snapshots().unwrap();
+        // Waits for a new snapshot (the `at` changes); robust under load.
+        let changed = |timeout: Duration| {
+            let rx = rx.clone();
+            async move {
+                let start = rx.borrow().at;
+                let end = std::time::Instant::now() + timeout;
+                while std::time::Instant::now() < end {
+                    if rx.borrow().at != start {
+                        return true;
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+                false
+            }
+        };
+        let patience = Duration::from_secs(5);
+        let idle_check = Duration::from_millis(600);
+        assert!(changed(patience).await, "first sample");
+        assert!(!changed(idle_check).await, "idle: no new samples");
+        let viewer = broker.resources_viewer();
+        assert_eq!(broker.resource_viewers(), 1);
+        assert!(changed(patience).await, "a viewer resumes sampling");
+        assert!(changed(patience).await, "and keeps sampling");
+        drop(viewer);
+        assert_eq!(broker.resource_viewers(), 0);
+        changed(Duration::from_millis(100)).await;
+        assert!(!changed(idle_check).await, "idle again");
     }
 
     #[tokio::test]

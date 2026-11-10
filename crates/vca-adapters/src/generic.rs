@@ -250,6 +250,7 @@ mod tests {
             profile: None,
             args: vec!["get".into(), "pods".into()],
             display_name: None,
+            fresh: false,
         };
         let spec = generic.launch_spec(&req, None).unwrap();
         assert_eq!((spec.program.as_str(), spec.args.len()), ("kubectl", 2));

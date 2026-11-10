@@ -59,12 +59,18 @@ impl ProcTree {
     /// All descendants of `root` in breadth-first order (parents before
     /// children), excluding `root` itself. Robust against cycles.
     pub fn descendants(&self, root: u32) -> Vec<u32> {
+        self.descendants_until(root, &HashSet::new())
+    }
+
+    /// Like [`Self::descendants`], without the subtrees of the processes in
+    /// `stop` (nor those processes themselves).
+    pub fn descendants_until(&self, root: u32, stop: &HashSet<u32>) -> Vec<u32> {
         let mut out = Vec::new();
         let mut seen = HashSet::from([root]);
         let mut queue = VecDeque::from([root]);
         while let Some(pid) = queue.pop_front() {
             for &child in self.children.get(&pid).into_iter().flatten() {
-                if seen.insert(child) {
+                if !stop.contains(&child) && seen.insert(child) {
                     out.push(child);
                     queue.push_back(child);
                 }

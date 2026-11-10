@@ -1,0 +1,131 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.intro {
+  margin: 0;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.ok {
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.pending {
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  color: var(--st-input);
+  background: var(--st-input-bg);
+}
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.approval p {
+  margin: 0;
+}
+.code {
+  font-family: var(--font-mono, monospace);
+  font-size: 28px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.12em;
+}
+.steps {
+  margin: 0;
+  padding-inline-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.help {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.details summary {
+  cursor: pointer;
+}
+.tunnels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tunnel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.host {
+  word-break: break-all;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.inline input {
+  width: 8em;
+}
+.manual,
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.manual p,
+.next p {
+  margin: 0;
+}
+.copy {
+  word-break: break-all;
+  user-select: all;
+}
+.snippet {
+  margin: 0;
+  padding: 8px;
+  overflow-x: auto;
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  font-size: 13px;
+  user-select: all;
+}
+.fingerprint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  word-break: break-all;
+}

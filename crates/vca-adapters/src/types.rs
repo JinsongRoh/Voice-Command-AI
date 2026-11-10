@@ -138,6 +138,12 @@ pub struct HookStatus {
     pub entries: Vec<HookEntryStatus>,
     /// Backup written before the last change, if any.
     pub backup_path: Option<PathBuf>,
+    /// Programs the VCA hooks in the file run (the command before
+    /// `hook <agent>`, unquoted), in order of appearance and without
+    /// duplicates. Tells an outdated install apart from one that points to
+    /// another `vca`.
+    #[serde(default)]
+    pub programs: Vec<String>,
 }
 
 impl HookStatus {
@@ -169,23 +175,68 @@ pub enum HistoryItem {
         text: String,
         is_error: bool,
     },
+    /// A sub-agent started or ended, reported outside tool calls (Codex
+    /// `SubAgentActivity` events and final answers). Not shown in the chat.
+    /// Claude Code sub-agents are told from their `Task` / `Agent` tool
+    /// calls and task notifications instead (see [`crate::subagents`]).
+    Subagent {
+        at: Option<UnixMillis>,
+        /// The agent's id; `None` with `running: false` ends every
+        /// sub-agent of the session (the turn was aborted or failed).
+        id: Option<String>,
+        running: bool,
+    },
+    /// The agent asks the person a question form (Claude Code's
+    /// `AskUserQuestion` tool call `id`). Follows the call's
+    /// [`Self::ToolCall`]; the form is open until the call's result. Not
+    /// shown in the chat (the tool call is).
+    Question {
+        at: Option<UnixMillis>,
+        id: String,
+        questions: Vec<vca_core::Question>,
+    },
+    /// The transcript was rewritten in place (it shrank and is read again).
+    /// State derived from earlier items may be stale. Not shown in the chat.
+    Rewritten,
+    /// The agent's permission mode from here on (Claude Code's
+    /// `permission-mode` records: `default`, `acceptEdits`, `plan`, `auto`,
+    /// `dontAsk`, `bypassPermissions`). Not shown in the chat.
+    PermissionMode {
+        at: Option<UnixMillis>,
+        mode: String,
+    },
+    /// The agent's turn ended: it waits for the person (Claude Code's
+    /// `system` / `turn_duration` record). Not shown in the chat.
+    TurnEnd { at: Option<UnixMillis> },
+    /// The agent recorded a thinking block (Claude Code `thinking` /
+    /// `redacted_thinking`). A placeholder: its text is redacted or private
+    /// and never carried. Not shown in the chat; it feeds the turn's
+    /// progress ("Thinking…").
+    Thinking { at: Option<UnixMillis> },
 }
 
 impl HistoryItem {
     pub fn at(&self) -> Option<UnixMillis> {
         match self {
-            Self::Message { at, .. } | Self::ToolCall { at, .. } | Self::ToolResult { at, .. } => {
-                *at
-            }
+            Self::Message { at, .. }
+            | Self::ToolCall { at, .. }
+            | Self::ToolResult { at, .. }
+            | Self::Subagent { at, .. }
+            | Self::Question { at, .. }
+            | Self::PermissionMode { at, .. }
+            | Self::TurnEnd { at }
+            | Self::Thinking { at } => *at,
+            Self::Rewritten => None,
         }
     }
 
     /// Converts the item into a [`SessionEvent`] for the chat view. The
     /// server assigns `seq`; `fallback_at` is used when the agent did not
-    /// record a timestamp.
-    pub fn to_event(&self, seq: u64, fallback_at: UnixMillis) -> SessionEvent {
+    /// record a timestamp. `None` for bookkeeping items with no chat
+    /// bubble ([`Self::Subagent`], [`Self::Question`], [`Self::Rewritten`]).
+    pub fn to_event(&self, seq: u64, fallback_at: UnixMillis) -> Option<SessionEvent> {
         let at = self.at().unwrap_or(fallback_at);
-        match self {
+        Some(match self {
             Self::Message { role, text, .. } => SessionEvent::Message {
                 seq,
                 at,
@@ -208,7 +259,13 @@ impl HistoryItem {
                     text.clone()
                 },
             },
-        }
+            Self::Subagent { .. }
+            | Self::Question { .. }
+            | Self::Rewritten
+            | Self::PermissionMode { .. }
+            | Self::TurnEnd { .. }
+            | Self::Thinking { .. } => return None,
+        })
     }
 }
 
@@ -261,7 +318,8 @@ mod tests {
             text: "boom".into(),
             is_error: true,
         };
-        match item.to_event(7, 42) {
+        assert_eq!(HistoryItem::Rewritten.to_event(1, 2), None);
+        match item.to_event(7, 42).unwrap() {
             SessionEvent::Message {
                 seq,
                 at,

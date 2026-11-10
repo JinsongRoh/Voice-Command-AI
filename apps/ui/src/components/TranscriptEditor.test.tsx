@@ -113,3 +113,63 @@ describe('mirrorParts', () => {
     expect(mirrorParts('abc', [], 99)).toEqual([{ text: 'abc', mark: false, tail: true }]);
   });
 });
+
+describe('Enter key', () => {
+  const setPointer = (desktop: boolean) =>
+    vi.stubGlobal(
+      'matchMedia',
+      (q: string) =>
+        ({ matches: desktop && q.includes('hover: hover'), media: q }) as unknown as MediaQueryList,
+    );
+  afterEach(() => vi.unstubAllGlobals());
+
+  const renderEditor = () => {
+    const onSubmit = vi.fn();
+    render(
+      <TranscriptEditor
+        id="t"
+        value="hello"
+        onChange={() => {}}
+        corrections={[]}
+        placeholder="type"
+        onSubmit={onSubmit}
+      />,
+    );
+    return { onSubmit, box: screen.getByPlaceholderText('type') };
+  };
+  const press = (box: HTMLElement, init: KeyboardEventInit = {}) => {
+    const ev = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    box.dispatchEvent(ev);
+    return ev;
+  };
+
+  it('sends on Enter on a desktop, and Shift+Enter makes a newline', () => {
+    setPointer(true);
+    const { onSubmit, box } = renderEditor();
+    expect(press(box).defaultPrevented).toBe(true);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(press(box, { shiftKey: true }).defaultPrevented).toBe(false);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('never sends while an IME is composing', () => {
+    setPointer(true);
+    const { onSubmit, box } = renderEditor();
+    press(box, { isComposing: true });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('keeps Enter as a newline on touch devices, Ctrl+Enter still sends', () => {
+    setPointer(false);
+    const { onSubmit, box } = renderEditor();
+    expect(press(box).defaultPrevented).toBe(false);
+    expect(onSubmit).not.toHaveBeenCalled();
+    press(box, { ctrlKey: true });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});

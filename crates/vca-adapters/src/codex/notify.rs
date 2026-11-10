@@ -134,7 +134,16 @@ fn status_value(
             state: state_of(doc, opts),
         }],
         backup_path: backup,
+        programs: vca_program(doc).into_iter().collect(),
     }
+}
+
+/// The program VCA's `notify` entry runs (the arguments before
+/// `hook codex`), if VCA is installed.
+fn vca_program(doc: &DocumentMut) -> Option<String> {
+    let (ours, _) = split_vca_argv(&read_notify(doc)?)?;
+    let program = ours[..ours.len() - 2].join(" ");
+    (!program.is_empty()).then_some(program)
 }
 
 fn save(path: &Path, doc: &DocumentMut) -> Result<Option<PathBuf>> {
@@ -250,6 +259,12 @@ impl CodexNotifyPayload {
             decision: None,
             tool: None,
             blocking: false,
+            subagent_id: None,
+            tool_use_id: None,
+            permission_mode: None,
+            last_message: (self.kind == "agent-turn-complete")
+                .then(|| self.last_assistant_message.clone())
+                .flatten(),
         }
     }
 }
@@ -331,7 +346,12 @@ trust_level = "trusted"
                 "/home/me/notify.py"
             ]
         );
-        uninstall(&path, &opts).unwrap();
+        assert_eq!(
+            status(&path, &opts).unwrap().programs,
+            ["/usr/local/bin/vca"]
+        );
+        let st = uninstall(&path, &opts).unwrap();
+        assert!(st.programs.is_empty());
         let doc = load(&path).unwrap();
         assert_eq!(
             read_notify(&doc).unwrap(),

@@ -3,6 +3,7 @@
  * they "play" while running. Everything is deterministic.
  */
 import type {
+  AuditEntry,
   Decision,
   MessageRole,
   PairedDevice,
@@ -41,6 +42,8 @@ export interface MockScenario {
   queue: QueueEntry[];
   devices: PairedDevice[];
   memoryTotalBytes: number;
+  /** Remote shell audit log at start-up. */
+  audit?: AuditEntry[];
 }
 
 export type MockProfile = 'workstation' | 'build_server';
@@ -120,7 +123,27 @@ function workstation(now: UnixMillis): MockScenario {
         out(`${cyan('●')} Reading ${bold('test/refunds/refund.spec.ts')}`),
         msg(
           'assistant',
-          'The test relies on real timers. I will switch it to fake timers and rebuild before running the suite.',
+          [
+            '## Why the refund test is flaky',
+            '',
+            'The test relies on **real timers**, so it fails when CI is slow:',
+            '',
+            '| Check | Result |',
+            '| --- | --- |',
+            '| `refund.spec.ts` run 30 times locally | 30 passed |',
+            '| Same spec under CPU load (CI-like) | 4 of 30 failed, timeout after 5 s |',
+            '| Other refund specs | Passed, no timers used |',
+            '',
+            'Plan:',
+            '1. Switch the spec to *fake timers* (`vi.useFakeTimers()`).',
+            '2. Rebuild, then run the whole suite:',
+            '',
+            '```bash',
+            'pnpm build && pnpm test',
+            '```',
+            '',
+            '> Nothing else changes; see [Vitest timers](https://vitest.dev/guide/mocking#timers).',
+          ].join('\n'),
         ),
         tool('Edit', 'test/refunds/refund.spec.ts (+6 −2)'),
         out(`${green('✓')} Updated test/refunds/refund.spec.ts`),
@@ -166,7 +189,8 @@ function workstation(now: UnixMillis): MockScenario {
         now,
         42,
         0,
-        { profile: 'work' },
+        // Two sub-agents review the change in parallel.
+        { profile: 'work', subagents: 2 },
       ),
       history: [
         msg('user', 'Add a dark mode toggle to the settings page.'),
@@ -340,10 +364,82 @@ function workstation(now: UnixMillis): MockScenario {
       baseMemoryMb: 0,
       processes: 0,
     },
+    {
+      // A remote shell opened from the phone a few minutes ago.
+      info: local(
+        'wk-shell-api',
+        {
+          type: 'local',
+          agent: { type: 'shell', name: 'zsh' },
+          project_dir: '~/code/payments-api',
+          pid: 52210,
+        },
+        'payments-api · zsh',
+        { type: 'idle' },
+        now,
+        6,
+        2,
+        {
+          profile: null,
+          shell: {
+            idle_timeout_secs: 15 * 60,
+            idle_deadline: now + 13 * MIN,
+            hard_deadline: now + 54 * MIN,
+            opened_by: 'Pixel 9',
+          },
+        },
+      ),
+      history: [
+        out(`${green('~/code/payments-api')} $ git status`),
+        out('On branch fix/refund-test'),
+        out('Changes not staged for commit:'),
+        out(`  ${red('modified:   test/refunds/refund.spec.ts')}`),
+        { kind: 'out', text: `${green('~/code/payments-api')} $ ` },
+      ],
+      script: [],
+      loop: false,
+      baseCpu: 0.2,
+      baseMemoryMb: 12,
+      processes: 1,
+    },
   ];
 
   return {
     serverName: 'workstation',
+    audit: [
+      {
+        ts: now - 6 * MIN,
+        device_id: 'dev-pixel',
+        device_name: 'Pixel 9',
+        event: 'step_up_ok',
+        session_id: null,
+        detail: '',
+      },
+      {
+        ts: now - 6 * MIN + 400,
+        device_id: 'dev-pixel',
+        device_name: 'Pixel 9',
+        event: 'shell_open',
+        session_id: 'wk-shell-api',
+        detail: 'shell=zsh dir=~/code/payments-api',
+      },
+      {
+        ts: now - 4 * MIN,
+        device_id: 'dev-pixel',
+        device_name: 'Pixel 9',
+        event: 'shell_run',
+        session_id: 'wk-shell-api',
+        detail: 'danger=safe',
+      },
+      {
+        ts: now - 26 * 60 * MIN,
+        device_id: 'dev-laptop',
+        device_name: 'Travel laptop',
+        event: 'step_up_failed',
+        session_id: null,
+        detail: 'wrong code',
+      },
+    ],
     sessions,
     memoryTotalBytes: 32 * 1024 ** 3,
     queue: [
@@ -380,6 +476,11 @@ function workstation(now: UnixMillis): MockScenario {
         paired_at: now - 40 * 24 * 60 * MIN,
         last_seen: now,
         current: true,
+        scope: 'admin',
+        online: true,
+        connections: 1,
+        last_ip: '100.101.7.12',
+        app_version: '0.1.0',
       },
       {
         id: 'dev-ipad',
@@ -388,6 +489,10 @@ function workstation(now: UnixMillis): MockScenario {
         paired_at: now - 12 * 24 * 60 * MIN,
         last_seen: now - 3 * 24 * 60 * MIN,
         current: false,
+        scope: 'view',
+        online: false,
+        connections: 0,
+        last_ip: '192.168.0.23',
       },
       {
         id: 'dev-laptop',
@@ -396,6 +501,10 @@ function workstation(now: UnixMillis): MockScenario {
         paired_at: now - 90 * 24 * 60 * MIN,
         last_seen: now - 20 * 24 * 60 * MIN,
         current: false,
+        scope: 'command',
+        online: false,
+        connections: 0,
+        last_ip: '100.88.1.4',
       },
     ],
   };
@@ -507,6 +616,10 @@ function buildServer(now: UnixMillis): MockScenario {
         paired_at: now - 5 * 24 * 60 * MIN,
         last_seen: now,
         current: true,
+        scope: 'admin',
+        online: true,
+        connections: 1,
+        last_ip: '192.168.0.31',
       },
     ],
   };

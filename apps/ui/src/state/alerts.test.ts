@@ -33,6 +33,8 @@ describe('alertsFor', () => {
     expect(update({ state: { type: 'exited', code: 0 } })[0]?.category).toBe('completed');
     expect(update({ state: { type: 'exited', code: 2 } })[0]?.category).toBe('error');
     expect(update({ state: { type: 'exited', code: 130 } })).toEqual([]);
+    // A watched terminal that closed has no exit code: not an error.
+    expect(update({ state: { type: 'exited', code: null } })).toEqual([]);
     expect(update({ state: { type: 'error', message: 'boom' } })[0]).toMatchObject({
       category: 'error',
       body: 'boom',
@@ -63,5 +65,36 @@ describe('alertsFor', () => {
       title: 'Tests passed',
     });
     expect(alertsFor(stateWith(), msg(1, now - 60_000), t, now)).toEqual([]);
+  });
+
+  it("keeps the conductor's own session quiet except for decisions and errors", () => {
+    const before = stateWith(localSession({ conductor: true, state: { type: 'running' } }));
+    const update = (patch: Parameters<typeof localSession>[0]) =>
+      alertsFor(
+        before,
+        { type: 'session_updated', session: localSession({ conductor: true, ...patch }) },
+        t,
+      );
+    // Turn-ends and input waits are its replies (they reach 지휘소).
+    expect(update({ state: { type: 'idle' } })).toEqual([]);
+    expect(update({ state: { type: 'awaiting_input' } })).toEqual([]);
+    expect(update({ state: { type: 'exited', code: 0 } })).toEqual([]);
+    expect(update({ unread: 2 })).toEqual([]);
+    // A permission decision still reaches the person.
+    expect(update({ state: { type: 'awaiting_decision' } })[0]?.category).toBe('decision');
+    expect(update({ state: { type: 'error', message: 'boom' } })[0]?.category).toBe('error');
+    // Its notifications are not alerts either.
+    const now = 1_000_000;
+    const note = alertsFor(
+      before,
+      {
+        type: 'event',
+        session_id: 's1',
+        event: { type: 'notification', seq: 9, at: now, title: 'Waiting', body: 'for input' },
+      },
+      t,
+      now,
+    );
+    expect(note).toEqual([]);
   });
 });

@@ -10,6 +10,7 @@ fn text(s: &str) -> Input {
     Input::Text {
         text: s.into(),
         submit: true,
+        at_prompt: false,
     }
 }
 
@@ -72,6 +73,7 @@ async fn control_keys_reach_the_process() {
         .send_input(&Input::Text {
             text: "xy".into(),
             submit: false,
+            at_prompt: false,
         })
         .await
         .unwrap();

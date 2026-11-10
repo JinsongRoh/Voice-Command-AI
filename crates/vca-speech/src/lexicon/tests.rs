@@ -37,8 +37,14 @@ fn base_lexicon_loads_and_is_large_enough() {
     for lang in ["ja", "ko", "zh", "es", "de", "fr"] {
         let l = Lexicon::load_dir(&lexicon_dir(), Some(&[lang])).unwrap();
         assert!(l.len() >= 40, "{lang} has only {} terms", l.len());
-        // Localized entries must refer to terms that exist in English.
-        for e in l.entries() {
+        // Localized entries must refer to terms that exist in English, except
+        // the voice words of hands-free mode (`voice.toml`), which are
+        // spelled per language ("보코", "ボコ").
+        for e in l
+            .entries()
+            .iter()
+            .filter(|e| e.category.as_deref() != Some("voice"))
+        {
             assert!(
                 en.get(&e.term).is_some(),
                 "{lang} entry {:?} has no English base entry",
@@ -357,4 +363,53 @@ fn builtin_lexicon_is_embedded() {
     let en_only = Lexicon::builtin(Some(&["en"])).unwrap();
     assert!(en_only.len() <= all.len());
     assert!(en_only.get("pnpm").is_some());
+}
+
+#[test]
+fn known_terms_in_finds_dictated_terms_ignoring_case() {
+    let engine = VocabularyEngine::new(Lexicon::builtin(Some(&["en", "ko"])).unwrap());
+    let found = engine.known_terms_in("PNPM 테스트 실행하고 실패한 테스트를 고쳐줘.");
+    assert_eq!(found, vec!["pnpm".to_owned()]);
+    assert!(engine.known_terms_in("테스트를 고쳐줘").is_empty());
+}
+
+#[test]
+fn set_terms_replaces_terms_and_keeps_learning_of_the_rest() {
+    let mut p = PersonalLexicon::with_threshold(2);
+    p.add_term(TermEntry::new("Kept").variant("kept one", None));
+    p.add_term(TermEntry::new("Gone").variant("gone one", None));
+    p.learn("use kept two here", "use Kept here");
+    p.learn("use gone two here", "use Gone here");
+
+    p.set_terms(vec![
+        TermEntry::new("Kept").variant("kept one", None),
+        TermEntry::new("Fresh").variant("fresh one", None),
+    ]);
+    assert_eq!(p.lexicon().len(), 2);
+    assert!(p.lexicon().get("Gone").is_none());
+    assert_eq!(p.lexicon().get("Fresh").unwrap().match_term, None);
+
+    // A second observation promotes only what was not deleted.
+    p.learn("use kept two here", "use Kept here");
+    assert!(
+        p.lexicon()
+            .get("Kept")
+            .unwrap()
+            .variants
+            .iter()
+            .any(|v| v.text == "kept two")
+    );
+    let first = p.learn("use gone two here", "use Gone here");
+    assert!(first.iter().all(|m| !m.promoted), "{first:?}");
+}
+
+#[test]
+fn a_listed_mapping_is_no_longer_suppressed() {
+    let mut p = PersonalLexicon::with_threshold(1);
+    p.learn_with("use Term here", "use spoken here", |_| Some("Term".into()));
+    assert_eq!(p.suppressions().len(), 1);
+    p.set_terms(vec![TermEntry::new("Other").variant("spoken", None)]);
+    assert_eq!(p.suppressions().len(), 1);
+    p.set_terms(vec![TermEntry::new("Term").variant("spoken", None)]);
+    assert!(p.suppressions().is_empty());
 }

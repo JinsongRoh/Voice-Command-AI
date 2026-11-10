@@ -2,7 +2,8 @@
 
 | File | Font | Source |
 |---|---|---|
-| `inter-latin-var.woff2` | Inter variable, Latin | `@fontsource-variable/inter` (`files/inter-latin-wght-normal.woff2`) |
+| `inter-latin-var.woff2` | Inter variable, Latin | `@fontsource-variable/inter` 5.3.0 (`files/inter-latin-wght-normal.woff2`) |
+| `inter-cyrillic-var.woff2` | Inter variable, Cyrillic (Russian copy) | `@fontsource-variable/inter` 5.3.0 (`files/inter-cyrillic-wght-normal.woff2`) |
 | `pretendard-ko-subset-var.woff2` | Pretendard Variable, Korean subset | `pretendard` 1.3.9 (`dist/web/variable/woff2/PretendardVariable.woff2`) |
 | `jetbrains-mono-latin-400.woff2` | JetBrains Mono Regular, Latin | `@fontsource/jetbrains-mono` (`files/jetbrains-mono-latin-400-normal.woff2`) |
 

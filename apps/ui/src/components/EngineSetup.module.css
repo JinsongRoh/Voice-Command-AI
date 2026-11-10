@@ -1,0 +1,128 @@
+/* Speech engine setup of this PC's server (Settings). */
+.engines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guide {
+  align-self: flex-start;
+  font-size: 13px;
+}
+.restart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.restart p {
+  margin: 0;
+  flex: 1 1 240px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.group {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.groupHead h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.itemText {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.name {
+  font-weight: var(--fw-semibold);
+}
+.chip {
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ok {
+  color: var(--st-done);
+}
+.fail {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.editor {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.editor h5 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.input {
+  max-width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+}
+.help {
+  margin: 0;
+  font-size: 13px;
+}
+.advanced {
+  margin-bottom: 10px;
+}
+.advanced summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.editorActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.path {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

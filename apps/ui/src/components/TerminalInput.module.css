@@ -1,0 +1,64 @@
+.input {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prompt {
+  flex: none;
+  font-family: var(--mono);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.line {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  /* 16 px: iOS does not zoom the page into the field. */
+  font-size: 16px;
+}
+.send {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+}
+.more {
+  flex: none;
+}
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger, #c62828);
+}
+.keys {
+  margin: 0;
+}
+/* Landscape phones: the line and the keys share one row-ish strip. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .input {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .row {
+    flex: 1 1 240px;
+  }
+  .keys {
+    flex: 1 1 auto;
+  }
+}

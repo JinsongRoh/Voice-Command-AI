@@ -1,0 +1,393 @@
+/* 지휘소 (Command Center): page shell, tabs, conversation, inbox and log. */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.title {
+  margin: 0;
+  font-size: 20px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2, var(--surface));
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.status[data-status='ready']::before,
+.status[data-status='running']::before,
+.status[data-status='starting']::before {
+  background: var(--success, #2e9d5b);
+}
+.status[data-status='waiting_for_you']::before {
+  background: var(--warning, #d08a00);
+}
+.status[data-status='revoked']::before {
+  background: var(--danger, #d33);
+}
+.status[data-status='paused']::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.section p {
+  margin: 0;
+}
+.strong {
+  font-weight: var(--fw-semibold);
+}
+.help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.error {
+  margin: 0;
+  color: var(--danger, #d33);
+  font-size: 13px;
+}
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--warning, #d08a00);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+}
+.banner > svg {
+  flex: none;
+  color: var(--warning, #d08a00);
+}
+.bannerText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  font-size: 14px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .tab {
+    min-height: 44px;
+  }
+}
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+.panel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.conversationPanel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Conversation */
+.conversation {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.sessionPane {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  /* The bottom navigation already clears the home indicator. */
+  --composer-inset-bottom: 0px;
+}
+.builtin {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+/* The built-in conductor's Chat / shell switch. */
+.viewModes {
+  align-self: flex-start;
+}
+.builtinChat {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 160px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+}
+.empty {
+  padding: 16px;
+}
+.compose {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+.compose textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  resize: vertical;
+}
+
+/* Approvals */
+.inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-inline-start: 3px solid var(--border);
+}
+.item[data-kind='decision'],
+.item[data-kind='conductor_send'],
+.item[data-kind='conductor_trust'] {
+  border-inline-start-color: var(--warning, #d08a00);
+}
+.item[data-kind='task'] {
+  border-inline-start-color: var(--accent);
+}
+.itemHead {
+  display: flex;
+  gap: 10px;
+}
+.kindIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.itemBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.itemName {
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+  overflow-wrap: anywhere;
+}
+.chip {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+.kind,
+.time {
+  color: var(--text-muted);
+}
+.itemText {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.requestText {
+  margin: 0;
+  padding: 8px;
+  max-height: 160px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--code-bg, rgba(127, 127, 127, 0.12));
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.answer {
+  position: relative;
+}
+.subhead {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+/* Log */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+.logHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.logHead .subhead {
+  margin: 0;
+}
+.logList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.logItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.logText {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.logMeta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Shell: the conversation's shell tab (looks like a session's Shell tab). */
+.shellView {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.shellFolder {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.shellPane {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.shellFolderLabel {
+  font-weight: 600;
+}
+.shellFolderPath {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shellEmpty {
+  padding: 24px 16px;
+  text-align: center;
+}

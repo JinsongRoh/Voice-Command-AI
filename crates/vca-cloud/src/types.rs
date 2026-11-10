@@ -128,6 +128,16 @@ impl CloudSession {
             last_activity: self.updated_at.unwrap_or(created),
             unread: 0,
             preview: None,
+            auto_name: None,
+            custom_name: false,
+            shell: None,
+            pending_decision: None,
+            subagents: 0,
+            conductor: false,
+            terminal_prompt: None,
+            question: None,
+            progress: None,
+            problem: None,
         }
     }
 }

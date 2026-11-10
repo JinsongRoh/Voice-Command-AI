@@ -1,0 +1,46 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: min(360px, 100%);
+}
+.box > p {
+  margin: 0;
+}
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+.reason svg {
+  flex: none;
+}
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.codeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.codeForm input {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  max-width: 14ch;
+}
+.osButton {
+  align-self: flex-start;
+  min-height: 44px;
+  padding-inline: 18px;
+}
+.error {
+  color: var(--danger);
+}

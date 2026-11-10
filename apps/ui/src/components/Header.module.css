@@ -48,12 +48,31 @@
   height: 40px;
   aspect-ratio: 1178 / 1073;
 }
-@media (max-width: 339px) {
+/* Portrait phones: the symbol plus a short "VCA"; landscape (wider) shows the
+   full lockup. */
+.short {
+  display: none;
+  margin-inline-start: 6px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--text);
+}
+@media (max-width: 599px) {
   .lockup {
     display: none;
   }
   .symbol {
     display: block;
+  }
+  .short {
+    display: inline;
+  }
+}
+@media (max-width: 339px) {
+  .short {
+    display: none;
   }
 }
 @media (min-width: 640px) {
@@ -70,9 +89,15 @@
 /* Machine and connection state, next to the logo. */
 .context {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+}
+@media (max-width: 479px) {
+  .context {
+    gap: 4px;
+  }
 }
 @media (min-width: 640px) {
   .context {
@@ -80,11 +105,23 @@
     border-inline-start: 1px solid var(--border);
   }
 }
+/* The speaker actions are real 44 px touch targets in the header. */
+.context :global(.icon-btn) {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+/* Shrinks and truncates with an ellipsis instead of pushing the actions off
+   the screen; the lamp and the buttons never shrink. */
 .machine {
+  flex: 0 1 auto;
+  min-width: 0;
   min-height: 36px;
-  /* Whatever the logo and the status dot leave on a phone. */
-  max-width: min(44vw, calc(100vw - 215px));
+  max-width: 280px;
   padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -141,4 +178,50 @@
     height: auto;
     clip: auto;
   }
+}
+
+/* The header's controls inside the session top bar's "more" menu (phones). */
+.menuItems {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.menuField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.menuLabel {
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.menuField .machine {
+  max-width: none;
+  min-height: 44px;
+}
+.menuConn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+.menuConn .conn {
+  padding: 0;
+  background: transparent;
+}
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.menuRow:empty {
+  display: none;
+}
+.menuItems :global(.btn) {
+  min-height: 44px;
+  justify-content: flex-start;
+  text-align: start;
 }

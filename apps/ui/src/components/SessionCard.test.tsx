@@ -29,6 +29,72 @@ function renderCard(
 }
 
 describe('SessionCard', () => {
+  it('menu: arrows, Home / End, Tab closes, focus back on the menu button', async () => {
+    const onBringToFront = vi.fn();
+    renderCard({ onRename: vi.fn(), onFixPronunciation: vi.fn(), onBringToFront });
+    const button = screen.getByRole('button', { name: 'More actions for payments-api' });
+    await userEvent.click(button);
+    const items = screen.getAllByRole('menuitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(items[1]).toHaveFocus();
+    await userEvent.keyboard('{End}');
+    expect(items[2]).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(items[0]).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(items[2]).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(items[0]).toHaveFocus();
+    await userEvent.keyboard('{Tab}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(button).toHaveFocus();
+    // An action that opens no dialog still leaves the focus on the button.
+    await userEvent.click(button);
+    await userEvent.click(screen.getAllByRole('menuitem')[2]!);
+    expect(onBringToFront).toHaveBeenCalledWith('s1');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
+  it('refers to the unread count only when there is one', () => {
+    renderCard();
+    const card = screen.getByRole('button', { pressed: false, name: /payments-api/ });
+    const ids = card.getAttribute('aria-describedby')!.split(' ');
+    for (const id of ids) expect(document.getElementById(id)).not.toBeNull();
+  });
+
+  it('marks the conductor session with a small badge, without unread or highlight', () => {
+    renderCard({
+      session: localSession({
+        conductor: true,
+        unread: 2,
+        state: { type: 'awaiting_input' },
+        display_name: 'Conductor',
+      }),
+    });
+    expect(screen.getByTestId('session-conductor-badge')).toHaveTextContent('Conductor');
+    expect(screen.queryByText('2 unread')).not.toBeInTheDocument();
+    const card = screen.getByTestId('session-card-s1');
+    expect(card.className).not.toMatch(/attention/);
+  });
+
+  it('highlights the conductor session for a decision', () => {
+    renderCard({
+      session: localSession({ conductor: true, state: { type: 'awaiting_decision' } }),
+    });
+    expect(screen.getByTestId('session-card-s1').className).toMatch(/attention/);
+  });
+
+  it('says a menu waits in the terminal instead of a bare input wait', () => {
+    renderCard({
+      session: localSession({ state: { type: 'awaiting_input' }, terminal_prompt: 'menu' }),
+    });
+    expect(screen.getByText('Choose in the terminal')).toBeInTheDocument();
+    expect(screen.queryByText('Waiting for input')).not.toBeInTheDocument();
+  });
+
   it('renders agent, folder, state, preview and relative time', () => {
     renderCard();
     const card = screen.getByRole('button', { name: /payments-api/ });
@@ -62,6 +128,39 @@ describe('SessionCard', () => {
     renderCard({ session: localSession({ state: { type: 'exited', code: 1 } }), preview: '' });
     expect(screen.getByText('Exited (1)')).toBeInTheDocument();
     expect(screen.getByText('No output yet')).toBeInTheDocument();
+  });
+
+  it('shows how many sub-agents work, hidden at 0', () => {
+    renderCard({ session: localSession({ subagents: 3 }) });
+    const badge = screen.getByTestId('subagent-badge');
+    expect(badge).toHaveTextContent('3');
+    expect(screen.getByRole('img', { name: 'Sub-agents working: 3' })).toBe(badge);
+    expect(badge).toHaveAttribute('title', 'Sub-agents working: 3');
+  });
+
+  it('has no sub-agent badge without sub-agents', () => {
+    renderCard({ session: localSession({ subagents: 0 }) });
+    expect(screen.queryByTestId('subagent-badge')).not.toBeInTheDocument();
+    renderCard();
+    expect(screen.queryByTestId('subagent-badge')).not.toBeInTheDocument();
+  });
+
+  it('labels the sub-agent badge in Korean', () => {
+    render(
+      <I18nProvider locale="ko">
+        <ul>
+          <SessionCard
+            session={localSession({ subagents: 3 })}
+            preview=""
+            selected={false}
+            index={1}
+            onSelect={() => {}}
+          />
+        </ul>
+      </I18nProvider>,
+    );
+    const badge = screen.getByRole('img', { name: '서브 에이전트 3개 작업 중' });
+    expect(badge).toHaveAttribute('title', '서브 에이전트 3개 작업 중');
   });
 
   it('is localized', () => {

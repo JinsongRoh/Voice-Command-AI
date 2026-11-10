@@ -11,6 +11,8 @@
 //! * [`terminal`]: delivery tier 3, typing into tmux, WezTerm, kitty,
 //!   iTerm2 and Windows consoles without focus.
 //! * [`tail`]: incremental JSONL transcript reading.
+//! * [`subagents`]: how many sub-agents a session is running, from its
+//!   transcript.
 //!
 //! PTY handling lives in `vca-pty`, not here.
 
@@ -22,7 +24,9 @@ mod fsutil;
 pub mod generic;
 pub mod heuristics;
 pub mod hook;
+mod meta_cache;
 pub mod process;
+pub mod subagents;
 pub mod tail;
 pub mod terminal;
 pub mod types;
@@ -31,7 +35,8 @@ pub use adapter::{AgentAdapter, SessionLocator, adapter_for, builtin_adapters, d
 pub use error::{AdapterError, Result};
 pub use heuristics::{HeuristicMatch, HeuristicRule, OutputHeuristics};
 pub use hook::{AgentHookEvent, HookDecision, HookNotification, HookResponse, HookToolUse};
-pub use process::{ProcInfo, ProcessMatcher, ProcessTable, ProcessTree};
+pub use process::{ProcInfo, ProcessMatcher, ProcessScanner, ProcessTable, ProcessTree};
+pub use subagents::SubagentTracker;
 pub use tail::HistoryStream;
 pub use terminal::TerminalTarget;
 pub use types::{

@@ -1,6 +1,6 @@
 [package]
 name = "vca-shell"
-description = "Tauri commands shared by the desktop and mobile apps: Noise connections, pairing and microphone capture"
+description = "Tauri commands shared by the desktop and mobile apps: Noise connections, pairing, DNSPilot setup and microphone capture"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,10 +10,14 @@ publish = false
 
 [dependencies]
 cpal = "0.16"
+# RNNoise noise suppression for the microphone (pure Rust, BSD-3-Clause).
+nnnoiseless = { version = "0.5", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-deep-link.workspace = true
+tauri-plugin-notification.workspace = true
+tauri-plugin-opener.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 vca-client.workspace = true
@@ -21,6 +25,42 @@ vca-net.workspace = true
 
 [target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "ios"))'.dependencies]
 vca-client = { workspace = true, features = ["keychain"] }
+
+# AVAudioSession setup before recording (src/ios_audio.rs); the versions tao already builds.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSError", "NSString"] }
+
+# RECORD_AUDIO runtime permission before cpal opens the microphone.
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-vca-mic.workspace = true
+
+# Desktop only (`cfg(desktop)`, see build.rs): running and pairing the local
+# VCA server (vcad) over its owner-only control channel.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+interprocess = { version = "2.4.7", features = ["tokio"] }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+rmp-serde = "1"
+sysinfo = { version = "0.36", default-features = false, features = ["system"] }
+# Native "Save as" dialog for `vca_save_text_file` (called from Rust only).
+tauri-plugin-dialog.workspace = true
+# In-app updates from GitHub Releases (`updater`); never in the phone apps.
+tauri-plugin-updater.workspace = true
+tokio = { workspace = true, features = ["io-util", "time"] }
+vca-core.workspace = true
+# Agent hooks for exact approval alerts (`host::hooks`): the same merge and
+# backups as `vca hooks install`.
+vca-adapters = { path = "../../crates/vca-adapters" }
+
+# "Start VCA when I sign in" (`autostart`): the user's `Run` registry value.
+# The version the HTTP stack already builds (no new crate).
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.6"
+
+[dev-dependencies]
+data-encoding = "2"
+tempfile = "3"
+zeroize = "1"
 
 [lints]
 workspace = true

@@ -33,7 +33,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::{Semaphore, mpsc, watch};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, mpsc, watch};
 use tokio::time::{Instant, timeout};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
@@ -46,6 +46,7 @@ use zeroize::Zeroizing;
 use crate::audit::{
     AuditEvent, AuditLog, AuthMethod, X_DNSPILOT_CLIENT_ID, X_FORWARDED_FOR, client_ip_from_headers,
 };
+use crate::client_tls::TransportOptions;
 use crate::clock::{SharedClock, system_clock};
 use crate::error::{AuthFailure, CloseReason, NetError, Result};
 use crate::keys::{PublicKey, StaticKeypair};
@@ -54,7 +55,7 @@ use crate::noise::{
     FrameTransport, MAX_NOISE_MESSAGE, NoiseConfig, NoiseSession, handshake_initiator,
     handshake_responder,
 };
-use crate::pairing::{PairingManager, PairingPayload, RedeemError};
+use crate::pairing::{MAX_PAIRING_CODE_ATTEMPTS, PairingManager, PairingPayload, RedeemError};
 use crate::ratelimit::{RateLimitConfig, RateLimiter};
 use crate::registry::{DeviceRecord, DeviceRegistry, Scope};
 use crate::tokens::{TokenError, TokenPair, TokenService};
@@ -123,11 +124,18 @@ enum Control {
     },
 }
 
-fn encode_control(c: &Control) -> Vec<u8> {
-    let mut out = vec![KIND_CONTROL];
-    out.extend(rmp_serde::to_vec_named(c).expect("control frames serialize"));
+/// Control frames carry pairing secrets, codes and tokens: they are
+/// written straight into one zeroized buffer, sized so that it does not
+/// grow (a grown buffer leaves its old copy behind unzeroized).
+fn encode_control(c: &Control) -> Zeroizing<Vec<u8>> {
+    let mut out = Zeroizing::new(Vec::with_capacity(CONTROL_BUFFER));
+    out.push(KIND_CONTROL);
+    rmp_serde::encode::write_named(&mut *out, c).expect("control frames serialize");
     out
 }
+
+/// Room for any control frame without growing its buffer.
+const CONTROL_BUFFER: usize = 4096;
 
 fn decode_control(body: &[u8]) -> Result<Control> {
     rmp_serde::from_slice(body).map_err(|e| NetError::Protocol(format!("bad control frame: {e}")))
@@ -137,7 +145,7 @@ async fn send_control<S>(sink: &mut S, session: &mut NoiseSession, c: &Control) 
 where
     S: Sink<Vec<u8>, Error = NetError> + Unpin + ?Sized,
 {
-    let bytes = Zeroizing::new(encode_control(c));
+    let bytes = encode_control(c);
     session.send(sink, &bytes).await
 }
 
@@ -250,7 +258,7 @@ impl<Out: Serialize> ConnectionSender<Out> {
 /// An authenticated, encrypted connection carrying `Envelope<In>` inbound
 /// and `Envelope<Out>` outbound.
 pub struct Connection<In, Out> {
-    rx: mpsc::Receiver<Vec<u8>>,
+    rx: mpsc::Receiver<Inbound>,
     sender: ConnectionSender<Out>,
     state: watch::Receiver<Option<CloseReason>>,
     _in: PhantomData<fn() -> In>,
@@ -262,8 +270,8 @@ impl<In: DeserializeOwned, Out: Serialize> Connection<In, Out> {
     /// `Some(Err(..))` and the connection stays open, so the application
     /// can answer with an error.
     pub async fn recv(&mut self) -> Option<Result<Envelope<In>>> {
-        let bytes = self.rx.recv().await?;
-        Some(rmp_serde::from_slice(&bytes).map_err(NetError::encoding))
+        let msg = self.rx.recv().await?;
+        Some(rmp_serde::from_slice(&msg.bytes).map_err(NetError::encoding))
     }
 
     /// Sends an envelope.
@@ -274,6 +282,19 @@ impl<In: DeserializeOwned, Out: Serialize> Connection<In, Out> {
     /// A cloneable sender, e.g. for a task that streams events.
     pub fn sender(&self) -> ConnectionSender<Out> {
         self.sender.clone()
+    }
+
+    /// A sender for envelopes of another message type over this connection.
+    /// For protocol tests that check how a peer treats messages outside its
+    /// API (any peer can send arbitrary bytes anyway).
+    #[doc(hidden)]
+    pub fn sender_as<T>(&self) -> ConnectionSender<T> {
+        ConnectionSender {
+            tx: self.sender.tx.clone(),
+            state: self.sender.state.clone(),
+            max_message_size: self.sender.max_message_size,
+            _out: PhantomData,
+        }
     }
 
     /// Closes the connection after queued messages are sent and waits
@@ -308,6 +329,41 @@ struct DriverParams {
 }
 
 type OnClose = Box<dyn FnOnce(CloseReason) + Send>;
+
+/// An inbound application message with its share of the connection's
+/// inbound byte budget, given back once the application took it.
+struct Inbound {
+    bytes: Vec<u8>,
+    _budget: OwnedSemaphorePermit,
+}
+
+/// Least inbound byte budget of a connection.
+const MIN_INBOUND_BUDGET: usize = 1024 * 1024;
+
+/// Bytes of application messages one connection may have waiting for the
+/// application: one message of the largest size, or a megabyte of small
+/// ones. The queue length alone would let a peer park `queue` messages of
+/// the largest size (gigabytes) in memory while the application is busy.
+fn inbound_budget(max_message_size: usize) -> usize {
+    max_message_size
+        .max(MIN_INBOUND_BUDGET)
+        .min(u32::MAX as usize)
+        .min(Semaphore::MAX_PERMITS)
+}
+
+/// A place in the inbound queue and the budget for `len` bytes. `None`
+/// once the application has dropped its end.
+async fn reserve_inbound<'a>(
+    in_tx: &'a mpsc::Sender<Inbound>,
+    budget: &Arc<Semaphore>,
+    total: usize,
+    len: usize,
+) -> Option<(mpsc::Permit<'a, Inbound>, OwnedSemaphorePermit)> {
+    let n = u32::try_from(len.min(total)).unwrap_or(u32::MAX);
+    let permit = budget.clone().acquire_many_owned(n).await.ok()?;
+    let slot = in_tx.reserve().await.ok()?;
+    Some((slot, permit))
+}
 
 /// Spawns the connection driver task and returns the application handle.
 fn spawn_connection<T, In, Out>(
@@ -378,7 +434,7 @@ async fn drive<T: FrameTransport>(
     transport: T,
     mut session: NoiseSession,
     mut params: DriverParams,
-    in_tx: mpsc::Sender<Vec<u8>>,
+    in_tx: mpsc::Sender<Inbound>,
     mut out_rx: mpsc::Receiver<Outgoing>,
 ) -> CloseReason {
     let (mut sink, mut stream) = transport.split();
@@ -387,7 +443,15 @@ async fn drive<T: FrameTransport>(
     // kill switch closes connections promptly.
     let (reason, notify_peer) = tokio::select! {
         r = stop_signal(&mut params.kill, &mut params.closer) => (r, true),
-        r = io_loop(&mut sink, &mut stream, &mut session, heartbeat, &in_tx, &mut out_rx) => r,
+        r = io_loop(
+            &mut sink,
+            &mut stream,
+            &mut session,
+            heartbeat,
+            &in_tx,
+            inbound_budget(params.max_message_size),
+            &mut out_rx,
+        ) => r,
     };
     if notify_peer {
         let _ = timeout(
@@ -407,7 +471,8 @@ async fn io_loop<Si, St>(
     stream: &mut St,
     session: &mut NoiseSession,
     heartbeat: Duration,
-    in_tx: &mpsc::Sender<Vec<u8>>,
+    in_tx: &mpsc::Sender<Inbound>,
+    budget_total: usize,
     out_rx: &mut mpsc::Receiver<Outgoing>,
 ) -> (CloseReason, bool)
 where
@@ -417,14 +482,44 @@ where
     let mut ticker = tokio::time::interval_at(Instant::now() + heartbeat, heartbeat);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     let mut last_rx = Instant::now();
+    // When the oldest unanswered ping went out. A peer is only judged dead
+    // after it had a whole interval to answer a ping: if this task was
+    // starved (a stalled runtime or machine) the first tick can come late
+    // with nothing sent yet, and the silence is ours, not the peer's.
+    let mut ping_sent: Option<Instant> = None;
     let mut ping_n: u64 = 0;
     let send_err = |e: NetError| match e {
         NetError::NonceExhausted => (CloseReason::NonceExhausted, false),
         _ => (CloseReason::TransportError, false),
     };
+    let budget = Arc::new(Semaphore::new(budget_total));
+    // A message read while the application had no room for it. Until it is
+    // handed over, nothing more is read, but outbound messages and pings
+    // still flow: awaiting the queue here would stop them too, and an
+    // application that waits on its own sends before it reads again would
+    // never get to read (a deadlock no heartbeat ends).
+    let mut held: Option<Vec<u8>> = None;
     loop {
+        // Biased: inbound frames win over the heartbeat tick. After a
+        // scheduler stall the tick and an already-arrived pong are ready at
+        // once; a random pick could judge the peer dead with its answer
+        // sitting unread in the socket buffer. (tokio's cooperative budget
+        // bounds how long a busy stream can defer the other branches.)
+        let held_len = held.as_ref().map_or(0, Vec::len);
         tokio::select! {
-            frame = stream.next() => {
+            biased;
+            ready = reserve_inbound(in_tx, &budget, budget_total, held_len), if held.is_some() => {
+                let Some((slot, permit)) = ready else {
+                    return (CloseReason::Normal, true);
+                };
+                if let Some(bytes) = held.take() {
+                    slot.send(Inbound { bytes, _budget: permit });
+                }
+                // The silence while nothing was read was ours, not the peer's.
+                last_rx = Instant::now();
+                ping_sent = None;
+            }
+            frame = stream.next(), if held.is_none() => {
                 let ct = match frame {
                     None | Some(Err(NetError::Closed(_))) => return (CloseReason::PeerClosed, false),
                     Some(Err(NetError::Protocol(_))) => return (CloseReason::ProtocolError, true),
@@ -432,6 +527,7 @@ where
                     Some(Ok(ct)) => ct,
                 };
                 last_rx = Instant::now();
+                ping_sent = None;
                 let msg = match session.decrypt(&ct) {
                     Ok(None) => continue,
                     Ok(Some(msg)) => msg,
@@ -442,11 +538,7 @@ where
                     }
                 };
                 match msg.split_first() {
-                    Some((&KIND_APP, body)) => {
-                        if in_tx.send(body.to_vec()).await.is_err() {
-                            return (CloseReason::Normal, true);
-                        }
-                    }
+                    Some((&KIND_APP, body)) => held = Some(body.to_vec()),
                     Some((&KIND_CONTROL, body)) => match decode_control(body) {
                         Ok(Control::Ping { n }) => {
                             if let Err(e) = send_control(sink, session, &Control::Pong { n }).await {
@@ -474,10 +566,14 @@ where
                 }
             },
             _ = ticker.tick() => {
-                if last_rx.elapsed() > heartbeat * 2 {
+                if held.is_none()
+                    && last_rx.elapsed() > heartbeat * 2
+                    && ping_sent.is_some_and(|t| t.elapsed() >= heartbeat.mul_f32(0.9))
+                {
                     return (CloseReason::HeartbeatTimeout, true);
                 }
                 ping_n += 1;
+                ping_sent.get_or_insert_with(Instant::now);
                 if let Err(e) = send_control(sink, session, &Control::Ping { n: ping_n }).await {
                     return send_err(e);
                 }
@@ -503,8 +599,20 @@ pub struct ServerConfig {
     pub handshake_timeout: Duration,
     /// Maximum application message size (after reassembly).
     pub max_message_size: usize,
-    /// Maximum concurrent connections (including ones still handshaking).
+    /// Maximum concurrent signed-in connections. Connections still in
+    /// handshake or sign-in count toward [`Self::max_pre_auth`] instead.
     pub max_connections: usize,
+    /// Connections still in handshake or sign-in. They have their own pool,
+    /// so anonymous peers cannot fill the slots of signed-in devices.
+    pub max_pre_auth: usize,
+    /// Of those, at most this many from one address or provider client.
+    pub max_pre_auth_per_source: usize,
+    /// Of those, at most this many from one network peer, counted before
+    /// the WebSocket upgrade. A household or office behind one address fits;
+    /// see [`peer_cap`] for a tunnel on this computer.
+    pub max_pre_auth_per_peer: usize,
+    /// A peer that has not finished the WebSocket upgrade by then is dropped.
+    pub upgrade_timeout: Duration,
     /// Require a TOTP (or backup) code for `login`. When true and TOTP is
     /// not enrolled, logins fail with `totp_not_enrolled`; pairing still
     /// works, and token-based reconnects are unaffected.
@@ -516,6 +624,12 @@ pub struct ServerConfig {
     pub auth_rate_limit: RateLimitConfig,
     /// Failed pairing attempts across all clients.
     pub pairing_rate_limit: RateLimitConfig,
+    /// How long a pairing QR code (one-time secret) is valid.
+    pub pairing_ttl: Duration,
+    /// Once a valid secret was presented in time, how long from that first
+    /// presentation it stays usable for TOTP retries (never re-opens an
+    /// expired secret).
+    pub pairing_grace: Duration,
 }
 
 impl Default for ServerConfig {
@@ -527,6 +641,10 @@ impl Default for ServerConfig {
             handshake_timeout: Duration::from_secs(10),
             max_message_size: 16 * 1024 * 1024,
             max_connections: 64,
+            max_pre_auth: 64,
+            max_pre_auth_per_source: 8,
+            max_pre_auth_per_peer: 16,
+            upgrade_timeout: Duration::from_secs(5),
             require_totp: true,
             queue: 256,
             noise: NoiseConfig::default(),
@@ -536,6 +654,8 @@ impl Default for ServerConfig {
                 window_ms: 5 * 60 * 1000,
                 lockout_ms: 5 * 60 * 1000,
             },
+            pairing_ttl: crate::pairing::DEFAULT_PAIRING_TTL,
+            pairing_grace: crate::pairing::PAIRING_GRACE,
         }
     }
 }
@@ -611,6 +731,8 @@ struct Inner {
     next_conn: AtomicU64,
     live: Mutex<HashMap<u64, LiveConn>>,
     slots: Arc<Semaphore>,
+    pre_auth_slots: Arc<Semaphore>,
+    pre_auth_sources: Arc<Mutex<HashMap<String, usize>>>,
 }
 
 /// Builder for [`NetServer`].
@@ -679,9 +801,12 @@ impl NetServerBuilder {
         NetServer {
             inner: Arc::new(Inner {
                 slots: Arc::new(Semaphore::new(config.max_connections.max(1))),
+                pre_auth_slots: Arc::new(Semaphore::new(config.max_pre_auth.max(1))),
+                pre_auth_sources: Arc::default(),
                 auth_limiter: RateLimiter::new(config.auth_rate_limit, clock.clone()),
                 pair_limiter: RateLimiter::new(config.pairing_rate_limit, clock.clone()),
-                pairing: PairingManager::new(clock.clone()),
+                pairing: PairingManager::with_ttl(clock.clone(), config.pairing_ttl)
+                    .with_grace(config.pairing_grace),
                 audit: self
                     .audit
                     .unwrap_or_else(|| Arc::new(AuditLog::memory(clock.clone()))),
@@ -750,11 +875,13 @@ impl NetServer {
     /// Issues a one-time pairing secret and returns the QR payload.
     pub fn create_pairing(&self, scope: Scope, endpoints: Vec<String>) -> Result<PairingPayload> {
         let ticket = self.inner.pairing.issue(scope);
-        self.inner.pairing.payload(
+        // `tf=1` tells the phone up front that the code field is required.
+        self.inner.pairing.payload_with_hint(
             &ticket,
             self.public_key(),
             &self.inner.config.server_name,
             endpoints,
+            self.inner.config.require_totp,
         )
     }
 
@@ -787,6 +914,69 @@ impl NetServer {
             });
         }
         Ok(changed)
+    }
+
+    // --- Device management (rename, scope). `by` is the asking device id or
+    // `local`; permission checks are the caller's job. ---
+
+    /// Renames an active device (see [`crate::validate_device_name`]).
+    /// Returns `false` if it is unknown or revoked.
+    pub fn rename_device(&self, device_id: &str, name: &str, by: &str) -> Result<bool> {
+        let name = crate::registry::validate_device_name(name)?;
+        let inner = &self.inner;
+        let Some(from) = inner.registry.rename(device_id, &name)? else {
+            return Ok(false);
+        };
+        let mut live = inner.live.lock().expect("poisoned");
+        for c in live.values_mut().filter(|c| c.info.device_id == device_id) {
+            c.info.device_name = name.clone();
+        }
+        drop(live);
+        if from != name {
+            inner.audit.record(AuditEvent::DeviceRenamed {
+                device_id: device_id.to_string(),
+                by: by.to_string(),
+                from,
+                to: name,
+            });
+        }
+        Ok(true)
+    }
+
+    /// Changes the scope of an active device. Returns `false` if it is
+    /// unknown or revoked. Live connections keep running; the application
+    /// layer must re-check the registry scope on every request (the
+    /// `ConnectionInfo` scope is updated here for display).
+    pub fn set_device_scope(&self, device_id: &str, scope: Scope, by: &str) -> Result<bool> {
+        let inner = &self.inner;
+        let Some(from) = inner.registry.set_scope(device_id, scope)? else {
+            return Ok(false);
+        };
+        let mut live = inner.live.lock().expect("poisoned");
+        for c in live.values_mut().filter(|c| c.info.device_id == device_id) {
+            c.info.scope = scope;
+        }
+        drop(live);
+        if from != scope {
+            inner.audit.record(AuditEvent::DeviceScopeChanged {
+                device_id: device_id.to_string(),
+                by: by.to_string(),
+                from,
+                to: scope,
+            });
+        }
+        Ok(true)
+    }
+
+    /// Current scope of an active device, or `None` when it is unknown or
+    /// revoked: the authoritative per-request permission source.
+    pub fn device_scope(&self, device_id: &str) -> Result<Option<Scope>> {
+        Ok(self
+            .inner
+            .registry
+            .get(device_id)?
+            .filter(DeviceRecord::is_active)
+            .map(|d| d.scope))
     }
 
     /// Trips the kill switch: every connection closes within a second and
@@ -849,20 +1039,37 @@ impl NetServer {
     {
         let inner = &self.inner;
         let conn_id = inner.next_conn.fetch_add(1, Ordering::Relaxed);
-        let permit = inner
-            .slots
+        let pre_auth = inner
+            .pre_auth_slots
             .clone()
             .try_acquire_owned()
             .map_err(|_| NetError::Protocol("too many connections".into()))?;
+        // Before anything is read: one address must not hold the whole pool
+        // with connections that never say a word.
+        let peer_slot = SourceSlot::take(
+            &inner.pre_auth_sources,
+            &format!("peer:{}", peer.ip()),
+            peer_cap(&inner.config, peer),
+        )
+        .ok_or_else(|| NetError::Protocol("too many connections from one peer".into()))?;
         let (transport, session, device) = timeout(
             inner.config.handshake_timeout,
             self.establish(stream, peer, conn_id),
         )
         .await
         .map_err(|_| NetError::Timeout)??;
+        drop(peer_slot);
+        drop(pre_auth);
+        // Only a signed-in device takes a slot of the main pool.
+        let permit = inner
+            .slots
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| NetError::Protocol("too many connections".into()))?;
 
         let now = inner.clock.now_millis();
-        if let Err(e) = inner.registry.touch(&device.device_id, now) {
+        let ip = device.client_ip.to_string();
+        if let Err(e) = inner.registry.touch(&device.device_id, now, Some(&ip)) {
             tracing::warn!("cannot record last-seen time: {e}");
         }
         let (closer_tx, closer_rx) = watch::channel(None);
@@ -958,13 +1165,13 @@ impl NetServer {
             *captured.lock().expect("poisoned") = (get(X_FORWARDED_FOR), get(X_DNSPILOT_CLIENT_ID));
             Ok(resp)
         };
-        let ws = match tokio_tungstenite::accept_hdr_async_with_config(
-            stream,
-            callback,
-            Some(ws_config()),
+        let upgrade = timeout(
+            inner.config.upgrade_timeout,
+            tokio_tungstenite::accept_hdr_async_with_config(stream, callback, Some(ws_config())),
         )
         .await
-        {
+        .map_err(|_| NetError::Timeout)?;
+        let ws = match upgrade {
             Ok(ws) => ws,
             Err(e) => {
                 if inner.kill.is_tripped() {
@@ -980,12 +1187,27 @@ impl NetServer {
         };
         let (xff, provider_client_id) = headers.lock().expect("poisoned").clone();
         let (client_ip, forwarded) = client_ip_from_headers(peer, xff.as_deref());
+        let sources = limit_keys(peer, client_ip, provider_client_id.as_deref());
         inner.audit.record(AuditEvent::ConnectionAttempt {
             conn_id,
             client_ip,
             forwarded,
             provider_client_id,
         });
+        // Without a client id a tunnel's visitors are all "this computer":
+        // that one address is the peer cap's to limit, not this one's.
+        let source_cap =
+            if sources.first().is_some_and(|s| s.starts_with("ip:")) && client_ip.is_loopback() {
+                usize::MAX
+            } else {
+                inner.config.max_pre_auth_per_source.max(1)
+            };
+        let _source_slot = SourceSlot::take(
+            &inner.pre_auth_sources,
+            sources.first().map(String::as_str).unwrap_or_default(),
+            source_cap,
+        )
+        .ok_or_else(|| NetError::Protocol("too many connections from one source".into()))?;
         let mut transport = ws_frames(ws);
         let noise_config = NoiseConfig {
             max_message_size: PRE_AUTH_MAX_MESSAGE,
@@ -993,7 +1215,14 @@ impl NetServer {
         };
         let mut session = handshake_responder(&mut transport, &inner.keypair, noise_config).await?;
         let result = self
-            .authenticate(&mut transport, &mut session, conn_id, client_ip, forwarded)
+            .authenticate(
+                &mut transport,
+                &mut session,
+                conn_id,
+                client_ip,
+                forwarded,
+                &sources,
+            )
             .await;
         match result {
             Ok(device) => {
@@ -1014,6 +1243,7 @@ impl NetServer {
         session: &mut NoiseSession,
         conn_id: u64,
         client_ip: IpAddr,
+        sources: &[String],
         key: &PublicKey,
         device_id: Option<&str>,
         failure: AuthFailure,
@@ -1028,11 +1258,19 @@ impl NetServer {
             detail: detail.to_string(),
             client_ip,
         });
+        // `TotpRequired` is no guess: the caller already presented a valid
+        // secret and only left out the code, which it now knows it needs.
+        // Wrong codes still count.
         if !matches!(
             failure,
-            AuthFailure::RateLimited | AuthFailure::KillSwitch | AuthFailure::Internal
+            AuthFailure::RateLimited
+                | AuthFailure::KillSwitch
+                | AuthFailure::Internal
+                | AuthFailure::TotpRequired
         ) {
-            self.count_failure(&format!("ip:{client_ip}"));
+            for source in sources {
+                self.count_failure(source);
+            }
             if let Some(id) = device_id {
                 self.count_failure(&format!("device:{id}"));
             }
@@ -1075,17 +1313,23 @@ impl NetServer {
         conn_id: u64,
         client_ip: IpAddr,
         forwarded: bool,
+        sources: &[String],
     ) -> Result<AuthenticatedDevice> {
         let inner = &self.inner;
         let key = *session.remote_static();
-        let ip_key = format!("ip:{client_ip}");
-        let mut paired: Option<DeviceRecord> = None;
+        // The key a paired device proved in the handshake. Its sign-ins are
+        // limited by device, never by address: others on the same address
+        // (or a tunnel, where everybody shares one) cannot lock it out.
+        let known_device = matches!(inner.registry.get_by_key(&key), Ok(Some(d)) if d.is_active());
+        // The device of a `pair` frame and its secret: the secret is checked
+        // there but only consumed once the following `login` passes.
+        let mut paired: Option<(DeviceRecord, Zeroizing<Vec<u8>>)> = None;
 
         macro_rules! fail {
             ($dev:expr, $failure:expr, $detail:expr) => {
                 return Err(self
                     .fail(
-                        t, session, conn_id, client_ip, &key, $dev, $failure, $detail,
+                        t, session, conn_id, client_ip, sources, &key, $dev, $failure, $detail,
                     )
                     .await)
             };
@@ -1102,8 +1346,8 @@ impl NetServer {
             if inner.kill.is_tripped() {
                 fail!(None, AuthFailure::KillSwitch, "kill switch engaged")
             }
-            if inner.auth_limiter.check(&ip_key).is_err() {
-                fail!(None, AuthFailure::RateLimited, "client IP locked out")
+            if !known_device && sources.iter().any(|s| inner.auth_limiter.check(s).is_err()) {
+                fail!(None, AuthFailure::RateLimited, "client source locked out")
             }
             let (device, method, tokens) = match req {
                 Control::Pair {
@@ -1131,19 +1375,28 @@ impl NetServer {
                         Ok(None) => {}
                         Err(_) => fail!(None, AuthFailure::Internal, "registry error"),
                     }
-                    if inner.pair_limiter.check(GLOBAL_PAIR_KEY).is_err() {
-                        fail!(
-                            None,
-                            AuthFailure::RateLimited,
-                            "pairing globally locked out"
-                        )
-                    }
-                    let redeemed = match b64d(&secret) {
-                        Ok(bytes) => inner.pairing.redeem(&Zeroizing::new(bytes)),
-                        Err(_) => Err(RedeemError::Invalid),
+                    // Checked, not consumed: a missing or mistyped TOTP code
+                    // in the following `login` must not spend the QR code.
+                    let secret_bytes = Zeroizing::new(b64d(&secret).unwrap_or_default());
+                    let checked = if secret_bytes.is_empty() {
+                        Err(RedeemError::Invalid)
+                    } else {
+                        // The grace period after a presentation in time is
+                        // this device's (its key), never the ticket's.
+                        inner.pairing.check(&secret_bytes, &key)
                     };
-                    let scope = match redeemed {
+                    let scope = match checked {
                         Ok(scope) => scope,
+                        // The lock only holds back wrong secrets: strangers
+                        // sending junk must not stop the owner's real code,
+                        // and a 144-bit secret cannot be guessed past it.
+                        Err(_) if inner.pair_limiter.check(GLOBAL_PAIR_KEY).is_err() => {
+                            fail!(
+                                None,
+                                AuthFailure::RateLimited,
+                                "pairing globally locked out"
+                            )
+                        }
                         Err(e) => {
                             if inner.pair_limiter.record_failure(GLOBAL_PAIR_KEY) {
                                 inner.audit.record(AuditEvent::RateLimited {
@@ -1175,20 +1428,20 @@ impl NetServer {
                         scope,
                     };
                     send_control(t, session, &reply).await?;
-                    paired = Some(record);
+                    paired = Some((record, secret_bytes));
                     continue;
                 }
                 Control::Login { totp, backup_code } => {
                     let totp = totp.map(Zeroizing::new);
                     let backup_code = backup_code.map(Zeroizing::new);
-                    let just_paired = paired.is_some();
-                    let device = match paired.take() {
-                        Some(d) => d,
+                    let (device, pair_secret) = match paired.take() {
+                        Some((d, s)) => (d, Some(s)),
                         None => match self.lookup(&key) {
-                            Ok(d) => d,
+                            Ok(d) => (d, None),
                             Err((f, detail)) => fail!(None, f, detail),
                         },
                     };
+                    let just_paired = pair_secret.is_some();
                     if inner
                         .auth_limiter
                         .check(&format!("device:{}", device.id))
@@ -1208,23 +1461,53 @@ impl NetServer {
                                 "TOTP required but not enrolled"
                             )
                         };
-                        match (totp.as_deref(), backup_code.as_deref()) {
-                            (Some(code), _) => match mgr.verify(code) {
-                                Ok(()) => AuthMethod::Totp,
-                                Err(e) => {
-                                    let detail = format!("TOTP: {e}");
-                                    fail!(Some(&device.id), AuthFailure::InvalidTotp, &detail)
-                                }
-                            },
-                            (None, Some(code)) => match mgr.verify_backup_code(code) {
-                                Ok(()) => AuthMethod::BackupCode,
-                                Err(e) => {
-                                    let detail = format!("backup code: {e}");
-                                    fail!(Some(&device.id), AuthFailure::InvalidTotp, &detail)
-                                }
-                            },
+                        // Each code tried with a pairing secret is counted
+                        // before it is checked, so parallel connections
+                        // cannot try more than the limit.
+                        let has_code = totp.is_some() || backup_code.is_some();
+                        if let Some(secret) = pair_secret.as_deref()
+                            && has_code
+                            && !inner.pairing.reserve_code_attempt(secret)
+                        {
+                            fail!(
+                                Some(&device.id),
+                                AuthFailure::PairingAttemptsExhausted,
+                                "pairing secret used up by wrong codes"
+                            )
+                        }
+                        let verified = match (totp.as_deref(), backup_code.as_deref()) {
+                            (Some(code), _) => mgr
+                                .verify(code)
+                                .map(|()| AuthMethod::Totp)
+                                .map_err(|e| format!("TOTP: {e}")),
+                            (None, Some(code)) => mgr
+                                .verify_backup_code(code)
+                                .map(|()| AuthMethod::BackupCode)
+                                .map_err(|e| format!("backup code: {e}")),
+                            // Not a guess: the pairing secret stays usable.
                             (None, None) => {
                                 fail!(Some(&device.id), AuthFailure::TotpRequired, "no TOTP code")
+                            }
+                        };
+                        match verified {
+                            Ok(method) => method,
+                            Err(detail) => {
+                                // Each wrong code counts against the pairing
+                                // secret; the last allowed one revokes it.
+                                if let Some(secret) = pair_secret.as_deref()
+                                    && inner.pairing.record_failed_code(secret)
+                                {
+                                    let detail = format!(
+                                        "{detail}; pairing secret revoked after \
+                                         {MAX_PAIRING_CODE_ATTEMPTS} wrong codes"
+                                    );
+                                    fail!(
+                                        Some(&device.id),
+                                        AuthFailure::PairingAttemptsExhausted,
+                                        &detail
+                                    )
+                                }
+                                fail!(Some(&device.id), AuthFailure::InvalidTotp, &detail)
                             }
                         }
                     } else if just_paired {
@@ -1232,6 +1515,18 @@ impl NetServer {
                     } else {
                         AuthMethod::DeviceKey
                     };
+                    // Every check passed: only now is the one-time secret spent.
+                    // It may have expired, been revoked or been used by another
+                    // connection meanwhile.
+                    if let Some(secret) = pair_secret.as_deref()
+                        && let Err(e) = inner.pairing.redeem(secret, &key)
+                    {
+                        let detail = match e {
+                            RedeemError::Expired => "pairing secret expired before sign-in",
+                            RedeemError::Invalid => "pairing secret used or revoked meanwhile",
+                        };
+                        fail!(None, AuthFailure::InvalidPairingSecret, detail)
+                    }
                     if just_paired {
                         if inner.registry.register(device.clone()).is_err() {
                             fail!(None, AuthFailure::Internal, "cannot register device")
@@ -1307,7 +1602,9 @@ impl NetServer {
                 tokens,
             };
             send_control(t, session, &reply).await?;
-            inner.auth_limiter.record_success(&ip_key);
+            for source in sources {
+                inner.auth_limiter.record_success(source);
+            }
             inner
                 .auth_limiter
                 .record_success(&format!("device:{}", device.id));
@@ -1337,6 +1634,67 @@ impl NetServer {
     }
 }
 
+/// How many unfinished connections one network peer may hold. A provider's
+/// agent on this computer is one peer for all its visitors, so it may hold
+/// most of the pool, and a quarter stays for everyone else.
+fn peer_cap(config: &ServerConfig, peer: SocketAddr) -> usize {
+    let pool = config.max_pre_auth.max(1);
+    if peer.ip().is_loopback() {
+        (pool - pool / 4).max(1)
+    } else {
+        config.max_pre_auth_per_peer.clamp(1, pool)
+    }
+}
+
+/// Where the failures of a connection count. Behind a provider on this
+/// computer every visitor can share the loopback address, so its client id
+/// stands in for an address that says nothing; the client id is
+/// unauthenticated, so a real address still counts next to it.
+fn limit_keys(peer: SocketAddr, client_ip: IpAddr, client_id: Option<&str>) -> Vec<String> {
+    let client = client_id
+        .filter(|id| !id.is_empty() && peer.ip().is_loopback())
+        .map(|id| format!("client:{id}"));
+    let ip = format!("ip:{client_ip}");
+    match client {
+        Some(client) if client_ip.is_loopback() => vec![client],
+        Some(client) => vec![client, ip],
+        None => vec![ip],
+    }
+}
+
+/// One connection of a source that has not signed in yet.
+struct SourceSlot {
+    table: Arc<Mutex<HashMap<String, usize>>>,
+    key: String,
+}
+
+impl SourceSlot {
+    fn take(table: &Arc<Mutex<HashMap<String, usize>>>, key: &str, max: usize) -> Option<Self> {
+        let mut counts = table.lock().expect("poisoned");
+        let count = counts.entry(key.to_owned()).or_insert(0);
+        if *count >= max {
+            return None;
+        }
+        *count += 1;
+        Some(Self {
+            table: Arc::clone(table),
+            key: key.to_owned(),
+        })
+    }
+}
+
+impl Drop for SourceSlot {
+    fn drop(&mut self) {
+        let mut counts = self.table.lock().expect("poisoned");
+        if let Some(count) = counts.get_mut(&self.key) {
+            *count -= 1;
+            if *count == 0 {
+                counts.remove(&self.key);
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -1355,6 +1713,9 @@ pub struct ClientConfig {
     pub max_message_size: usize,
     pub queue: usize,
     pub noise: NoiseConfig,
+    /// Transport options: TLS client certificate, upgrade bearer header and
+    /// extra roots (for transports such as DNSPilot `app`-mode tunnels).
+    pub transport: TransportOptions,
 }
 
 impl ClientConfig {
@@ -1372,6 +1733,7 @@ impl ClientConfig {
             max_message_size: 16 * 1024 * 1024,
             queue: 256,
             noise: NoiseConfig::default(),
+            transport: TransportOptions::default(),
         }
     }
 
@@ -1520,12 +1882,27 @@ impl ClientConnection {
             ..config.noise
         };
         let (transport, session, info) = timeout(config.connect_timeout, async {
-            let (ws, _) = tokio_tungstenite::connect_async_with_config(
-                config.url.as_str(),
+            let request = crate::client_tls::upgrade_request(&config.url, &config.transport)?;
+            #[cfg(feature = "client-tls")]
+            let (ws, _) = tokio_tungstenite::connect_async_tls_with_config(
+                request,
                 Some(ws_config()),
                 true,
+                crate::client_tls::connector(&config.transport)?,
             )
             .await?;
+            #[cfg(not(feature = "client-tls"))]
+            let (ws, _) = {
+                if config.transport.client_identity.is_some()
+                    || !config.transport.extra_root_certs.is_empty()
+                {
+                    return Err(NetError::InvalidArgument(
+                        "TLS client options need the client-tls feature".into(),
+                    ));
+                }
+                tokio_tungstenite::connect_async_with_config(request, Some(ws_config()), true)
+                    .await?
+            };
             let mut transport = ws_frames(ws);
             let mut session = handshake_initiator(
                 &mut transport,
@@ -1672,6 +2049,101 @@ mod tests {
         assert!(f.server.active_connections().is_empty());
     }
 
+    /// The peer sends more than the inbound queue holds while the
+    /// application is busy sending: outbound messages keep flowing (no
+    /// deadlock), and every inbound message arrives once it reads again.
+    #[tokio::test]
+    async fn a_full_inbound_queue_does_not_stop_outbound_messages() {
+        let config = ServerConfig {
+            require_totp: false,
+            queue: 4,
+            ..Default::default()
+        };
+        let (f, mut rx) = fixture(config).await;
+        let device = StaticKeypair::generate();
+        let (mut t, mut s) = silent_client(&f, &device).await;
+        let mut conn = rx.recv().await.unwrap();
+        const SENT: usize = 20;
+        for i in 0..SENT {
+            s.send(&mut t, &[KIND_APP, 0x90, i as u8]).await.unwrap();
+        }
+        // Let the server read until its inbound queue is full.
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        const REPLIES: usize = 50;
+        let sender = conn.sender();
+        let replies = tokio::spawn(async move {
+            for id in 0..REPLIES as u64 {
+                sender
+                    .send(&Envelope {
+                        id,
+                        body: ServerMsg::Ok,
+                    })
+                    .await
+                    .unwrap();
+            }
+        });
+        let mut got = 0;
+        while got < REPLIES {
+            let msg = timeout(Duration::from_secs(5), s.recv(&mut t))
+                .await
+                .expect("outbound messages stalled behind the inbound queue")
+                .unwrap()
+                .unwrap();
+            if msg.first() == Some(&KIND_APP) {
+                got += 1;
+            }
+        }
+        replies.await.unwrap();
+        for _ in 0..SENT {
+            let msg = timeout(Duration::from_secs(2), conn.recv())
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(msg.is_err(), "the test bytes are no client message");
+        }
+        assert_eq!(conn.close_reason(), None);
+    }
+
+    #[test]
+    fn the_inbound_budget_holds_one_largest_message() {
+        assert_eq!(inbound_budget(16 * 1024 * 1024), 16 * 1024 * 1024);
+        assert_eq!(inbound_budget(10), MIN_INBOUND_BUDGET);
+        assert!(inbound_budget(usize::MAX) <= u32::MAX as usize);
+    }
+
+    /// Messages queued for a busy application are bounded by bytes, not
+    /// only by count.
+    #[tokio::test]
+    async fn queued_inbound_bytes_are_bounded() {
+        let (in_tx, mut in_rx) = mpsc::channel::<Inbound>(256);
+        let total = 1000;
+        let budget = Arc::new(Semaphore::new(total));
+        let (slot, permit) = reserve_inbound(&in_tx, &budget, total, 600).await.unwrap();
+        slot.send(Inbound {
+            bytes: vec![0; 600],
+            _budget: permit,
+        });
+        // The queue has room, the budget has not.
+        let second = timeout(
+            Duration::from_millis(100),
+            reserve_inbound(&in_tx, &budget, total, 600),
+        )
+        .await;
+        assert!(second.is_err(), "over the byte budget");
+        // Taken by the application: room again.
+        drop(in_rx.recv().await.unwrap());
+        assert!(reserve_inbound(&in_tx, &budget, total, 600).await.is_some());
+        // A message larger than the whole budget still passes alone.
+        drop(in_rx);
+        let budget = Arc::new(Semaphore::new(total));
+        let (in_tx, _in_rx) = mpsc::channel::<Inbound>(1);
+        assert!(
+            reserve_inbound(&in_tx, &budget, total, 5000)
+                .await
+                .is_some()
+        );
+    }
+
     #[tokio::test]
     async fn garbage_after_auth_is_a_protocol_error() {
         let config = ServerConfig {
@@ -1775,5 +2247,38 @@ mod tests {
             Control::Ping { n: 9 }
         ));
         assert!(decode_control(&[0xc1]).is_err());
+    }
+
+    #[test]
+    fn failures_count_by_provider_client_behind_a_local_agent() {
+        let local: SocketAddr = "127.0.0.1:9".parse().unwrap();
+        let far: SocketAddr = "203.0.113.5:9".parse().unwrap();
+        let lo = local.ip();
+        // A tunnel without a forwarded address: only the client id tells.
+        assert_eq!(limit_keys(local, lo, Some("c1")), ["client:c1"]);
+        // A forwarded address counts too: the id is unauthenticated.
+        assert_eq!(
+            limit_keys(local, far.ip(), Some("c1")),
+            ["client:c1", "ip:203.0.113.5"]
+        );
+        // Only a local agent can name a client.
+        assert_eq!(limit_keys(far, far.ip(), Some("c1")), ["ip:203.0.113.5"]);
+        assert_eq!(limit_keys(local, lo, None), ["ip:127.0.0.1"]);
+    }
+
+    #[test]
+    fn a_tunnel_on_this_computer_may_hold_most_of_the_pool_but_not_all() {
+        let config = ServerConfig::default();
+        let tunnel: SocketAddr = "127.0.0.1:9".parse().unwrap();
+        let far: SocketAddr = "203.0.113.5:9".parse().unwrap();
+        assert_eq!(peer_cap(&config, tunnel), 48);
+        assert_eq!(peer_cap(&config, far), 16);
+        let table = Arc::default();
+        let first = SourceSlot::take(&table, "peer:x", 1);
+        assert!(first.is_some());
+        assert!(SourceSlot::take(&table, "peer:x", 1).is_none());
+        assert!(SourceSlot::take(&table, "peer:y", 1).is_some());
+        drop(first);
+        assert!(SourceSlot::take(&table, "peer:x", 1).is_some());
     }
 }

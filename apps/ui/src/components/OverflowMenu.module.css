@@ -1,0 +1,45 @@
+/* A "more" button with a small panel of actions (narrow header, session top bar). */
+.overflow {
+  position: relative;
+  flex: none;
+}
+.button {
+  position: relative;
+  width: var(--control-h);
+  height: var(--control-h);
+}
+.badge {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 0;
+  pointer-events: none;
+}
+.menu {
+  position: absolute;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-end: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  min-width: 220px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(var(--vvh, 100dvh) - 72px - env(safe-area-inset-top));
+  padding: var(--space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+.menu :global(.btn) {
+  min-height: var(--control-h);
+  justify-content: flex-start;
+  text-align: start;
+}
+/* Full-width rows, stacked: no hit area reaching into the next one. */
+.menu :global(.btn)::after {
+  display: none;
+}

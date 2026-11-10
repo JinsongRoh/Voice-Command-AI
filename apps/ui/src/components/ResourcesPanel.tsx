@@ -96,6 +96,9 @@ export function ResourcesPanel() {
           ))}
         </ul>
       )}
+      {snapshot.sessions.some((u) => u.monitor_only) && (
+        <p className={`muted ${styles.hint}`}>{t('resources.monitorOnly')}</p>
+      )}
 
       <h3 className={styles.subtitle}>{t('resources.queue')}</h3>
       {error && (

@@ -11,7 +11,7 @@ use std::sync::Arc;
 use vca_net::{FileKeyStore, KeyStore};
 
 #[cfg(not(target_os = "android"))]
-const SERVICE: &str = "io.github.voicecommandai.app";
+const SERVICE: &str = "io.metavu.voicecommandai.app";
 
 pub fn open(data_dir: &Path) -> Result<Arc<dyn KeyStore>, Box<dyn std::error::Error>> {
     #[cfg(not(target_os = "android"))]

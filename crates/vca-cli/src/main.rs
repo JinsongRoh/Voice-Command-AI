@@ -11,10 +11,14 @@ mod daemon;
 mod error;
 mod hook;
 mod hooks_cmd;
+mod mcp;
 mod output;
 mod remote_cmd;
+mod restore_cmd;
 mod run;
+mod security_cmd;
 mod speech_cmd;
+mod tts_cmd;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -73,6 +77,10 @@ enum Cmd {
         /// Do not press Enter after the text.
         #[arg(long)]
         no_submit: bool,
+        /// You are typing this by hand at the agent's open prompt. Without
+        /// it, a text sent while a decision is open is refused.
+        #[arg(long)]
+        at_prompt: bool,
         #[arg(required = true, num_args = 1.., allow_hyphen_values = true)]
         text: Vec<String>,
     },
@@ -86,6 +94,17 @@ enum Cmd {
     Resume { session: String },
     /// Restart a session.
     Restart { session: String },
+    /// Change the name shown for a session, or go back to the automatic
+    /// name with --reset.
+    Rename {
+        session: String,
+        /// The new name (words are joined with spaces).
+        #[arg(required_unless_present = "reset", conflicts_with = "reset", num_args = 1..)]
+        name: Vec<String>,
+        /// Use the automatic name again.
+        #[arg(long)]
+        reset: bool,
+    },
     /// Show system and per-session resource usage.
     Resources {
         #[arg(long)]
@@ -137,8 +156,11 @@ enum Cmd {
         #[command(subcommand)]
         action: TotpCmd,
     },
-    /// List paired devices.
+    /// List paired devices (scope, online, last seen), or rename one or
+    /// change its permission.
     Devices {
+        #[command(subcommand)]
+        action: Option<remote_cmd::DevicesCmd>,
         #[arg(long)]
         json: bool,
     },
@@ -165,13 +187,72 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Speech engine and correction LLM profiles: options, login, logout,
+    /// key header and gateway token.
+    Speech {
+        #[command(subcommand)]
+        action: speech_cmd::SpeechCmd,
+    },
+    /// Spoken alerts through the PC's own TTS engines: list, say, login,
+    /// logout, key header and gateway token.
+    Tts {
+        #[command(subcommand)]
+        action: tts_cmd::TtsCmd,
+    },
     /// Cloud coding agents: providers, launch, login and logout.
     Cloud {
         #[command(subcommand)]
         action: cloud_cmd::CloudCmd,
     },
+    /// Reopen the AI CLI windows of this computer: list, save, run, import.
+    Restore {
+        #[command(subcommand)]
+        action: restore_cmd::RestoreCmd,
+    },
+    /// Mail for security notifications and recovery.
+    Mail {
+        #[command(subcommand)]
+        action: security_cmd::MailAction,
+    },
+    /// Local verification, recovery and security settings.
+    Security {
+        #[command(subcommand)]
+        action: security_cmd::SecurityAction,
+    },
     /// Print version information.
     Version,
+    /// The conductor's MCP server on stdin/stdout (started by the agent
+    /// from the conductor folder's MCP config; see docs/conductor.md).
+    Mcp,
+    /// Type the text on stdin into the Windows console of process `pid`
+    /// (started by vcad for a session in a console window).
+    #[command(hide = true)]
+    ConsoleSend {
+        #[arg(long)]
+        pid: u32,
+        /// The process's creation time (a FILETIME); the helper refuses a
+        /// process with another one (a reused PID).
+        #[arg(long)]
+        created: Option<u64>,
+        /// Press Enter after the text, as a separate key.
+        #[arg(long)]
+        submit: bool,
+        /// Stdin is a JSON key sequence (keys, text and pauses) instead of
+        /// text, for answering a form in the agent's terminal.
+        #[arg(long, conflicts_with = "submit")]
+        keys: bool,
+    },
+    /// Print the visible screen of the Windows console of process `pid`
+    /// (started by vcad to check a question form before answering it).
+    #[command(hide = true)]
+    ConsoleRead {
+        #[arg(long)]
+        pid: u32,
+        /// The process's creation time (a FILETIME); the helper refuses a
+        /// process with another one (a reused PID).
+        #[arg(long)]
+        created: Option<u64>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -258,11 +339,13 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
         Cmd::Send {
             session,
             no_submit,
+            at_prompt,
             text,
         } => {
             let input = Input::Text {
                 text: text.join(" "),
                 submit: !no_submit,
+                at_prompt,
             };
             send(endpoint, &session, input).await
         }
@@ -272,6 +355,14 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
         Cmd::Resume { session } => control_session(endpoint, &session, SessionAction::Resume).await,
         Cmd::Restart { session } => {
             control_session(endpoint, &session, SessionAction::Restart).await
+        }
+        Cmd::Rename {
+            session,
+            name,
+            reset,
+        } => {
+            let name = (!reset).then(|| name.join(" "));
+            rename(endpoint, &session, name).await
         }
         Cmd::Resources { json } => resources(endpoint, json).await,
         Cmd::Hook { agent, args } => {
@@ -296,7 +387,10 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
                     no_qr,
                 },
         } => remote_cmd::totp_enroll(endpoint, &account, code, !no_qr).await,
-        Cmd::Devices { json } => remote_cmd::devices(endpoint, json).await,
+        Cmd::Devices { action, json } => match action {
+            None => remote_cmd::devices(endpoint, json).await,
+            Some(action) => remote_cmd::manage_device(endpoint, action).await,
+        },
         Cmd::Revoke { device_id } => remote_cmd::revoke(endpoint, &device_id).await,
         Cmd::KillSwitch { reset } => remote_cmd::kill_switch(endpoint, reset).await,
         Cmd::Remote => remote_cmd::status(endpoint).await,
@@ -307,6 +401,19 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
             json,
         } => speech_cmd::transcribe(endpoint, &file, language, session, json).await,
         Cmd::Cloud { action } => cloud_cmd::run(endpoint, action).await,
+        Cmd::Speech { action } => speech_cmd::run(endpoint, action).await,
+        Cmd::Tts { action } => tts_cmd::run(endpoint, action).await,
+        Cmd::Mail { action } => security_cmd::mail(endpoint, action).await,
+        Cmd::Security { action } => security_cmd::security(endpoint, action).await,
+        Cmd::Restore { action } => restore_cmd::command(endpoint, control, action).await,
+        Cmd::Mcp => mcp::run(endpoint).await.map(|()| 0),
+        Cmd::ConsoleSend {
+            pid,
+            created,
+            submit,
+            keys,
+        } => console_send(pid, created, submit, keys),
+        Cmd::ConsoleRead { pid, created } => console_read(pid, created),
         Cmd::Version => {
             println!(
                 "vca {} (protocol {PROTOCOL_VERSION})",
@@ -315,6 +422,46 @@ async fn dispatch(cli: Cli) -> CliResult<i32> {
             Ok(0)
         }
     }
+}
+
+/// `vca console-send`: reads the text from stdin, then writes it to the
+/// other process's console (see `vca_adapters::terminal::console`).
+fn console_send(pid: u32, created: Option<u64>, submit: bool, keys: bool) -> CliResult<i32> {
+    use std::io::Read;
+
+    use vca_adapters::terminal::{KeyStep, console};
+
+    let mut text = String::new();
+    std::io::stdin()
+        .read_to_string(&mut text)
+        .map_err(|e| CliError::usage(format!("cannot read the text from stdin: {e}")))?;
+    if keys {
+        let steps: Vec<KeyStep> = serde_json::from_str(&text)
+            .map_err(|e| CliError::usage(format!("invalid key sequence: {e}")))?;
+        console::send_keys(pid, created, &steps).map_err(|e| CliError::failure(e.to_string()))?;
+    } else {
+        let report = console::send(pid, created, &text, submit)
+            .map_err(|e| CliError::failure(e.to_string()))?;
+        // vcad logs this line: how much was typed, and whether it was read.
+        println!("{report}");
+    }
+    Ok(0)
+}
+
+/// `vca console-read`: prints the visible screen of the other process's
+/// console (see `vca_adapters::terminal::console::read_screen`).
+fn console_read(pid: u32, created: Option<u64>) -> CliResult<i32> {
+    use std::io::Write;
+
+    let screen = vca_adapters::terminal::console::read_screen(pid, created)
+        .map_err(|e| CliError::failure(e.to_string()))?;
+    // This process left its own console to read the other one; the screen
+    // goes to the stdout pipe vcad reads, as UTF-8.
+    let mut out = std::io::stdout().lock();
+    out.write_all(screen.as_bytes())
+        .and_then(|()| out.flush())
+        .map_err(|e| CliError::failure(e.to_string()))?;
+    Ok(0)
 }
 
 async fn ping(endpoint: &Path, quiet: bool) -> CliResult<i32> {
@@ -378,6 +525,36 @@ async fn control_session(endpoint: &Path, session: &str, action: SessionAction) 
                 SessionAction::Restart => "restart",
             };
             println!("{verb}: ok (session {short})");
+            Ok(0)
+        }
+        other => Err(client::unexpected(&other)),
+    }
+}
+
+async fn rename(endpoint: &Path, session: &str, name: Option<String>) -> CliResult<i32> {
+    let mut client = Client::connect(endpoint).await?;
+    let session_id = client.resolve(session).await?;
+    let short = short_id(&session_id).to_owned();
+    let reset = name.is_none();
+    match client
+        .api(ClientMsg::RenameSession {
+            session_id: session_id.clone(),
+            name,
+        })
+        .await?
+    {
+        ServerMsg::Ok => {
+            let shown = client
+                .sessions()
+                .await?
+                .into_iter()
+                .find(|s| s.id == session_id)
+                .map(|s| s.display_name);
+            match (reset, shown) {
+                (true, Some(n)) => println!("session {short} uses its automatic name: {n}"),
+                (false, Some(n)) => println!("session {short} renamed to {n}"),
+                (_, None) => println!("rename: ok (session {short})"),
+            }
             Ok(0)
         }
         other => Err(client::unexpected(&other)),
@@ -456,6 +633,45 @@ mod tests {
     }
 
     #[test]
+    fn parses_device_management() {
+        use remote_cmd::{DevicesCmd, ScopeArg};
+        assert!(matches!(
+            parse(&["devices", "--json"]).unwrap().command,
+            Cmd::Devices {
+                action: None,
+                json: true
+            }
+        ));
+        match parse(&["devices", "rename", "dev_1", "Work phone"])
+            .unwrap()
+            .command
+        {
+            Cmd::Devices {
+                action: Some(DevicesCmd::Rename { device_id, name }),
+                ..
+            } => assert_eq!((device_id.as_str(), name.as_str()), ("dev_1", "Work phone")),
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            parse(&["devices", "scope", "dev_1", "view"])
+                .unwrap()
+                .command,
+            Cmd::Devices {
+                action: Some(DevicesCmd::Scope {
+                    scope: ScopeArg::View,
+                    ..
+                }),
+                ..
+            }
+        ));
+        assert!(parse(&["devices", "scope", "dev_1", "root"]).is_err());
+        assert!(matches!(
+            parse(&["revoke", "dev_1"]).unwrap().command,
+            Cmd::Revoke { .. }
+        ));
+    }
+
+    #[test]
     fn parses_global_endpoint() {
         let cli = parse(&["ls", "--endpoint", "/tmp/s.sock", "--json"]).unwrap();
         assert_eq!(cli.endpoint.as_deref(), Some(Path::new("/tmp/s.sock")));
@@ -470,6 +686,7 @@ mod tests {
                 session,
                 no_submit,
                 text,
+                ..
             } => {
                 assert_eq!(session, "ab12");
                 assert!(no_submit);
@@ -577,11 +794,186 @@ mod tests {
             }
         ));
         assert!(matches!(
+            parse(&["speech", "login", "claude"]).unwrap().command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::Login { ref profile }
+            } if profile == "claude"
+        ));
+        assert!(matches!(
+            parse(&["speech", "logout", "whisper"]).unwrap().command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::Logout { .. }
+            }
+        ));
+        assert!(matches!(
+            parse(&["speech", "options", "--json"]).unwrap().command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::Options { json: true }
+            }
+        ));
+        assert!(parse(&["speech", "login"]).is_err());
+        assert!(matches!(
+            parse(&["speech", "key-header", "team-stt", "X-VCA-Key"])
+                .unwrap()
+                .command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::KeyHeader { ref profile, ref header, clear: false }
+            } if profile == "team-stt" && header.as_deref() == Some("X-VCA-Key")
+        ));
+        assert!(matches!(
+            parse(&["speech", "key-header", "team-stt", "--clear"])
+                .unwrap()
+                .command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::KeyHeader {
+                    header: None,
+                    clear: true,
+                    ..
+                }
+            }
+        ));
+        assert!(matches!(
+            parse(&["speech", "gateway-login", "team-stt"])
+                .unwrap()
+                .command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::GatewayLogin { .. }
+            }
+        ));
+        assert!(matches!(
+            parse(&["speech", "gateway-logout", "team-stt"])
+                .unwrap()
+                .command,
+            Cmd::Speech {
+                action: speech_cmd::SpeechCmd::GatewayLogout { .. }
+            }
+        ));
+        assert!(matches!(
+            parse(&["tts", "list", "--json"]).unwrap().command,
+            Cmd::Tts {
+                action: tts_cmd::TtsCmd::List { json: true }
+            }
+        ));
+        match parse(&[
+            "tts",
+            "say",
+            "Session needs a decision",
+            "--engine",
+            "local-tts",
+            "--voice",
+            "F1",
+            "--out",
+            "alert.mp3",
+        ])
+        .unwrap()
+        .command
+        {
+            Cmd::Tts {
+                action:
+                    tts_cmd::TtsCmd::Say {
+                        text,
+                        engine,
+                        language,
+                        voice,
+                        out,
+                    },
+            } => {
+                assert_eq!(text, "Session needs a decision");
+                assert_eq!(engine.as_deref(), Some("local-tts"));
+                assert_eq!(language, None);
+                assert_eq!(voice.as_deref(), Some("F1"));
+                assert_eq!(out, Some(PathBuf::from("alert.mp3")));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            parse(&["tts", "login", "local-tts"]).unwrap().command,
+            Cmd::Tts {
+                action: tts_cmd::TtsCmd::Login { ref name }
+            } if name == "local-tts"
+        ));
+        assert!(matches!(
+            parse(&["tts", "logout", "local-tts"]).unwrap().command,
+            Cmd::Tts {
+                action: tts_cmd::TtsCmd::Logout { .. }
+            }
+        ));
+        assert!(parse(&["tts", "say"]).is_err());
+        assert!(parse(&["tts", "login"]).is_err());
+        assert!(matches!(
             parse(&["cloud", "providers", "--json"]).unwrap().command,
             Cmd::Cloud {
                 action: cloud_cmd::CloudCmd::Providers { json: true }
             }
         ));
+    }
+
+    #[test]
+    fn parses_rename() {
+        match parse(&["rename", "ab12", "API", "work"]).unwrap().command {
+            Cmd::Rename {
+                session,
+                name,
+                reset,
+            } => {
+                assert_eq!(session, "ab12");
+                assert_eq!(name, ["API", "work"]);
+                assert!(!reset);
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            parse(&["rename", "ab12", "--reset"]).unwrap().command,
+            Cmd::Rename { reset: true, .. }
+        ));
+        assert!(parse(&["rename", "ab12"]).is_err());
+        let run = parse(&[
+            "restore",
+            "run",
+            "--profile",
+            "Work",
+            "--only",
+            "acme-pdf,acme-office",
+            "--dry-run",
+        ])
+        .unwrap();
+        let Cmd::Restore {
+            action:
+                restore_cmd::RestoreCmd::Run {
+                    profile,
+                    only,
+                    dry_run,
+                },
+        } = run.command
+        else {
+            panic!("not a restore run");
+        };
+        assert_eq!(profile.as_deref(), Some("Work"));
+        assert_eq!(only, ["acme-pdf", "acme-office"]);
+        assert!(dry_run);
+        assert!(matches!(
+            parse(&["restore", "import", "layout.json"])
+                .unwrap()
+                .command,
+            Cmd::Restore {
+                action: restore_cmd::RestoreCmd::Import { .. }
+            }
+        ));
+        assert!(parse(&["restore", "import"]).is_err());
+        assert!(matches!(
+            parse(&["restore", "list", "--json"]).unwrap().command,
+            Cmd::Restore {
+                action: restore_cmd::RestoreCmd::List { json: true, .. }
+            }
+        ));
+        assert!(matches!(
+            parse(&["restore", "save"]).unwrap().command,
+            Cmd::Restore {
+                action: restore_cmd::RestoreCmd::Save { .. }
+            }
+        ));
+        assert!(parse(&["rename", "ab12", "x", "--reset"]).is_err());
+        assert!(parse(&["rename"]).is_err());
     }
 
     #[test]

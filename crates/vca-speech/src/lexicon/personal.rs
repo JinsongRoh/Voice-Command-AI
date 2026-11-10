@@ -93,6 +93,25 @@ impl PersonalLexicon {
         });
     }
 
+    /// Replaces the terms with `entries`, stored as given. What was learned
+    /// about terms still present stays, and so does the threshold. A mapping
+    /// the user lists again is no longer suppressed.
+    pub fn set_terms(&mut self, entries: Vec<TermEntry>) {
+        let listed = |term: &str| entries.iter().find(|e| e.term == term);
+        let gone: Vec<String> = self
+            .lexicon
+            .entries()
+            .iter()
+            .filter(|e| listed(&e.term).is_none())
+            .map(|e| e.term.clone())
+            .collect();
+        self.observations.retain(|o| !gone.contains(&o.term));
+        self.suppressed.retain(|(variant, term)| {
+            !listed(term).is_some_and(|e| e.variants.iter().any(|v| normalize(&v.text) == *variant))
+        });
+        self.lexicon = Lexicon::from_entries(Layer::Personal, entries);
+    }
+
     /// Removes a term and everything learned about it.
     pub fn remove_term(&mut self, term: &str) -> bool {
         self.observations.retain(|o| o.term != term);

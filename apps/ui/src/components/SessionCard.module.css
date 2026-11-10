@@ -1,6 +1,61 @@
 .item {
   list-style: none;
 }
+.hasMenu {
+  position: relative;
+}
+/* Room for the overflow button in the card's top row. */
+.hasMenu .top {
+  padding-inline-end: 30px;
+}
+/* A long press opens the card menu, not the system callout. */
+.hasMenu .card {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.menuButton {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+.menuButton[aria-expanded='true'] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.menu {
+  position: absolute;
+  z-index: 20;
+  top: 44px;
+  inset-inline-end: 6px;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+  text-align: start;
+  cursor: pointer;
+}
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--surface-2);
+}
 .card {
   min-width: 0;
   display: flex;
@@ -84,6 +139,7 @@
   font-size: 12px;
 }
 .cloud,
+.conductor,
 .profile {
   padding: 0 6px;
   border-radius: 4px;
@@ -99,6 +155,12 @@
 .profile {
   color: var(--text-muted);
   border: 1px solid var(--border);
+  text-transform: none;
+}
+/* "지휘": the conductor's own session. */
+.conductor {
+  color: var(--accent);
+  border: 1px solid currentColor;
   text-transform: none;
 }
 .preview {
@@ -122,4 +184,51 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Reordering (desktop list): a grip under the menu button, and a line where
+   a dragged card would land. */
+.reorderable {
+  position: relative;
+}
+.reorderable .preview {
+  padding-inline-end: 28px;
+}
+.handle {
+  position: absolute;
+  top: 46px;
+  inset-inline-end: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  cursor: grab;
+}
+.handle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.handle:active {
+  cursor: grabbing;
+}
+.dragging .card {
+  opacity: 0.45;
+}
+.dropBefore::before,
+.dropAfter::after {
+  content: '';
+  position: absolute;
+  inset-inline: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.dropBefore::before {
+  top: -7px;
+}
+.dropAfter::after {
+  bottom: -7px;
 }

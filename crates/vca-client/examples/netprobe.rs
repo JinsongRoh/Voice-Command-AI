@@ -4,7 +4,8 @@
 //!
 //! ```text
 //! cargo run --release -p vca-client --example netprobe -- \
-//!     --uri 'vca://pair?...' --data <dir> --minutes 120 --label tailscale
+//!     --uri 'vca://pair?...' --data <dir> --minutes 120 --label tailscale \
+//!     [--totp <code>]
 //! ```
 //!
 //! Prints one JSON summary at the end and writes `<data>/<label>-rtt.csv`
@@ -26,6 +27,7 @@ struct Args {
     minutes: f64,
     interval: Duration,
     label: String,
+    totp: Option<String>,
 }
 
 fn parse_args() -> Args {
@@ -35,6 +37,7 @@ fn parse_args() -> Args {
         minutes: 1.0,
         interval: Duration::from_millis(1000),
         label: "probe".into(),
+        totp: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
@@ -47,6 +50,7 @@ fn parse_args() -> Args {
                 args.interval = Duration::from_millis(value().parse().expect("--interval-ms"))
             }
             "--label" => args.label = value(),
+            "--totp" => args.totp = Some(value()),
             other => panic!("unknown argument {other}"),
         }
     }
@@ -59,6 +63,7 @@ struct Shared {
     rtts: Vec<(u128, f64)>,
     links: Vec<(u128, LinkStatus)>,
     connected: bool,
+    sessions: Vec<String>,
 }
 
 struct Sink {
@@ -82,6 +87,9 @@ impl LinkSink for Sink {
             return;
         };
         let mut s = self.shared.lock().unwrap();
+        if let ServerMsg::Sessions { sessions } = &env.body {
+            s.sessions = sessions.iter().map(|x| x.display_name.clone()).collect();
+        }
         if let Some(sent) = s.pending.remove(&env.id) {
             let rtt = sent.elapsed().as_secs_f64() * 1000.0;
             let at = self.start.elapsed().as_millis();
@@ -106,7 +114,12 @@ async fn main() {
     let hub = ClientHub::open(args.data.join("machines"), secrets).expect("open hub");
     let machine = match (&args.uri, hub.machines().first()) {
         (Some(uri), _) => hub
-            .pair(uri, &format!("netprobe-{}", args.label), "probe", None)
+            .pair(
+                uri,
+                &format!("netprobe-{}", args.label),
+                "probe",
+                args.totp.clone(),
+            )
             .await
             .expect("pair"),
         (None, Some(m)) => m.clone(),
@@ -216,6 +229,7 @@ async fn main() {
             "max": rtts.last().copied().unwrap_or(f64::NAN),
         },
         "outages": outages,
+        "sessions": s.sessions,
     });
     println!("{}", serde_json::to_string_pretty(&summary).unwrap());
 }

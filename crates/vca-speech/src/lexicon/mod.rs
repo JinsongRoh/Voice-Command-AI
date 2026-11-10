@@ -560,6 +560,26 @@ impl VocabularyEngine {
     }
 
     /// The `limit` most relevant terms, for engines that take phrase lists.
+    /// Base and project terms that occur in `text` as whole words (ignoring
+    /// case), spelled canonically; they are correct as dictated.
+    pub fn known_terms_in(&self, text: &str) -> Vec<String> {
+        let words: std::collections::HashSet<String> = text
+            .split(|c: char| !(c.is_alphanumeric() || matches!(c, '.' | '-' | '_' | '/' | '@')))
+            .map(|w| {
+                w.trim_matches(|c: char| matches!(c, '.' | '-' | '/'))
+                    .to_lowercase()
+            })
+            .filter(|w| !w.is_empty())
+            .collect();
+        let mut out: Vec<String> = Vec::new();
+        for e in self.base.entries().iter().chain(self.project.entries()) {
+            if words.contains(&e.term.to_lowercase()) && !out.contains(&e.term) {
+                out.push(e.term.clone());
+            }
+        }
+        out
+    }
+
     pub fn hint_phrases(&self, limit: usize) -> Vec<String> {
         self.index
             .ranked_terms(&self.context)

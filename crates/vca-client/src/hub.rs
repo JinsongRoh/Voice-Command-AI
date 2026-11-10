@@ -16,9 +16,11 @@ use vca_net::{
 use zeroize::Zeroizing;
 
 use crate::backoff::Backoff;
+use crate::dnspilot::DnsPilotManager;
 use crate::error::{ClientError, is_transport_error};
 use crate::store::{self, StoredMachine, device_key_name, refresh_token_name, sanitize_display};
 use crate::{LinkSink, LinkState, LinkStatus, MachineInfo};
+use vca_providers::dnspilot::oauth::OAuthConfig;
 
 const NAME_MAX: usize = 64;
 const PLATFORM_MAX: usize = 32;
@@ -32,6 +34,12 @@ pub struct ClientOptions {
     pub heartbeat_interval: Duration,
     /// Reconnect backoff.
     pub backoff: Backoff,
+    /// DNSPilot console and OAuth client (default: the public console and
+    /// the registered client `vca`).
+    pub dnspilot: OAuthConfig,
+    /// Additional trusted TLS roots (DER) for `wss://` endpoints, on top of
+    /// the public web PKI. For private deployments and tests.
+    pub extra_root_certs: Vec<Vec<u8>>,
 }
 
 impl Default for ClientOptions {
@@ -40,6 +48,8 @@ impl Default for ClientOptions {
             connect_timeout: Duration::from_secs(15),
             heartbeat_interval: Duration::from_secs(20),
             backoff: Backoff::default(),
+            dnspilot: crate::dnspilot::default_oauth_config(),
+            extra_root_certs: Vec::new(),
         }
     }
 }
@@ -63,7 +73,15 @@ struct Inner {
     machines: Mutex<Vec<StoredMachine>>,
     links: Mutex<HashMap<String, Link>>,
     next_generation: AtomicU64,
+    dnspilot: DnsPilotManager,
+    /// The device keypair of each pairing link being tried, kept for its
+    /// retries: the server gives the TOTP retry period after a link's
+    /// expiry only to the key that presented the link in time.
+    pairing_keys: Mutex<Vec<(Zeroizing<Vec<u8>>, StaticKeypair)>>,
 }
+
+/// Pairing links whose keypair is kept for retries.
+const MAX_PAIRING_KEYS: usize = 4;
 
 /// A requested (supervised) connection.
 struct Link {
@@ -80,6 +98,16 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn now_millis() -> u64 {
     vca_core::now_millis()
+}
+
+fn find_mut<'a>(
+    machines: &'a mut [StoredMachine],
+    id: &str,
+) -> Result<&'a mut StoredMachine, ClientError> {
+    machines
+        .iter_mut()
+        .find(|m| m.info.id == id)
+        .ok_or_else(|| ClientError::NotFound(id.to_string()))
 }
 
 /// Why a connection attempt of the supervisor failed.
@@ -116,6 +144,11 @@ impl ClientHub {
         let data_dir = data_dir.into();
         store::create_private_dir(&data_dir)?;
         let machines = store::load(&data_dir)?;
+        let dnspilot = DnsPilotManager::open(
+            data_dir.clone(),
+            Arc::clone(&secrets),
+            options.dnspilot.clone(),
+        )?;
         Ok(Self {
             inner: Arc::new(Inner {
                 data_dir,
@@ -125,16 +158,74 @@ impl ClientHub {
                 machines: Mutex::new(machines),
                 links: Mutex::new(HashMap::new()),
                 next_generation: AtomicU64::new(1),
+                pairing_keys: Mutex::new(Vec::new()),
+                dnspilot,
             }),
         })
     }
 
-    /// The paired machines, in pairing order.
+    /// DNSPilot app-mode tunnels: client identity, OAuth authorization and
+    /// setup steps. Connections to known tunnel hosts present the client
+    /// certificate automatically.
+    pub fn dnspilot(&self) -> &DnsPilotManager {
+        &self.inner.dnspilot
+    }
+
+    /// The paired machines, in display order (pairing order until the user
+    /// reorders them).
     pub fn machines(&self) -> Vec<MachineInfo> {
         lock(&self.inner.machines)
             .iter()
-            .map(|m| m.info.clone())
+            .map(StoredMachine::public_info)
             .collect()
+    }
+
+    // --- Local machine management: alias, default and order. Nothing here
+    // touches keys or the server. ---
+
+    /// Sets (or with `None` / blank text clears) the local display alias.
+    pub fn set_alias(&self, machine_id: &str, alias: Option<&str>) -> Result<(), ClientError> {
+        let alias = alias
+            .map(|a| sanitize_display(a, NAME_MAX))
+            .filter(|a| !a.is_empty());
+        self.inner.update_machines(|next| {
+            let m = find_mut(next, machine_id)?;
+            m.info.alias = alias;
+            Ok(())
+        })
+    }
+
+    /// Makes a machine the one opened on launch (`None` clears the choice).
+    pub fn set_default(&self, machine_id: Option<&str>) -> Result<(), ClientError> {
+        self.inner.update_machines(|next| {
+            if let Some(id) = machine_id {
+                find_mut(next, id)?;
+            }
+            for m in next.iter_mut() {
+                m.info.is_default = Some(m.info.id.as_str()) == machine_id;
+            }
+            Ok(())
+        })
+    }
+
+    /// The machine to open on launch, if one was chosen.
+    pub fn default_machine(&self) -> Option<MachineInfo> {
+        self.machines().into_iter().find(|m| m.is_default)
+    }
+
+    /// Moves a machine `offset` places (negative: up), clamped to the list.
+    pub fn move_machine(&self, machine_id: &str, offset: i32) -> Result<(), ClientError> {
+        self.inner.update_machines(|next| {
+            let from = next
+                .iter()
+                .position(|m| m.info.id == machine_id)
+                .ok_or_else(|| ClientError::NotFound(machine_id.to_string()))?;
+            let last = next.len().saturating_sub(1) as i64;
+            let to = (from as i64 + i64::from(offset)).clamp(0, last) as usize;
+            let m = next.remove(from);
+            next.insert(to, m);
+            Ok(())
+        })
     }
 
     /// Parses the `vca://pair?...` URI, generates a fresh device keypair for
@@ -156,7 +247,9 @@ impl ClientHub {
         if !store::is_valid_server_id(&payload.server_id) {
             return Err(ClientError::InvalidPairing("invalid server id".into()));
         }
-        if payload.is_expired(now_millis() / 1000) {
+        // Not `is_expired`: a retry with a TOTP code may run past the expiry
+        // of a link presented in time, and only the server knows that.
+        if payload.is_past_grace(now_millis() / 1000) {
             return Err(ClientError::InvalidPairing(
                 "the pairing code has expired; show a new QR code".into(),
             ));
@@ -164,7 +257,7 @@ impl ClientHub {
         let id = payload.server_id.clone();
         let device_name = sanitize_display(device_name, NAME_MAX);
         let platform = sanitize_display(platform, PLATFORM_MAX);
-        let keypair = StaticKeypair::generate();
+        let keypair = self.inner.pairing_keypair(&payload.secret);
         let totp = totp.map(Zeroizing::new);
         let mut conn = self
             .inner
@@ -195,15 +288,20 @@ impl ClientHub {
                 device_id: conn.session.device_id.clone(),
                 scope: conn.session.scope,
                 paired_at: now_millis(),
+                alias: None,
+                is_default: false,
+                last_connected: Some(now_millis()),
+                server_fingerprint: String::new(),
             },
             server_key: payload.server_key,
         };
         // Replace an existing pairing: stop its connection first.
         self.disconnect(&id);
+        self.inner.forget_pairing_keypair(&payload.secret);
         let result = self.inner.store_pairing(&stored, &keypair, &tokens);
         conn.close().await;
         result?;
-        Ok(stored.info)
+        Ok(self.inner.machine(&id)?.public_info())
     }
 
     /// Starts (or replaces) the supervised connection to a machine and
@@ -369,12 +467,51 @@ impl Inner {
             .ok_or_else(|| ClientError::Internal("no tokio runtime available".into()))
     }
 
+    /// Applies `f` to a copy of the machines and persists it; memory is only
+    /// updated when the write succeeded.
+    fn update_machines(
+        &self,
+        f: impl FnOnce(&mut Vec<StoredMachine>) -> Result<(), ClientError>,
+    ) -> Result<(), ClientError> {
+        let mut machines = lock(&self.machines);
+        let mut next = machines.clone();
+        f(&mut next)?;
+        store::save(&self.data_dir, &next)?;
+        *machines = next;
+        Ok(())
+    }
+
     fn machine(&self, id: &str) -> Result<StoredMachine, ClientError> {
         lock(&self.machines)
             .iter()
             .find(|m| m.info.id == id)
             .cloned()
             .ok_or_else(|| ClientError::NotFound(id.to_string()))
+    }
+
+    /// The keypair for pairing with `secret`: the one of an earlier try of
+    /// the same link, else a new one.
+    fn pairing_keypair(&self, secret: &[u8]) -> StaticKeypair {
+        let mut keys = self
+            .pairing_keys
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((_, k)) = keys.iter().find(|(s, _)| s.as_slice() == secret) {
+            return k.clone();
+        }
+        let keypair = StaticKeypair::generate();
+        keys.push((Zeroizing::new(secret.to_vec()), keypair.clone()));
+        while keys.len() > MAX_PAIRING_KEYS {
+            keys.remove(0);
+        }
+        keypair
+    }
+
+    fn forget_pairing_keypair(&self, secret: &[u8]) {
+        self.pairing_keys
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain(|(s, _)| s.as_slice() != secret);
     }
 
     fn device_keypair(&self, id: &str) -> Result<Option<StaticKeypair>, ClientError> {
@@ -411,7 +548,13 @@ impl Inner {
             .save(&refresh_token_name(id), tokens.refresh_token.as_bytes())?;
         let mut next = machines.clone();
         match next.iter_mut().find(|m| m.info.id == *id) {
-            Some(m) => *m = stored.clone(),
+            // Re-pairing keeps the local alias, default choice and position.
+            Some(m) => {
+                let (alias, is_default) = (m.info.alias.take(), m.info.is_default);
+                *m = stored.clone();
+                m.info.alias = alias;
+                m.info.is_default = is_default;
+            }
             None => next.push(stored.clone()),
         }
         store::save(&self.data_dir, &next)?;
@@ -437,18 +580,16 @@ impl Inner {
         self.secrets
             .save(&refresh_token_name(id), tokens.refresh_token.as_bytes())?;
         let name = sanitize_display(&conn.session.server_name, NAME_MAX);
-        let current = &machines[pos].info;
-        if (!name.is_empty() && name != current.name) || conn.session.scope != current.scope {
-            let mut next = machines.clone();
-            if !name.is_empty() {
-                next[pos].info.name = name;
-            }
-            next[pos].info.scope = conn.session.scope;
-            match store::save(&self.data_dir, &next) {
-                Ok(()) => *machines = next,
-                // The token is safe; stale display metadata is not fatal.
-                Err(e) => tracing::warn!(machine = id, "cannot update machine metadata: {e}"),
-            }
+        let mut next = machines.clone();
+        if !name.is_empty() {
+            next[pos].info.name = name;
+        }
+        next[pos].info.scope = conn.session.scope;
+        next[pos].info.last_connected = Some(now_millis());
+        match store::save(&self.data_dir, &next) {
+            Ok(()) => *machines = next,
+            // The token is safe; stale display metadata is not fatal.
+            Err(e) => tracing::warn!(machine = id, "cannot update machine metadata: {e}"),
         }
         Ok(())
     }
@@ -470,6 +611,17 @@ impl Inner {
             let mut config = ClientConfig::new(url.clone(), server_key, keypair.clone());
             config.connect_timeout = self.options.connect_timeout;
             config.heartbeat_interval = self.options.heartbeat_interval;
+            match self
+                .dnspilot
+                .transport_for(url, &self.options.extra_root_certs)
+            {
+                Ok(t) => config.transport = t,
+                Err(e) => {
+                    tracing::warn!(endpoint = %url, "cannot prepare the transport: {e}");
+                    last = Some(NetError::Storage(e.to_string()));
+                    continue;
+                }
+            }
             match ClientConnection::connect(config, auth()).await {
                 Ok(conn) => return Ok(conn),
                 Err(e) if is_transport_error(&e) => {
@@ -667,7 +819,8 @@ fn failure_from_net(e: NetError) -> Failure {
                 AuthFailure::Internal => retry("server_error", msg, false),
                 AuthFailure::Protocol
                 | AuthFailure::AlreadyPaired
-                | AuthFailure::InvalidPairingSecret => {
+                | AuthFailure::InvalidPairingSecret
+                | AuthFailure::PairingAttemptsExhausted => {
                     stop(LinkState::Disconnected, "protocol", msg)
                 }
             }

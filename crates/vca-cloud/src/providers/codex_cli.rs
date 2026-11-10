@@ -154,6 +154,11 @@ impl CodexCloudAdapter {
 
     async fn run(&self, args: Vec<OsString>) -> Result<Output> {
         let mut cmd = tokio::process::Command::new(&self.program);
+        // Not as the Claude Code session vcad may run under (`child_env`);
+        // NO_COLOR is set again below on purpose.
+        for key in vca_core::child_env::inherited_removals() {
+            cmd.env_remove(key);
+        }
         cmd.arg("cloud")
             .args(args)
             .env("NO_COLOR", "1")

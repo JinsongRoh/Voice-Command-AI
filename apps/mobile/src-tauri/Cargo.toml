@@ -18,9 +18,57 @@ tauri-build.workspace = true
 [dependencies]
 serde_json.workspace = true # used by generate_context! for plugin config
 tauri.workspace = true
-# Direct dependency so tauri-build sees its permissions (capabilities).
+# Direct dependencies so tauri-build sees their permissions (capabilities).
+# The barcode scanner is registered on Android/iOS only (`cfg(mobile)`); it
+# still builds on a desktop, where this crate can run for quick UI checks.
+tauri-plugin-barcode-scanner.workspace = true
+# Face ID / fingerprint (with the device passcode as fallback): the app lock,
+# and before a remote shell opens or runs a dangerous command; phones only.
+tauri-plugin-biometric.workspace = true
+tauri-plugin-notification.workspace = true
 tauri-plugin-deep-link.workspace = true
+# vca-shell registers the opener; without a direct dependency tauri-build
+# leaves its Kotlin class out of the Android build and the app aborts at start.
+tauri-plugin-opener.workspace = true
 vca-shell.workspace = true
+
+# Reads the cold-start launch URL from the scene connection options (see
+# src/ios_launch_url.rs). Same major versions as tao's, so nothing new is built.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSData",
+  "NSEnumerator",
+  "NSError",
+  "NSSet",
+  "NSString",
+  "NSURL",
+] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "UIApplication",
+  "UIOpenURLContext",
+  "UIResponder",
+  "UIScene",
+  "UISceneOptions",
+] }
+# Approval alerts (src/ios_push.rs), only with the `native-push` feature. The
+# versions tao already builds.
+block2 = { version = "0.6", optional = true }
+objc2-user-notifications = { version = "0.3", optional = true, default-features = false, features = [
+  "std",
+  "block2",
+  "UNNotificationResponse",
+  "UNUserNotificationCenter",
+] }
+
+# Direct dependency so tauri-build adds the plugin's Kotlin project (and its
+# RECORD_AUDIO manifest entry) to the Gradle build; vca-shell registers it.
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-vca-mic.workspace = true
+# FCM device token (src/android_push.rs), only with the `native-push` feature.
+tauri-plugin-vca-push = { path = "plugins/vca-push", optional = true }
 
 [lints]
 workspace = true
@@ -28,3 +76,7 @@ workspace = true
 [features]
 # Serve the embedded UI instead of the dev server (set by `tauri build`).
 custom-protocol = ["tauri/custom-protocol"]
+# Approval alerts: APNs and FCM device tokens. Off until the Push Notifications
+# capability (iOS) and the Firebase project with google-services.json (Android)
+# exist; without them a build of this feature cannot get a token.
+native-push = ["dep:block2", "dep:objc2-user-notifications", "dep:tauri-plugin-vca-push"]

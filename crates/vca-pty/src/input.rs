@@ -64,12 +64,12 @@ pub fn encode_text(text: &str, modes: TerminalModes) -> Vec<u8> {
     }
 }
 
-/// Encodes an [`Input`]. [`Input::Choose`] needs agent-specific knowledge
-/// and is rejected with [`PtyError::Unsupported`]; adapters translate it into
-/// text or keys first.
+/// Encodes an [`Input`]. [`Input::Choose`] and [`Input::Answer`] need
+/// agent-specific knowledge and are rejected with [`PtyError::Unsupported`];
+/// adapters translate them into text or keys first.
 pub fn encode_input(input: &Input, modes: TerminalModes) -> Result<EncodedInput, PtyError> {
     match input {
-        Input::Text { text, submit } => Ok(EncodedInput {
+        Input::Text { text, submit, .. } => Ok(EncodedInput {
             body: encode_text(text, modes),
             submit: *submit,
         }),
@@ -77,8 +77,8 @@ pub fn encode_input(input: &Input, modes: TerminalModes) -> Result<EncodedInput,
             body: encode_key(*key, modes).to_vec(),
             submit: false,
         }),
-        Input::Choose { .. } => Err(PtyError::Unsupported(
-            "Input::Choose must be translated by the agent adapter".into(),
+        Input::Choose { .. } | Input::Answer { .. } => Err(PtyError::Unsupported(
+            "decision answers must be translated by the agent adapter".into(),
         )),
     }
 }
@@ -160,6 +160,7 @@ mod tests {
             &Input::Text {
                 text: "fix the bug".into(),
                 submit: true,
+                at_prompt: false,
             },
             PASTE,
         )

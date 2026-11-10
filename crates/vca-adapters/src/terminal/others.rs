@@ -1,4 +1,4 @@
-//! WezTerm, kitty, iTerm2 and Windows console helpers.
+//! WezTerm, kitty and iTerm2 helpers (the Windows console is in `console`).
 //!
 //! These are unverified on real installations: the formats follow the
 //! terminals' documentation and are covered by unit tests only.
@@ -109,104 +109,9 @@ end tell"#,
     )
 }
 
-fn base64(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let b = [
-            chunk[0],
-            *chunk.get(1).unwrap_or(&0),
-            *chunk.get(2).unwrap_or(&0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
-        for i in 0..4 {
-            if i <= chunk.len() {
-                out.push(TABLE[((n >> (18 - 6 * i)) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
-}
-
-/// PowerShell script that attaches to the console of `pid` and writes key
-/// events with `WriteConsoleInputW`. The text travels as base64 so no
-/// quoting is needed. Unverified on Windows.
-pub fn windows_console_script(pid: u32, text: &str, submit: bool) -> String {
-    let mut payload = text.to_owned();
-    if submit {
-        payload.push('\r');
-    }
-    let b64 = base64(payload.as_bytes());
-    format!(
-        r#"$ErrorActionPreference = 'Stop'
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class VcaConsoleInput {{
-  [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Unicode)]
-  public struct KEY_EVENT_RECORD {{
-    [FieldOffset(0)] public int bKeyDown;
-    [FieldOffset(4)] public ushort wRepeatCount;
-    [FieldOffset(6)] public ushort wVirtualKeyCode;
-    [FieldOffset(8)] public ushort wVirtualScanCode;
-    [FieldOffset(10)] public char UnicodeChar;
-    [FieldOffset(12)] public uint dwControlKeyState;
-  }}
-  [StructLayout(LayoutKind.Explicit)]
-  public struct INPUT_RECORD {{
-    [FieldOffset(0)] public ushort EventType;
-    [FieldOffset(4)] public KEY_EVENT_RECORD KeyEvent;
-  }}
-  [DllImport("kernel32.dll", SetLastError = true)] static extern bool FreeConsole();
-  [DllImport("kernel32.dll", SetLastError = true)] static extern bool AttachConsole(uint pid);
-  [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-  static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr sec, uint disp, uint flags, IntPtr tmpl);
-  [DllImport("kernel32.dll", SetLastError = true)]
-  static extern bool WriteConsoleInputW(IntPtr h, INPUT_RECORD[] recs, uint len, out uint written);
-  public static void Send(uint pid, string text) {{
-    FreeConsole();
-    if (!AttachConsole(pid)) throw new Exception("AttachConsole failed: " + Marshal.GetLastWin32Error());
-    try {{
-      IntPtr h = CreateFileW("CONIN$", 0xC0000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
-      var recs = new INPUT_RECORD[text.Length * 2];
-      for (int i = 0; i < text.Length; i++) {{
-        for (int d = 0; d < 2; d++) {{
-          var r = new INPUT_RECORD();
-          r.EventType = 1;
-          r.KeyEvent.bKeyDown = d == 0 ? 1 : 0;
-          r.KeyEvent.wRepeatCount = 1;
-          r.KeyEvent.wVirtualKeyCode = (ushort)(text[i] == '\r' ? 0x0D : 0);
-          r.KeyEvent.UnicodeChar = text[i];
-          recs[i * 2 + d] = r;
-        }}
-      }}
-      uint written;
-      if (!WriteConsoleInputW(h, recs, (uint)recs.Length, out written))
-        throw new Exception("WriteConsoleInput failed: " + Marshal.GetLastWin32Error());
-    }} finally {{
-      FreeConsole();
-    }}
-  }}
-}}
-'@
-[VcaConsoleInput]::Send({pid}, [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{b64}')))"#
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn base64_matches_reference() {
-        assert_eq!(base64(b""), "");
-        assert_eq!(base64(b"f"), "Zg==");
-        assert_eq!(base64(b"fo"), "Zm8=");
-        assert_eq!(base64(b"foo"), "Zm9v");
-        assert_eq!(base64("héllo\r".as_bytes()), "aMOpbGxvDQ==");
-    }
 
     #[test]
     fn parses_wezterm_list() {

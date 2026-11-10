@@ -57,7 +57,7 @@ fn provider_arg(name: &str) -> CliResult<CloudProvider> {
     })
 }
 
-fn unexpected_local(resp: &LocalResponse) -> CliError {
+pub(crate) fn unexpected_local(resp: &LocalResponse) -> CliError {
     CliError::failure(format!("unexpected response from vcad: {resp:?}"))
 }
 
@@ -162,7 +162,7 @@ async fn launch(
 }
 
 /// Reads one line from stdin without echoing it when stdin is a terminal.
-fn read_secret(prompt: &str) -> CliResult<Secret> {
+pub(crate) fn read_secret(prompt: &str) -> CliResult<Secret> {
     let stdin = std::io::stdin();
     let line = if stdin.is_terminal() {
         eprint!("{prompt}");

@@ -7,14 +7,24 @@ import {
   folderName,
   LOCAL_AGENT_TYPES,
   providerLabel,
+  shellLabel,
 } from '../protocol/helpers';
+import { shellChoices } from '../protocol/shell';
 import type { AgentKind, CloudProvider, SessionInfo } from '../protocol/types';
-import { useActions } from '../state/store';
+import { useActions, useAppState, useMachines } from '../state/store';
+import { FolderPicker, type FolderSelection } from './FolderPicker';
 import { Modal } from './Modal';
+import { useShell } from './ShellProvider';
+import { describeShellError } from './shellErrors';
 
 const PROFILES = ['personal', 'work', 'api'];
 
-/** SES-04 (local) and CLD-03 (cloud) session creation. */
+/** Servers that can start an agent under a named account profile. */
+export const FEATURE_ACCOUNT_PROFILES = 'account_profiles';
+
+type Kind = 'local' | 'cloud' | 'shell';
+
+/** SES-04 (local), CLD-03 (cloud) and remote shell session creation. */
 export function NewSessionDialog({
   projectDirs,
   onClose,
@@ -27,7 +37,10 @@ export function NewSessionDialog({
   const { t } = useI18n();
   const actions = useActions();
   const id = useId();
-  const [kind, setKind] = useState<'local' | 'cloud'>('local');
+  const shell = useShell();
+  const [kind, setKind] = useState<Kind>('local');
+  const shells = shellChoices(shell?.os ?? null);
+  const [shellName, setShellName] = useState(shells[0] ?? 'default');
   const [agentType, setAgentType] = useState<(typeof LOCAL_AGENT_TYPES)[number]>('claude_code');
   const [folderMode, setFolderMode] = useState<'existing' | 'new'>(
     projectDirs.length ? 'existing' : 'new',
@@ -35,18 +48,36 @@ export function NewSessionDialog({
   const [existingDir, setExistingDir] = useState(projectDirs[0] ?? '');
   const [newDir, setNewDir] = useState('');
   const [profile, setProfile] = useState('');
+  // Account profiles need server support; until a server announces it the
+  // picker stays hidden (a chosen profile would only fail the launch).
+  const profilesSupported = useAppState((s) => s.serverFeatures.includes(FEATURE_ACCOUNT_PROFILES));
   const [displayName, setDisplayName] = useState('');
+  /** Claude Code continues the folder's latest conversation unless set. */
+  const [fresh, setFresh] = useState(false);
   const [provider, setProvider] = useState<CloudProvider>('jules');
   const [repository, setRepository] = useState('');
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { machine } = useMachines();
+  /** The folder picker, or the typed path of older servers (`legacy`). */
+  const [folderUi, setFolderUi] = useState<'picker' | 'legacy'>('picker');
+  const [pickerNote, setPickerNote] = useState<string | null>(null);
+  const [picked, setPicked] = useState<FolderSelection | null>(null);
 
-  const projectDir = folderMode === 'existing' ? existingDir : newDir.trim();
+  const projectDir =
+    folderUi === 'picker'
+      ? (picked?.path ?? '')
+      : folderMode === 'existing'
+        ? existingDir
+        : newDir.trim();
+  const createDir = folderUi === 'picker' ? !!picked?.create : folderMode === 'new';
   const valid =
-    kind === 'local'
-      ? projectDir.length > 0
-      : repository.trim().length > 0 && prompt.trim().length > 0;
+    kind === 'cloud'
+      ? repository.trim().length > 0 && prompt.trim().length > 0
+      : kind === 'shell'
+        ? projectDir.length > 0 && !!shell?.allowed
+        : projectDir.length > 0;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,15 +85,27 @@ export function NewSessionDialog({
     setBusy(true);
     setError(null);
     try {
+      if (kind === 'shell') {
+        // Biometrics (phones), then the authenticator code, then open_shell.
+        const opened = await shell?.openShell({
+          shell: shellName,
+          project_dir: projectDir,
+          display_name: displayName.trim() || null,
+        });
+        if (opened) onLaunched(opened);
+        else setBusy(false);
+        return;
+      }
       const session =
         kind === 'local'
           ? await actions.launch({
               agent: { type: agentType } as AgentKind,
               project_dir: projectDir,
-              create_dir: folderMode === 'new',
-              profile: profile || null,
+              create_dir: createDir,
+              profile: profilesSupported ? profile || null : null,
               args: [],
               display_name: displayName.trim() || null,
+              ...(agentType === 'claude_code' && fresh ? { fresh: true } : {}),
             })
           : await actions.launchCloud({
               provider,
@@ -72,7 +115,11 @@ export function NewSessionDialog({
             });
       onLaunched(session);
     } catch (err) {
-      setError(t('newSession.error', { error: (err as Error).message }));
+      setError(
+        kind === 'shell'
+          ? describeShellError(t, err)
+          : t('newSession.error', { error: (err as Error).message }),
+      );
       setBusy(false);
     }
   };
@@ -81,6 +128,8 @@ export function NewSessionDialog({
     <Modal
       title={t('newSession.title')}
       onClose={onClose}
+      dismissOnBackdrop={false}
+      fullScreen
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
@@ -92,7 +141,11 @@ export function NewSessionDialog({
             className="btn btn-primary"
             disabled={!valid || busy}
           >
-            {busy ? t('newSession.launching') : t('newSession.launch')}
+            {busy
+              ? t('newSession.launching')
+              : kind === 'shell'
+                ? t('shell.open')
+                : t('newSession.launch')}
           </button>
         </>
       }
@@ -109,88 +162,178 @@ export function NewSessionDialog({
             <button type="button" aria-pressed={kind === 'cloud'} onClick={() => setKind('cloud')}>
               {t('newSession.cloud')}
             </button>
+            {shell && (
+              <button
+                type="button"
+                aria-pressed={kind === 'shell'}
+                disabled={!shell.allowed}
+                aria-describedby={!shell.allowed ? `${id}-shell-hint` : undefined}
+                onClick={() => {
+                  setKind('shell');
+                  if (folderMode === 'new' && projectDirs.length) setFolderMode('existing');
+                }}
+              >
+                {t('newSession.shellKind')}
+              </button>
+            )}
           </div>
+          {shell && !shell.allowed && (
+            <p
+              id={`${id}-shell-hint`}
+              className="muted"
+              style={{ margin: '6px 0 0', fontSize: 13 }}
+            >
+              {t('newSession.shellNeedsAdmin')}
+            </p>
+          )}
         </div>
 
-        {kind === 'local' ? (
+        {kind !== 'cloud' ? (
           <>
-            <div className="field">
-              <label htmlFor={`${id}-agent`}>{t('newSession.agent')}</label>
-              <select
-                id={`${id}-agent`}
-                value={agentType}
-                onChange={(e) => setAgentType(e.target.value as typeof agentType)}
-              >
-                {LOCAL_AGENT_TYPES.map((a) => (
-                  <option key={a} value={a}>
-                    {agentLabel({ type: a } as AgentKind)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {kind === 'local' ? (
+              <div className="field">
+                <label htmlFor={`${id}-agent`}>{t('newSession.agent')}</label>
+                <select
+                  id={`${id}-agent`}
+                  value={agentType}
+                  onChange={(e) => setAgentType(e.target.value as typeof agentType)}
+                >
+                  {LOCAL_AGENT_TYPES.map((a) => (
+                    <option key={a} value={a}>
+                      {agentLabel({ type: a } as AgentKind)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <>
+                <p className="muted" style={{ margin: '0 0 12px', fontSize: 14 }}>
+                  {t('newSession.shellIntro')}
+                </p>
+                <div className="field">
+                  <label htmlFor={`${id}-shell`}>{t('newSession.shell')}</label>
+                  <select
+                    id={`${id}-shell`}
+                    value={shellName}
+                    onChange={(e) => setShellName(e.target.value)}
+                  >
+                    {shells.map((name) => (
+                      <option key={name} value={name}>
+                        {name === 'default' ? t('newSession.shellDefault') : shellLabel(name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
             <fieldset className="field" style={{ border: 0, padding: 0, margin: '0 0 14px' }}>
               <legend className="label" style={{ fontWeight: 600, marginBottom: 6 }}>
                 {t('newSession.project')}
               </legend>
-              <label className="check">
-                <input
-                  type="radio"
-                  name={`${id}-folder`}
-                  checked={folderMode === 'existing'}
-                  disabled={projectDirs.length === 0}
-                  onChange={() => setFolderMode('existing')}
+              {folderUi === 'picker' ? (
+                <FolderPicker
+                  machineId={machine.id}
+                  allowCreate={kind !== 'shell'}
+                  onChange={setPicked}
+                  onUnavailable={(reason) => {
+                    setPickerNote(reason);
+                    setFolderUi('legacy');
+                  }}
                 />
-                {t('newSession.existing')}
-              </label>
-              {folderMode === 'existing' && (
-                <select
-                  aria-label={t('newSession.existing')}
-                  value={existingDir}
-                  onChange={(e) => setExistingDir(e.target.value)}
+              ) : (
+                <>
+                  {pickerNote && (
+                    <p className="muted" style={{ margin: '0 0 6px', fontSize: 13 }}>
+                      {t('folderPicker.unavailable', { error: pickerNote })}
+                    </p>
+                  )}
+                  <label className="check">
+                    <input
+                      type="radio"
+                      name={`${id}-folder`}
+                      checked={folderMode === 'existing'}
+                      disabled={projectDirs.length === 0}
+                      onChange={() => setFolderMode('existing')}
+                    />
+                    {t('newSession.existing')}
+                  </label>
+                  {folderMode === 'existing' && (
+                    <select
+                      aria-label={t('newSession.existing')}
+                      value={existingDir}
+                      onChange={(e) => setExistingDir(e.target.value)}
+                    >
+                      {projectDirs.map((d) => (
+                        <option key={d} value={d}>
+                          {folderName(d)} — {d}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <label className="check">
+                    <input
+                      type="radio"
+                      name={`${id}-folder`}
+                      checked={folderMode === 'new'}
+                      onChange={() => setFolderMode('new')}
+                    />
+                    {kind === 'shell' ? t('newSession.otherFolder') : t('newSession.newFolder')}
+                  </label>
+                  {folderMode === 'new' && (
+                    <input
+                      type="text"
+                      aria-label={
+                        kind === 'shell'
+                          ? t('newSession.otherFolder')
+                          : t('newSession.newFolderPath')
+                      }
+                      placeholder="~/code/new-project"
+                      value={newDir}
+                      onChange={(e) => setNewDir(e.target.value)}
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
+                  )}
+                </>
+              )}
+            </fieldset>
+            {kind === 'local' && agentType === 'claude_code' && !createDir && (
+              <div className="field">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={fresh}
+                    onChange={(e) => setFresh(e.target.checked)}
+                    aria-describedby={`${id}-fresh-hint`}
+                  />
+                  {t('newSession.fresh')}
+                </label>
+                <p
+                  id={`${id}-fresh-hint`}
+                  className="muted"
+                  style={{ margin: '4px 0 0', fontSize: 13 }}
                 >
-                  {projectDirs.map((d) => (
-                    <option key={d} value={d}>
-                      {folderName(d)} — {d}
+                  {fresh ? t('newSession.freshOn') : t('newSession.freshOff')}
+                </p>
+              </div>
+            )}
+            {kind === 'local' && profilesSupported && (
+              <div className="field">
+                <label htmlFor={`${id}-profile`}>{t('newSession.profile')}</label>
+                <select
+                  id={`${id}-profile`}
+                  value={profile}
+                  onChange={(e) => setProfile(e.target.value)}
+                >
+                  <option value="">{t('newSession.profileDefault')}</option>
+                  {PROFILES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
                     </option>
                   ))}
                 </select>
-              )}
-              <label className="check">
-                <input
-                  type="radio"
-                  name={`${id}-folder`}
-                  checked={folderMode === 'new'}
-                  onChange={() => setFolderMode('new')}
-                />
-                {t('newSession.newFolder')}
-              </label>
-              {folderMode === 'new' && (
-                <input
-                  type="text"
-                  aria-label={t('newSession.newFolderPath')}
-                  placeholder="~/code/new-project"
-                  value={newDir}
-                  onChange={(e) => setNewDir(e.target.value)}
-                  autoCapitalize="off"
-                  spellCheck={false}
-                />
-              )}
-            </fieldset>
-            <div className="field">
-              <label htmlFor={`${id}-profile`}>{t('newSession.profile')}</label>
-              <select
-                id={`${id}-profile`}
-                value={profile}
-                onChange={(e) => setProfile(e.target.value)}
-              >
-                <option value="">{t('newSession.profileDefault')}</option>
-                {PROFILES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
+              </div>
+            )}
           </>
         ) : (
           <>

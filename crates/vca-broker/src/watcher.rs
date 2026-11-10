@@ -195,6 +195,7 @@ mod tests {
             cpu_percent: cpu,
             memory_bytes: mem_mib * MIB,
             process_count: procs,
+            monitor_only: false,
         }
     }
 

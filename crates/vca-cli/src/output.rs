@@ -30,6 +30,7 @@ pub fn agent_label(agent: &AgentKind) -> &str {
         AgentKind::Opencode => "opencode",
         AgentKind::QwenCode => "qwen",
         AgentKind::Generic(name) => name,
+        AgentKind::Shell(name) => name,
     }
 }
 

@@ -86,10 +86,9 @@ fn fish_quote(s: &str) -> String {
     format!("'{}'", s.replace('\\', r"\\").replace('\'', r"\'"))
 }
 
-/// Quotes a string for PowerShell single-quoted strings.
-fn ps_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "''"))
-}
+/// Quotes a string for PowerShell single-quoted strings (all five quote
+/// characters PowerShell treats as `'`).
+use vca_core::powershell::quote as ps_quote;
 
 /// Generates the snippet for `shell`. Fails if a command name contains
 /// characters other than ASCII letters, digits, `_`, `-` and `.`.
@@ -294,6 +293,15 @@ mod tests {
             script(Shell::PowerShell, &c)
                 .unwrap()
                 .contains("'/opt/it''s here/vca'")
+        );
+        let typographic = ShellIntegration {
+            vca_bin: "C:\\Users\\Bob\u{2019}s\\vca.exe".into(),
+            ..cfg()
+        };
+        assert!(
+            script(Shell::PowerShell, &typographic)
+                .unwrap()
+                .contains("'C:\\Users\\Bob\u{2019}\u{2019}s\\vca.exe'")
         );
     }
 

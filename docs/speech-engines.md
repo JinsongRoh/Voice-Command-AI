@@ -16,6 +16,48 @@ Everything below runs on the same PC as the VCA server (`vcad`). Local
 engines keep your audio and text on that PC. A cloud engine sends them to
 the provider you choose, under your account and that provider's terms.
 
+## How VCA connects STT and TTS
+
+All engines are connected to the **VCA server on your PC** (`vcad`), never to
+the phone. Phones and other devices only talk to that server over VCA's
+end-to-end encrypted link, so engine addresses and keys stay on the PC.
+
+```text
+Dictation:   phone mic ──audio──▶ VCA server (PC) ──▶ your STT server ──text──▶ VCA server
+                                        │                                            │
+                                        └──▶ correction LLM (optional) ◀─────────────┘
+                                                                 │
+             phone input box ◀──────────── corrected text ───────┘
+
+Spoken alert: agent event ─▶ VCA server ─▶ your TTS server ─audio─▶ VCA server ─▶ phone speaker
+                                   └─ no TTS engine or it fails ─▶ the phone's built-in voice
+```
+
+- **Protocol:** both use the widely supported OpenAI-compatible HTTP API, so
+  any compatible server works:
+  - STT: `POST {base_url}/audio/transcriptions` (multipart audio; model
+    `whisper-1` or your model name);
+  - TTS: `POST {base_url}/audio/speech` with
+    `{model, input, voice, response_format}`.
+  - `GET {base_url}/models` and, for TTS, `GET {base_url}/audio/voices` list
+    what the server offers.
+- **Where you connect them:** Settings > **Speech engines on this PC** in the
+  desktop app (Step 4), or `config.toml` on the PC.
+  - Each engine is a profile: base URL, model, voice/speakers, and a key.
+  - The key is stored in the PC's credential store, never in the config
+    file and never on a phone.
+- **Who chooses what:** each device picks an engine by name. Phones pick the
+  STT engine and correction LLM in Settings > Voice > Speech recognition, and
+  the alert voice (device voice or a PC engine, and a speaker such as female
+  or male) in Settings > Voice > Spoken alerts.
+- **Remote servers:** the engine can also run on another machine on your
+  network or behind HTTPS (for example a self-hosted Whisper server, see
+  [whisper-server.md](whisper-server.md)). Use `https://` and a token whenever
+  it is reachable beyond your own PC.
+- **Fallbacks:** without an STT engine, a device uses its own speech
+  recognition (your keyboard's dictation key also works in the input box).
+  Without a TTS engine, alerts use the device's built-in voice.
+
 > **Licences.** Each engine has its own licence for its code and, often, a
 > different one for its model weights. The notes in this guide are a
 > starting point, not legal advice: **check each engine's code and weights
@@ -64,6 +106,7 @@ licences (the Systran faster-whisper conversions of OpenAI Whisper are MIT).
 Other OpenAI-compatible speech-to-text servers work the same way (for
 example LocalAI or a whisper.cpp server with an OpenAI-compatible endpoint):
 only the base URL and model name change.
+For a hardened, self-hosted Whisper server see [whisper-server.md](whisper-server.md).
 
 ## Step 2: a correction LLM with Ollama
 
@@ -97,7 +140,7 @@ VCA speaks alerts through any server that offers the OpenAI-compatible
 `POST /v1/audio/speech`. Two ways:
 
 **A. VCA's reference TTS server** (in this repository, MIT): a small Python
-app in `tools/tts-server` (published with the next release) in front of an
+app in [`tools/tts-server`](../tools/tts-server/README.md) in front of an
 engine you install:
 
 - [MeloTTS](https://github.com/myshell-ai/MeloTTS): MIT licence for code and
@@ -108,7 +151,7 @@ engine you install:
   licence, which adds use restrictions. Check which languages the version you
   download supports.
 
-Follow its README (`tools/tts-server/README.md`) to install one engine,
+Follow [its README](../tools/tts-server/README.md) to install one engine,
 then start it on this PC:
 
 ```sh
@@ -171,9 +214,10 @@ Engine changes take effect when the VCA server restarts: the app shows a
 may stop agent sessions it started; otherwise restart `vcad` where you
 started it). Keys apply right away.
 
-On each phone or other device, pick the engines in **Settings > Speech
-recognition** (engine and correction LLM) and **Settings > Notifications**
-(spoken alerts from the PC). Devices see the engines by name only.
+On each phone or other device, pick the engines in **Settings > Voice >
+Speech recognition** (engine and correction LLM) and **Settings > Voice >
+Spoken alerts** (spoken alerts from the PC). Devices see the engines by name
+only.
 
 ## Cloud accounts
 
@@ -224,13 +268,68 @@ Keys never go in this file. Store them with `vca speech login <id>` or
 `vca tts login <name>` on the PC, or name an environment variable with
 `api_key_env = "MY_KEY_VARIABLE"`.
 
+## Engines behind an authenticating gateway
+
+Some engines sit behind a gateway or reverse proxy that authenticates every
+request with its own bearer token (for example a zero-trust tunnel). The
+gateway checks `Authorization: Bearer <gateway token>`, removes that header
+and forwards the request, so the engine's own API key has to travel in
+another header. Two optional settings per engine handle this. They apply to
+OpenAI-compatible speech-to-text engines, correction LLMs and TTS engines
+(not to the Google Cloud or Anthropic APIs):
+
+- **Key header** (`api_key_header`): the header that carries the API key,
+  sent as is (no `Bearer` prefix), for example `X-VCA-Key`. Without it, the
+  key goes in `Authorization: Bearer <key>` as before. Ask the engine's
+  operator which header the server accepts.
+- **Gateway token**: sent as `Authorization: Bearer <token>` on every
+  request to that engine (transcription, correction, the built-in
+  conductor, spoken alerts and the app's **Test** button). It is a secret
+  and is stored like the API key, in the credential store on the PC, never
+  in `config.toml`. Alternatively name an environment variable with
+  `gateway_token_env`.
+
+A gateway token needs a key header other than `Authorization` (both would
+otherwise use the same header): VCA refuses that combination with an error
+that says so.
+
+In the app, both are under **Advanced** when you add or edit an engine. On
+the command line (the profile id or engine name must already exist):
+
+```sh
+# Speech-to-text engines and correction LLMs
+vca speech key-header <id> X-VCA-Key   # --clear goes back to Authorization: Bearer
+vca speech gateway-login <id>          # prompts for the token (hidden), or reads stdin
+vca speech gateway-logout <id>
+
+# TTS engines
+vca tts key-header <name> X-VCA-Key
+vca tts gateway-login <name>
+vca tts gateway-logout <name>
+```
+
+In `config.toml`:
+
+```toml
+[[speech.engines]]
+id = "team-stt"
+base_url = "https://engine.example.com/v1"
+api_key_header = "X-VCA-Key"
+# gateway_token_env = "TEAM_GATEWAY_TOKEN"   # instead of gateway-login
+```
+
+A changed key header (like any engine setting in `config.toml`) is used
+after the VCA server restarts. Stored keys and gateway tokens are read on
+every request, so replacing or deleting one applies at once, without a
+restart.
+
 ## Troubleshooting
 
 | Test result | What to check |
 | --- | --- |
 | `http error: ... connection refused` | The engine is not running, or listens on another port. Open the base URL's `/models` (or `/audio/voices`) in a browser on the PC. |
 | `... returned 404` | The base URL usually ends in `/v1`. For speech-to-text, the model may not be downloaded yet. |
-| `... returned 401` or "has no key yet" | Enter the key (or the server's token) and save. |
+| `... returned 401` or "has no key yet" | Enter the key (or the server's token) and save. Behind a gateway, check the gateway token and the key header. |
 | `... returned 400` for TTS | Use a voice and format the server supports (the reference server needs ffmpeg for mp3). |
 | Works, but devices do not offer it | Restart the VCA server so it loads the new engines. |
 

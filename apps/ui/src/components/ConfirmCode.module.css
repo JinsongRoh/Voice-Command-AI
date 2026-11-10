@@ -1,0 +1,12 @@
+.code {
+  display: inline-block;
+  max-width: 100%;
+  font-family: var(--mono);
+  font-size: 1.05em;
+  letter-spacing: 0.06em;
+  white-space: normal;
+}
+/* A group never breaks inside; the line breaks after a dash. */
+.group {
+  white-space: nowrap;
+}

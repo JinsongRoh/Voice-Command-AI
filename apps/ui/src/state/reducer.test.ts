@@ -7,9 +7,13 @@ import {
   attentionCount,
   canSendInput,
   initialState,
+  isStickyToast,
   reducer,
+  sessionNumber,
   visibleSessions,
+  workOrder,
   type AppState,
+  type Toast,
 } from './reducer';
 
 const enc = new TextEncoder();
@@ -116,6 +120,39 @@ describe('reducer', () => {
     expect(attentionCount(s)).toBe(1);
   });
 
+  it("never lists the conductor's own session as a card, and numbers around it", () => {
+    const conductor = (patch: Parameters<typeof localSession>[0]) =>
+      localSession({ id: 'cd', display_name: 'Conductor', conductor: true, ...patch });
+    let s = server(withSessions(), {
+      type: 'session_updated',
+      session: conductor({ state: { type: 'awaiting_input' }, unread: 3 }),
+    });
+    const ids = () => visibleSessions(s).map((x) => x.id);
+    expect(s.order).toContain('cd');
+    expect(ids()).not.toContain('cd');
+    // Even a decision of its own does not make it a card: 지휘소 and the
+    // Approvals inbox show it.
+    s = server(s, {
+      type: 'session_updated',
+      session: conductor({ state: { type: 'awaiting_decision' } }),
+    });
+    s = reducer(s, { type: 'filter', filter: 'attention' });
+    expect(ids()).toEqual(['s2']);
+    expect(attentionCount(s)).toBe(1);
+    s = reducer(s, { type: 'filter', filter: 'all' });
+    expect(ids()).not.toContain('cd');
+    // The cards keep 1, 2, 3, ... with the conductor anywhere in the order.
+    s = reducer(s, { type: 'reorder', order: ['cd', ...s.order.filter((id) => id !== 'cd')] });
+    expect(s.order[0]).toBe('cd');
+    const work = workOrder(s);
+    expect(work).not.toContain('cd');
+    expect(sessionNumber(s, work[0])).toBe(1);
+    expect(sessionNumber(s, work[2])).toBe(3);
+    expect(sessionNumber(s, 'cd')).toBeNull();
+    // Stable while nothing changes (a selector of `useAppState`).
+    expect(workOrder(s)).toBe(work);
+  });
+
   it('caps toasts and dismisses them', () => {
     let s = initialState;
     for (let i = 0; i < 6; i++) {
@@ -129,10 +166,45 @@ describe('reducer', () => {
     expect(s.toasts.map((t) => t.id)).toEqual(['t2', 't4', 't5']);
   });
 
+  it('never pushes a waiting decision or a security notice out for a plain notice', () => {
+    const plain = (id: string, category: Toast['category'] = 'completed'): Toast => ({
+      id,
+      category,
+      sessionId: 's1',
+      title: id,
+      body: '',
+    });
+    let s = initialState;
+    const add = (toast: Toast) => {
+      s = reducer(s, { type: 'toast', toast });
+    };
+    add({ ...plain('decision', 'decision'), alertKey: 'd1' });
+    add({ ...plain('shell'), category: 'activity', security: true });
+    add({ ...plain('input', 'input'), alertKey: 'i1' });
+    add(plain('done1'));
+    add(plain('done2'));
+    add(plain('act', 'activity'));
+    // The input alert and the oldest notices went first.
+    expect(s.toasts.map((t) => t.id)).toEqual(['decision', 'shell', 'done2', 'act']);
+    add({ ...plain('question', 'question'), alertKey: 'q1' });
+    add({ ...plain('decision2', 'decision'), alertKey: 'd2' });
+    expect(s.toasts.map((t) => t.id)).toEqual(['decision', 'shell', 'question', 'decision2']);
+    // Only kept toasts left: the oldest of them makes room.
+    add({ ...plain('decision3', 'decision'), alertKey: 'd3' });
+    expect(s.toasts.map((t) => t.id)).toEqual(['shell', 'question', 'decision2', 'decision3']);
+    expect(isStickyToast({ ...plain('x', 'input'), alertKey: 'i' })).toBe(false);
+    expect(isStickyToast({ ...plain('x', 'decision'), alertKey: 'd' })).toBe(true);
+  });
+
   it('reset keeps only the connection state', () => {
     let s = reducer(withSessions(), { type: 'connection', state: 'connected' });
     s = reducer(s, { type: 'reset' });
-    expect(s).toEqual({ ...initialState, connection: 'connected' });
+    // What already alerted stays remembered, so a machine switch does not repeat it.
+    expect(s).toEqual({
+      ...initialState,
+      connection: 'connected',
+      alerts: { ...initialState.alerts, seen: s.alerts.seen },
+    });
   });
 
   it('canSendInput rejects observe-only and exited sessions', () => {

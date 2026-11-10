@@ -85,6 +85,29 @@ describe('codec round trips', () => {
     expect(decodeMsgpack(encodeMsgpack(env))).toEqual(env);
   });
 
+  it('sends transcribe audio and upload chunks as msgpack bin, one byte per byte', () => {
+    // A 5 s, 16 kHz mono 16-bit WAV: 160 044 bytes.
+    const audio = new Uint8Array(160_044).map((_, i) => (i * 37) % 256);
+    const transcribe = encodeMsgpack({
+      id: 9,
+      body: {
+        type: 'transcribe',
+        audio,
+        format: 'wav',
+        sample_rate: null,
+        language: 'ko',
+        session_id: null,
+        final: true,
+      },
+    });
+    expect(transcribe.length).toBeLessThan(audio.length + 200);
+    const chunk = encodeMsgpack({
+      id: 10,
+      body: { type: 'attach_chunk', upload_id: 'u1', offset: 0, data: audio },
+    });
+    expect(chunk.length).toBeLessThan(audio.length + 100);
+  });
+
   it('JSON output data: Uint8Array is written as a number array and read back as bytes', () => {
     const text = encodeJson({
       id: 0,

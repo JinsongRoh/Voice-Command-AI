@@ -7,6 +7,216 @@
 .title {
   font-size: 20px;
 }
+/* Title with the settings search on the right. */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.search {
+  display: flex;
+  flex: 1 1 140px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  height: 36px;
+  margin-inline-start: auto;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.search:focus-within {
+  border-color: var(--accent-ink);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+/* "User manual": book icon with its label; the icon alone on phones. */
+.manual {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--accent-ink);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 14px;
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.manual:hover {
+  background: var(--surface);
+}
+@media (max-width: 599px) {
+  .manual {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  /* Still the link's accessible name. */
+  .manualLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+.manualRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 4px 0 10px;
+}
+.manualRow p {
+  flex: 1 1 220px;
+  margin: 0;
+  font-size: 13px;
+}
+.manualRow a {
+  text-decoration: none;
+}
+/*
+ * Tab row: one line that scrolls sideways on narrow phones (never wraps or
+ * widens the page) and stays under the header while the page scrolls.
+ */
+.tabs {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  background: var(--bg);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* Phones: tighter tabs, so all six usually fit (the row still scrolls if not). */
+@media (max-width: 599px) {
+  .tabs {
+    gap: 0;
+  }
+  .tab {
+    padding-inline: 8px;
+  }
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab:focus-visible {
+  outline-offset: -3px;
+}
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--accent-ink);
+  color: var(--text);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* Deep links land below the sticky tab row. */
+.panel section,
+.panel [id^='set-'] {
+  scroll-margin-top: 60px;
+}
+.flash {
+  animation: settings-flash 1.6s ease-out;
+}
+@keyframes settings-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 2px var(--accent-ink);
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--accent-ink);
+  }
+}
+/* Search results: sections across every tab. */
+.results {
+  min-width: 0;
+}
+.resultList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-weight: var(--fw-medium);
+  text-align: start;
+  cursor: pointer;
+}
+.result:hover {
+  border-color: var(--accent-ink);
+}
+.resultTab {
+  flex: none;
+  font-size: 12px;
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+}
 .section {
   padding: 14px 16px;
 }
@@ -31,6 +241,15 @@
 .dl dd {
   margin: 0;
   font-weight: var(--fw-semibold);
+}
+/* Narrow phones: each value under its label instead of a squeezed column. */
+@media (max-width: 420px) {
+  .dl {
+    grid-template-columns: 1fr;
+  }
+  .dl dd + dt {
+    margin-top: 6px;
+  }
 }
 .devices {
   margin: 0 0 10px;
@@ -69,4 +288,52 @@
   gap: 6px;
   font-size: 13px;
   color: var(--text-muted);
+}
+/* A link-styled button (opens an in-app screen rather than a URL). */
+.aboutLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.linkButton {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+/* Server-side speech engine and correction LLM (per device). */
+.speechServer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.speechActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.supportList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.supportList li {
+  display: grid;
+  gap: 2px;
+}
+.supportLinks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
 }

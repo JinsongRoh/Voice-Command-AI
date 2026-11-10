@@ -1,8 +1,9 @@
 //! Append-only audit log (SEC-07) as JSON lines with size-based rotation.
 //!
 //! Secrets never reach the log: pairing secrets, TOTP codes and tokens are
-//! not part of any event, and free text (command input) passes through
-//! [`redact`].
+//! not part of any event, and free text passes through [`redact`]. Prompt
+//! text never reaches it either: a command keeps only the length of its
+//! content fields ([`CONTENT_KEYS`]).
 //!
 //! Client IPs follow dnspilot C7/C9: `X-Forwarded-For` is honoured only when
 //! the TCP peer is loopback (i.e. a local provider agent forwarded the
@@ -25,7 +26,7 @@ use crate::registry::Scope;
 
 /// Header carrying the visitor IP from a provider agent.
 pub const X_FORWARDED_FOR: &str = "x-forwarded-for";
-/// DNS Pilot client id header (informational only, C9).
+/// DNSPilot client id header (informational only, C9).
 pub const X_DNSPILOT_CLIENT_ID: &str = "x-dnspilot-client-id";
 
 /// Determines the client IP for audit purposes.
@@ -110,6 +111,19 @@ pub enum AuditEvent {
     DeviceRevoked {
         device_id: String,
     },
+    /// `by` is the device id that asked, or `local` for the owner's CLI.
+    DeviceRenamed {
+        device_id: String,
+        by: String,
+        from: String,
+        to: String,
+    },
+    DeviceScopeChanged {
+        device_id: String,
+        by: String,
+        from: Scope,
+        to: Scope,
+    },
     TokenReuseDetected {
         device_id: String,
         client_ip: IpAddr,
@@ -131,22 +145,95 @@ pub enum AuditEvent {
     KillSwitchReset {
         by: String,
     },
+    /// An authenticator was enrolled; `replaced` when it replaced an
+    /// earlier one. `by` is `local` (the owner's own computer). Never
+    /// contains the secret or codes.
+    TotpEnrolled {
+        by: String,
+        replaced: bool,
+    },
+    /// New backup codes replaced the old ones (`by` as above).
+    BackupCodesRegenerated {
+        by: String,
+    },
+    /// A security step on this computer: a verification, the authenticator
+    /// turned off, recovery, a mail change. `detail` holds no secrets.
+    LocalSecurity {
+        what: String,
+        detail: String,
+    },
+    /// A file or folder was attached to a session. Never contains file
+    /// content; `name` is the saved (sanitized) name.
+    Attachment {
+        device_id: String,
+        session_id: String,
+        /// `file` or `folder`.
+        kind: String,
+        name: String,
+        mime: String,
+        size: u64,
+        /// Number of files (1 for a single file).
+        files: u32,
+    },
 }
 
 impl AuditEvent {
-    /// Audit record for a command from a device, with secrets redacted.
+    /// Audit record for a command from a device: content fields (see
+    /// [`CONTENT_KEYS`]) are replaced by their length, then secrets in what
+    /// is left are redacted.
     pub fn command(device_id: &str, msg: &ClientMsg) -> Self {
-        let json = serde_json::to_value(msg).unwrap_or(serde_json::Value::Null);
+        let mut json = serde_json::to_value(msg).unwrap_or(serde_json::Value::Null);
         let kind = json
             .get("type")
             .and_then(|t| t.as_str())
             .unwrap_or("unknown")
             .to_string();
+        without_content(&mut json);
         Self::Command {
             device_id: device_id.to_string(),
             kind,
             detail: redact(&json.to_string()),
         }
+    }
+}
+
+/// Fields of a request that carry what the person wrote or said: prompts
+/// and input sent to a session, dictation context, text to speak, notes,
+/// answers, task text and results, the conductor's question, personal
+/// words. The audit keeps only their length (`<key>_chars`, or `<key>_count`
+/// for a list), never the text.
+pub const CONTENT_KEYS: &[&str] = &[
+    "text", "context", "note", "prompt", "brief", "title", "steps", "output", "term", "spoken",
+    "variants",
+];
+
+/// Replaces the content fields of `value`, at any depth, by their length.
+fn without_content(value: &mut serde_json::Value) {
+    use serde_json::Value;
+    match value {
+        Value::Object(map) => {
+            let keys: Vec<String> = map
+                .keys()
+                .filter(|k| CONTENT_KEYS.contains(&k.as_str()))
+                .cloned()
+                .collect();
+            for key in keys {
+                match map.remove(&key) {
+                    Some(Value::String(s)) => {
+                        map.insert(format!("{key}_chars"), s.chars().count().into());
+                    }
+                    Some(Value::Array(items)) => {
+                        map.insert(format!("{key}_count"), items.len().into());
+                    }
+                    // Null (an optional field left out) or another shape:
+                    // nothing to keep.
+                    _ => {}
+                }
+            }
+            map.values_mut().for_each(without_content);
+        }
+        Value::Array(items) => items.iter_mut().for_each(without_content),
+        _ => {}
     }
 }
 
@@ -166,7 +253,7 @@ fn redaction_patterns() -> &'static [Regex] {
         [
             r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+",
             // key=value / key: value style secrets.
-            r#"(?i)((?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|authorization|bearer)\\?"?\s*[:=]\s*\\?"?)[^\s"'\\,;&]+"#,
+            r#"(?i)((?:password|passwd|pwd|secret|token|totp|code|api[_-]?key|access[_-]?key|private[_-]?key|authorization|bearer)\\?"?\s*[:=]\s*\\?"?)[^\s"'\\,;&]+"#,
             // Well-known credential formats.
             r"sk-[A-Za-z0-9_-]{16,}",
             r"AKIA[0-9A-Z]{16}",
@@ -184,8 +271,8 @@ fn redaction_patterns() -> &'static [Regex] {
     })
 }
 
-/// Masks likely secrets in free text and truncates it.
-pub fn redact(text: &str) -> String {
+/// Masks likely secrets in free text, keeping its full length otherwise.
+pub fn redact_secrets(text: &str) -> String {
     let mut out = text.to_string();
     for (i, re) in redaction_patterns().iter().enumerate() {
         let replacement = if i < 2 {
@@ -195,6 +282,12 @@ pub fn redact(text: &str) -> String {
         };
         out = re.replace_all(&out, replacement).into_owned();
     }
+    out
+}
+
+/// Masks likely secrets in free text and truncates it.
+pub fn redact(text: &str) -> String {
+    let mut out = redact_secrets(text);
     if out.chars().count() > MAX_DETAIL_CHARS {
         out = out.chars().take(MAX_DETAIL_CHARS).collect::<String>() + "…";
     }
@@ -218,7 +311,11 @@ enum Sink {
 pub struct AuditLog {
     clock: SharedClock,
     sink: Mutex<Sink>,
+    observer: OnceLock<AuditObserver>,
 }
+
+/// Called with every event as it is recorded.
+pub type AuditObserver = Box<dyn Fn(&AuditEvent) + Send + Sync>;
 
 impl AuditLog {
     /// Log to `path`, rotating to `path.1`, `path.2`, ... (`keep` files)
@@ -244,7 +341,16 @@ impl AuditLog {
                 max_bytes: max_bytes.max(1024),
                 keep: keep.max(1),
             }),
+            observer: OnceLock::new(),
         })
+    }
+
+    /// The records of an in-memory log (empty for a file log).
+    pub fn memory_records(&self) -> Vec<AuditRecord> {
+        match &*self.sink.lock().expect("poisoned") {
+            Sink::Memory(records) => records.clone(),
+            Sink::File { .. } => Vec::new(),
+        }
     }
 
     /// In-memory log (tests, or when no data directory is available).
@@ -252,11 +358,21 @@ impl AuditLog {
         Self {
             clock,
             sink: Mutex::new(Sink::Memory(Vec::new())),
+            observer: OnceLock::new(),
         }
+    }
+
+    /// Sets the observer (once). It runs on the recording task, so it must
+    /// not block.
+    pub fn set_observer(&self, observer: AuditObserver) {
+        let _ = self.observer.set(observer);
     }
 
     /// Appends an event.
     pub fn record(&self, event: AuditEvent) {
+        if let Some(observer) = self.observer.get() {
+            observer(&event);
+        }
         let record = AuditRecord {
             at: self.clock.now_millis(),
             event,
@@ -392,6 +508,9 @@ mod tests {
                 "sk-abcdefghijklmnop",
             ),
             ("password=hunter2 now", "hunter2"),
+            (r#"{"totp":"123456"}"#, "123456"),
+            (r#"{\"totp\":\"654321\"}"#, "654321"),
+            ("backup_code: ABCD-2345", "ABCD-2345"),
             ("curl -H 'Authorization: Bearer abc.def.ghi'", "abc.def.ghi"),
             ("aws AKIAABCDEFGHIJKLMNOP", "AKIAABCDEFGHIJKLMNOP"),
             (
@@ -418,6 +537,7 @@ mod tests {
         let msg = ClientMsg::SendInput {
             session_id: "s1".into(),
             input: vca_core::Input::Text {
+                at_prompt: false,
                 text: "my token: supersecretvalue".into(),
                 submit: true,
             },
@@ -428,6 +548,74 @@ mod tests {
         assert_eq!(kind, "send_input");
         assert!(!detail.contains("supersecretvalue"), "{detail}");
         assert!(detail.contains("s1"));
+    }
+
+    #[test]
+    fn command_event_keeps_the_length_of_prompts_never_the_text() {
+        let detail = |msg: &ClientMsg| match AuditEvent::command("dev_1", msg) {
+            AuditEvent::Command { detail, .. } => detail,
+            _ => unreachable!(),
+        };
+        let send = ClientMsg::SendInput {
+            session_id: "s1".into(),
+            input: vca_core::Input::Text {
+                at_prompt: false,
+                text: "refactor the billing module".into(),
+                submit: true,
+            },
+        };
+        let d = detail(&send);
+        assert!(!d.contains("billing"), "{d}");
+        assert!(d.contains(r#""text_chars":27"#), "{d}");
+        assert!(d.contains(r#""submit":true"#) && d.contains("s1"), "{d}");
+
+        // Nested: a free-text answer to a session's question.
+        let answer = ClientMsg::SendInput {
+            session_id: "s1".into(),
+            input: vca_core::Input::Answer {
+                decision_id: "d1".into(),
+                answers: vec![vca_core::QuestionAnswer {
+                    options: vec![1],
+                    text: Some("use the staging server".into()),
+                }],
+            },
+        };
+        let d = detail(&answer);
+        assert!(!d.contains("staging"), "{d}");
+        assert!(d.contains(r#""text_chars":22"#) && d.contains("d1"), "{d}");
+
+        // A question to the conductor; dictation context; a task result.
+        let ask = ClientMsg::ConductorAsk {
+            text: "what is left for the release?".into(),
+        };
+        let d = detail(&ask);
+        assert!(!d.contains("release"), "{d}");
+        assert!(d.contains(r#""text_chars":29"#), "{d}");
+        let transcribe = ClientMsg::Transcribe {
+            audio: Vec::new(),
+            format: vca_core::AudioEncoding::Wav,
+            sample_rate: None,
+            language: Some("en".into()),
+            session_id: None,
+            context: Some("earlier words".into()),
+            is_final: true,
+        };
+        let d = detail(&transcribe);
+        assert!(!d.contains("earlier"), "{d}");
+        assert!(d.contains(r#""context_chars":13"#) && d.contains(r#""language":"en""#));
+        let result = ClientMsg::TaskSendResult {
+            task_id: "t1".into(),
+            result: vca_core::task::TaskResultDraft {
+                text: "done, deployed".into(),
+                attachments: vec!["a.png".into()],
+                mentions: Vec::new(),
+                output: Some("build log".into()),
+            },
+            preview: false,
+        };
+        let d = detail(&result);
+        assert!(!d.contains("deployed") && !d.contains("build log"), "{d}");
+        assert!(d.contains(r#""output_chars":9"#) && d.contains("t1"), "{d}");
     }
 
     #[test]

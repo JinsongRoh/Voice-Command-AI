@@ -36,7 +36,14 @@ lexicon/
     web.toml         protocols, formats, web platform
   ja/ ko/ zh/ es/ de/ fr/
     common.toml      localized spoken forms of high-frequency terms
+  en/ ko/ ja/ es/
+    voice.toml       hands-free voice words: the wake word (Voco, 보코),
+                     the send word (Over, 보내줘 오버) and the reply (Roger, 로저)
 ```
+
+Entries in `voice.toml` use `category = "voice"`. They are the only localized
+entries whose `term` is spelled in the file's language instead of referring to
+an English entry.
 
 The directory name is the language of the spoken variants in its files
 (ISO 639-1 code). Any `*.toml` file in a language directory is loaded, so you

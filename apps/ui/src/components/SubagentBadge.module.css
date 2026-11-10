@@ -1,0 +1,43 @@
+/* Sub-agents at work: accent-colored pill with an agent icon and the count.
+   The number is always shown; the pulse is only an extra cue. */
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+.compact {
+  height: 18px;
+  padding: 0 6px 0 5px;
+  gap: 3px;
+  font-size: 11px;
+}
+.icon {
+  animation: subagent-pulse 2s ease-in-out infinite;
+}
+
+@keyframes subagent-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+}

@@ -1,50 +1,54 @@
-//! Agent restart handling for the local event stream (design consequence C10).
+//! Resuming the Agent's event stream across reconnects and Agent restarts
+//! (<https://dns.dnspilot.kr/docs/en/agent-local-api>, "Events").
 //!
-//! Every local API event carries the Agent's `boot_id`, and every SSE
-//! connection starts with `hello` (the `Last-Event-ID` resume point is
-//! valid) or `reset` (a different Agent run; start from scratch). On a
-//! reset, VCA resynchronizes its tunnel state from `/v1/status` and
-//! `/v1/tunnels`. As a fallback for Agents that predate `boot_id`, an event
-//! ID lower than the last one seen is also treated as a restart.
+//! Each event's data is `{id, boot_id, kind, at, data}`. Event ids increase
+//! by one and restart at 1 whenever the Agent restarts; `boot_id` changes on
+//! every restart. A client resumes by sending the last id it saw and its
+//! boot id (`Last-Event-ID`, `Last-Boot-ID`). Each connection starts with one
+//! control event without an id: `hello {boot_id, last_id}` when resumed, or
+//! `reset {boot_id, last_id, reason}` when the id belongs to another boot
+//! (`boot_changed`) or is ahead of the Agent (`id_ahead`). After a reset,
+//! events start again from the beginning of this boot, and the client must
+//! re-read `GET /v1/status` and `GET /v1/tunnels`.
 
-use super::contract::{EventPayload, events};
+use super::contract::{AgentEventBody, event_kinds};
 use super::sse::SseEvent;
 
-/// A local API event after restart detection.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocalEvent {
-    pub id: Option<String>,
+/// One Agent event after resume bookkeeping.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentEvent {
+    pub id: Option<u64>,
+    /// For example `tunnel.up` or `conn.deny` (see [`event_kinds`]).
     pub kind: String,
-    pub payload: EventPayload,
+    pub body: AgentEventBody,
 }
 
 /// What the caller should do with an incoming SSE event.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TrackerOutcome {
     /// A regular event to process.
-    Event(LocalEvent),
-    /// The stream (re)started on the same Agent run; nothing was missed.
+    Event(Box<AgentEvent>),
+    /// `hello`: the stream resumed; nothing was missed.
     Resumed,
-    /// The Agent restarted or the resume point is lost: reload state from
-    /// `/v1/status` and `/v1/tunnels`, then continue with later events.
+    /// Reload state from `GET /v1/status` and `GET /v1/tunnels`, then
+    /// continue with later events.
     Resync { reason: ResyncReason },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResyncReason {
-    /// The Agent sent `reset`.
-    ResetEvent,
-    /// The `boot_id` changed.
+    /// The Agent sent `reset` with this reason (`boot_changed`,
+    /// `id_ahead`, or another value).
+    Reset(String),
+    /// A regular event arrived with a different `boot_id` than ours.
     BootIdChanged,
-    /// Fallback heuristic: the event ID went down.
-    EventIdWentDown,
 }
 
-/// Tracks `boot_id` and the last event ID across reconnects.
+/// Tracks the resume point (`boot_id`, last event id).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EventTracker {
     boot_id: Option<String>,
-    last_event_id: Option<String>,
+    last_id: Option<u64>,
 }
 
 impl EventTracker {
@@ -52,93 +56,75 @@ impl EventTracker {
         Self::default()
     }
 
-    /// Value for the `Last-Event-ID` header on reconnect.
-    pub fn last_event_id(&self) -> Option<&str> {
-        self.last_event_id.as_deref()
+    /// The `(Last-Event-ID, Last-Boot-ID)` pair for the next connection.
+    pub fn resume_point(&self) -> Option<(u64, &str)> {
+        Some((self.last_id?, self.boot_id.as_deref()?))
     }
 
     pub fn boot_id(&self) -> Option<&str> {
         self.boot_id.as_deref()
     }
 
-    /// Records the `boot_id` from `/v1/status` after a resync.
+    pub fn last_id(&self) -> Option<u64> {
+        self.last_id
+    }
+
+    /// Records the boot id read from `GET /v1/status` after a resync.
     pub fn set_boot_id(&mut self, boot_id: Option<String>) {
         if boot_id.is_some() && boot_id != self.boot_id {
-            self.last_event_id = None;
+            self.last_id = None;
         }
         self.boot_id = boot_id;
     }
 
     pub fn on_event(&mut self, ev: &SseEvent) -> TrackerOutcome {
-        let payload: EventPayload = serde_json::from_str(&ev.data).unwrap_or_default();
-        let incoming_boot = payload.boot_id.clone();
-        let outcome = match ev.event.as_str() {
-            events::RESET => {
-                self.boot_id = incoming_boot;
-                self.last_event_id = None;
-                TrackerOutcome::Resync {
-                    reason: ResyncReason::ResetEvent,
+        let body: AgentEventBody = serde_json::from_str(&ev.data).unwrap_or_default();
+        // The kind is in the data; an SSE `event:` name, when present, is
+        // accepted as well.
+        let kind = body
+            .kind
+            .clone()
+            .filter(|k| !k.is_empty())
+            .unwrap_or_else(|| ev.event.clone());
+        let id = body
+            .id
+            .or_else(|| ev.id.as_deref().and_then(|s| s.parse().ok()));
+        match kind.as_str() {
+            event_kinds::HELLO => {
+                if body.boot_id.is_some() {
+                    self.boot_id = body.boot_id;
                 }
+                if body.last_id.is_some() {
+                    self.last_id = body.last_id;
+                }
+                TrackerOutcome::Resumed
             }
-            events::HELLO => {
-                // `hello` promises the resume point is valid; a boot ID that
-                // differs from ours still means we missed a restart.
-                let changed =
-                    matches!((&self.boot_id, &incoming_boot), (Some(a), Some(b)) if a != b);
-                if incoming_boot.is_some() {
-                    self.boot_id = incoming_boot;
-                }
-                if changed {
-                    self.last_event_id = None;
-                    TrackerOutcome::Resync {
-                        reason: ResyncReason::BootIdChanged,
-                    }
-                } else {
-                    TrackerOutcome::Resumed
+            event_kinds::RESET => {
+                self.boot_id = body.boot_id.clone();
+                self.last_id = None;
+                TrackerOutcome::Resync {
+                    reason: ResyncReason::Reset(body.reason.clone().unwrap_or_default()),
                 }
             }
             _ => {
-                if let (Some(ours), Some(theirs)) = (&self.boot_id, &incoming_boot)
-                    && ours != theirs
-                {
-                    self.boot_id = incoming_boot;
-                    self.last_event_id = ev.id.clone();
+                let changed = matches!(
+                    (&self.boot_id, &body.boot_id),
+                    (Some(ours), Some(theirs)) if ours != theirs
+                );
+                if body.boot_id.is_some() {
+                    self.boot_id = body.boot_id.clone();
+                }
+                if id.is_some() {
+                    self.last_id = id;
+                }
+                if changed {
                     return TrackerOutcome::Resync {
                         reason: ResyncReason::BootIdChanged,
                     };
                 }
-                if incoming_boot.is_none()
-                    && id_went_down(self.last_event_id.as_deref(), ev.id.as_deref())
-                {
-                    self.last_event_id = ev.id.clone();
-                    return TrackerOutcome::Resync {
-                        reason: ResyncReason::EventIdWentDown,
-                    };
-                }
-                if self.boot_id.is_none() {
-                    self.boot_id = incoming_boot;
-                }
-                TrackerOutcome::Event(LocalEvent {
-                    id: ev.id.clone(),
-                    kind: ev.event.clone(),
-                    payload,
-                })
+                TrackerOutcome::Event(Box::new(AgentEvent { id, kind, body }))
             }
-        };
-        if ev.id.is_some() {
-            self.last_event_id = ev.id.clone();
         }
-        outcome
-    }
-}
-
-fn id_went_down(last: Option<&str>, new: Option<&str>) -> bool {
-    match (
-        last.and_then(|s| s.parse::<u64>().ok()),
-        new.and_then(|s| s.parse::<u64>().ok()),
-    ) {
-        (Some(a), Some(b)) => b < a,
-        _ => false,
     }
 }
 
@@ -146,80 +132,72 @@ fn id_went_down(last: Option<&str>, new: Option<&str>) -> bool {
 mod tests {
     use super::*;
 
-    fn ev(event: &str, id: Option<&str>, data: &str) -> SseEvent {
+    fn ev(data: &str) -> SseEvent {
         SseEvent {
-            id: id.map(str::to_owned),
-            event: event.into(),
+            id: None,
+            event: "message".into(),
             data: data.into(),
         }
     }
 
     #[test]
-    fn hello_then_events_then_reset() {
+    fn hello_events_and_reset() {
         let mut t = EventTracker::new();
         assert_eq!(
-            t.on_event(&ev("hello", None, r#"{"boot_id":"b1"}"#)),
+            t.on_event(&ev(r#"{"kind":"hello","boot_id":"b1","last_id":41}"#)),
             TrackerOutcome::Resumed
         );
-        let out = t.on_event(&ev(
-            "tunnel.updated",
-            Some("5"),
-            r#"{"boot_id":"b1","tunnel_id":"t1"}"#,
-        ));
-        match out {
-            TrackerOutcome::Event(e) => assert_eq!(e.payload.tunnel_id.as_deref(), Some("t1")),
+        assert_eq!(t.resume_point(), Some((41, "b1")));
+        match t.on_event(&ev(
+            r#"{"id":42,"boot_id":"b1","kind":"tunnel.up","at":"2026-10-30T00:00:00Z","data":{}}"#,
+        )) {
+            TrackerOutcome::Event(e) => {
+                assert_eq!(e.kind, "tunnel.up");
+                assert_eq!(e.id, Some(42));
+            }
             other => panic!("{other:?}"),
         }
-        assert_eq!(t.last_event_id(), Some("5"));
+        assert_eq!(t.resume_point(), Some((42, "b1")));
         assert_eq!(
-            t.on_event(&ev("reset", None, r#"{"boot_id":"b2"}"#)),
+            t.on_event(&ev(
+                r#"{"kind":"reset","boot_id":"b2","last_id":3,"reason":"boot_changed"}"#
+            )),
             TrackerOutcome::Resync {
-                reason: ResyncReason::ResetEvent
+                reason: ResyncReason::Reset("boot_changed".into())
             }
         );
-        assert_eq!(t.last_event_id(), None);
         assert_eq!(t.boot_id(), Some("b2"));
+        assert_eq!(t.resume_point(), None);
+    }
+
+    #[test]
+    fn sse_event_names_are_accepted_too() {
+        let mut t = EventTracker::new();
+        let hello = SseEvent {
+            id: None,
+            event: "hello".into(),
+            data: r#"{"boot_id":"b1","last_id":0}"#.into(),
+        };
+        assert_eq!(t.on_event(&hello), TrackerOutcome::Resumed);
+        let up = SseEvent {
+            id: Some("1".into()),
+            event: "tunnel.down".into(),
+            data: r#"{"boot_id":"b1","data":{}}"#.into(),
+        };
+        assert!(matches!(t.on_event(&up), TrackerOutcome::Event(e) if e.kind == "tunnel.down"));
+        assert_eq!(t.last_id(), Some(1));
     }
 
     #[test]
     fn boot_id_change_mid_stream() {
         let mut t = EventTracker::new();
-        t.on_event(&ev("hello", None, r#"{"boot_id":"b1"}"#));
+        t.set_boot_id(Some("b1".into()));
         assert_eq!(
-            t.on_event(&ev("x", Some("1"), r#"{"boot_id":"b9"}"#)),
+            t.on_event(&ev(r#"{"id":1,"boot_id":"b9","kind":"killed","data":{}}"#)),
             TrackerOutcome::Resync {
                 reason: ResyncReason::BootIdChanged
             }
         );
-        assert_eq!(t.boot_id(), Some("b9"));
-    }
-
-    #[test]
-    fn hello_with_different_boot_id() {
-        let mut t = EventTracker::new();
-        t.set_boot_id(Some("b1".into()));
-        assert!(matches!(
-            t.on_event(&ev("hello", None, r#"{"boot_id":"b2"}"#)),
-            TrackerOutcome::Resync { .. }
-        ));
-    }
-
-    #[test]
-    fn fallback_heuristic_without_boot_id() {
-        let mut t = EventTracker::new();
-        assert!(matches!(
-            t.on_event(&ev("x", Some("10"), "{}")),
-            TrackerOutcome::Event(_)
-        ));
-        assert_eq!(
-            t.on_event(&ev("x", Some("1"), "{}")),
-            TrackerOutcome::Resync {
-                reason: ResyncReason::EventIdWentDown
-            }
-        );
-        assert!(matches!(
-            t.on_event(&ev("x", Some("2"), "{}")),
-            TrackerOutcome::Event(_)
-        ));
+        assert_eq!(t.resume_point(), Some((1, "b9")));
     }
 }

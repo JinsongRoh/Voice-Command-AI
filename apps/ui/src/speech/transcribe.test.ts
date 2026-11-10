@@ -1,11 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Client } from '../protocol/transport';
-import type { ClientMsg, ServerMsg } from '../protocol/types';
+import { Client, type ConnectionState } from '../protocol/transport';
+import type { ClientMsg, Envelope, ServerMsg } from '../protocol/types';
 import { FakeTransport } from '../test/fakeTransport';
 import { tauri } from '../test/tauriMock';
 import { createNativeRecorder } from './recorder';
-import { audioEncodingOf, correctionSpans, createServerTranscriber } from './transcribe';
+import { RequestError } from '../state/core';
+import {
+  audioEncodingOf,
+  correctionSpans,
+  createServerTranscriber,
+  isNetworkError,
+  isSpeechUnreachableError,
+  RECONNECT_WAIT_MS,
+} from './transcribe';
 
 vi.mock('@tauri-apps/api/core', () => import('../test/tauriMock'));
 
@@ -23,7 +31,7 @@ const TRANSCRIPT: ServerMsg = {
   engine: 'whisper',
 };
 
-const OPTIONS = { engine: 'whisper_server' as const, locale: 'ko' as const, sessionId: 's1' };
+const OPTIONS = { locale: 'ko' as const, sessionId: 's1' };
 
 describe('server transcriber', () => {
   it('sends transcribe through the client and maps the transcript', async () => {
@@ -47,11 +55,56 @@ describe('server transcriber', () => {
       type: 'transcribe',
       format: 'webm',
       sample_rate: null,
-      language: 'ko',
+      // The UI locale is never forced on the recognizer: the server decides.
+      language: null,
       session_id: 's1',
     });
     expect(Array.from((sent as { audio: Uint8Array }).audio)).toEqual([1, 2, 3]);
     expect(sent).not.toHaveProperty('context');
+  });
+
+  it('sends a speech language only when the user picked one', async () => {
+    const transport = new FakeTransport((msg: ClientMsg) =>
+      msg.type === 'transcribe' ? TRANSCRIPT : { type: 'ok' },
+    );
+    const transcribe = createServerTranscriber(() => new Client(transport));
+    const audio = new Blob([new Uint8Array([1])], { type: 'audio/wav' });
+    await transcribe(audio, { ...OPTIONS, locale: 'en', language: null });
+    await transcribe(audio, { ...OPTIONS, locale: 'en', language: 'ko' });
+    expect(
+      transport.bodies('transcribe').map((b) => (b as { language: unknown }).language),
+    ).toEqual([null, 'ko']);
+  });
+
+  it('drops a lone stock phrase on quiet WAV audio only', async () => {
+    const wav = (level: number): Blob => {
+      const out = new Uint8Array(44 + 64000);
+      const v = new DataView(out.buffer);
+      [...'RIFF'].forEach((c, i) => (out[i] = c.charCodeAt(0)));
+      [...'WAVEfmt '].forEach((c, i) => (out[8 + i] = c.charCodeAt(0)));
+      v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true);
+      v.setUint16(22, 1, true);
+      v.setUint32(24, 16000, true);
+      v.setUint16(34, 16, true);
+      [...'data'].forEach((c, i) => (out[36 + i] = c.charCodeAt(0)));
+      v.setUint32(40, 64000, true);
+      for (let i = 0; i < 32000; i += 1) v.setInt16(44 + i * 2, level, true);
+      return new Blob([out], { type: 'audio/wav' });
+    };
+    const say = (text: string): Client =>
+      new Client(
+        new FakeTransport((msg: ClientMsg) =>
+          msg.type === 'transcribe' ? { ...TRANSCRIPT, text, raw_text: text } : { type: 'ok' },
+        ),
+      );
+    const run = (text: string, level: number) =>
+      createServerTranscriber(() => say(text))(wav(level), OPTIONS);
+    expect((await run('감사합니다.', 20)).text).toBe('');
+    expect((await run('감사합니다.', 4000)).text).toBe('감사합니다.');
+    expect((await run('도와주셔서 감사합니다 다음 작업 진행해', 20)).text).toBe(
+      '도와주셔서 감사합니다 다음 작업 진행해',
+    );
   });
 
   it('locates correction terms in raw and corrected text', () => {
@@ -77,6 +130,28 @@ describe('server transcriber', () => {
     const [withContext, withoutContext] = transport.bodies('transcribe');
     expect(withContext).toMatchObject({ format: 'wav', context: 'Fix the tests' });
     expect(withoutContext).not.toHaveProperty('context');
+  });
+
+  it('sends final only for final chunks and maps the topic and context layer', async () => {
+    const transport = new FakeTransport((msg: ClientMsg) =>
+      msg.type === 'transcribe'
+        ? {
+            ...TRANSCRIPT,
+            corrections: [{ from: 'sub mitt', to: 'submit', layer: 'context' }],
+            topic: msg.final ? ' frontend/React ' : null,
+          }
+        : { type: 'ok' },
+    );
+    const transcribe = createServerTranscriber(() => new Client(transport));
+    const audio = new Blob([new Uint8Array([1])], { type: 'audio/wav' });
+    const interim = await transcribe(audio, OPTIONS);
+    const final = await transcribe(audio, { ...OPTIONS, final: true });
+    const [interimMsg, finalMsg] = transport.bodies('transcribe');
+    expect(interimMsg).not.toHaveProperty('final');
+    expect(finalMsg).toMatchObject({ final: true });
+    expect(interim).not.toHaveProperty('topic');
+    expect(final.topic).toBe('frontend/React');
+    expect(final.corrections).toEqual([{ from: 'sub mitt', to: 'submit', layer: 'context' }]);
   });
 
   it('surfaces error responses and transport failures as readable errors', async () => {
@@ -108,6 +183,129 @@ describe('server transcriber', () => {
   });
 });
 
+/** A link that can drop: `answers` script each `send` (a reply, or an error to throw). */
+class FlakyLink extends FakeTransport {
+  constructor(private readonly answers: (ServerMsg | Error)[]) {
+    super();
+    this.state = 'connected';
+  }
+  override async send(envelope: Envelope<ClientMsg>) {
+    this.sent.push(envelope);
+    const next = this.answers.shift() ?? TRANSCRIPT;
+    if (next instanceof Error) {
+      // Like TauriTransport: a drop fails the pending requests and the link
+      // reports `reconnecting` before anyone sees the failure.
+      if (/connection lost/.test(next.message)) this.go('reconnecting');
+      throw next;
+    }
+    return next;
+  }
+  go(state: ConnectionState) {
+    if (state === 'connected') void this.connect();
+    else if (state === 'disconnected') this.disconnect();
+    else {
+      this.state = state;
+      // FakeTransport has no public way to announce other states.
+      (this as unknown as { setState(s: ConnectionState): void }).setState(state);
+    }
+  }
+}
+
+describe('server transcriber on a weak link', () => {
+  const wav = new Blob([new Uint8Array(44 + 32_000)], { type: 'audio/wav' });
+  const FINAL = { ...OPTIONS, final: true };
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('sends a final chunk again once a dropped link is back', async () => {
+    const link = new FlakyLink([new Error('connection lost (transport_error)'), TRANSCRIPT]);
+    const transcribe = createServerTranscriber(() => new Client(link));
+    const result = transcribe(wav, FINAL);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(link.state).toBe('reconnecting');
+    expect(link.bodies('transcribe')).toHaveLength(1);
+    link.go('connected');
+    await expect(result).resolves.toMatchObject({ text: 'run pnpm test' });
+    const sent = link.bodies('transcribe') as { audio: Uint8Array }[];
+    expect(sent).toHaveLength(2);
+    // The same recording both times: nothing has to be said again.
+    expect(sent[1]!.audio).toEqual(sent[0]!.audio);
+    expect(sent[1]!.audio.length).toBe(wav.size);
+  });
+
+  it('waits for a reconnecting link before sending a final chunk', async () => {
+    const link = new FlakyLink([TRANSCRIPT]);
+    link.go('reconnecting');
+    const result = createServerTranscriber(() => new Client(link))(wav, FINAL);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(link.sent).toHaveLength(0);
+    link.go('connected');
+    await expect(result).resolves.toMatchObject({ text: 'run pnpm test' });
+    expect(link.sent).toHaveLength(1);
+  });
+
+  it('gives up after the reconnect wait with a network error', async () => {
+    const link = new FlakyLink([new Error('not connected')]);
+    link.go('reconnecting');
+    const result = createServerTranscriber(() => new Client(link))(wav, FINAL);
+    const assertion = expect(result).rejects.toSatisfy(isNetworkError);
+    await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS);
+    // Sent once anyway (it fails fast while the link is down), never twice.
+    await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS);
+    await assertion;
+    expect(link.sent).toHaveLength(1);
+  });
+
+  it('does not repeat a request that timed out on a live link, nor previews', async () => {
+    const slow = new FlakyLink([new Error('request timed out (transcribe)')]);
+    const a = createServerTranscriber(() => new Client(slow))(wav, FINAL);
+    await expect(a).rejects.toSatisfy(isNetworkError);
+    expect(slow.sent).toHaveLength(1);
+
+    const dropped = new FlakyLink([new Error('connection lost (transport_error)')]);
+    const b = createServerTranscriber(() => new Client(dropped))(wav, OPTIONS);
+    await expect(b).rejects.toSatisfy(isNetworkError);
+    dropped.go('connected');
+    expect(dropped.sent).toHaveLength(1);
+  });
+
+  it('keeps server answers apart from network errors', async () => {
+    const off = new FlakyLink([
+      { type: 'error', code: 'unavailable', message: 'speech_unreachable: try again' },
+    ]);
+    const err = await createServerTranscriber(() => new Client(off))(wav, FINAL).catch((e) => e);
+    expect(isNetworkError(err)).toBe(false);
+    expect(isSpeechUnreachableError(err)).toBe(true);
+    expect(off.sent).toHaveLength(1);
+  });
+});
+
+describe('isSpeechUnreachableError', () => {
+  it('recognizes an unreachable speech server, new and old wording', () => {
+    const msg =
+      'speech_unreachable: the speech server could not be reached (error sending request)';
+    expect(isSpeechUnreachableError(new RequestError('unavailable', msg))).toBe(true);
+    expect(
+      isSpeechUnreachableError(
+        new RequestError('unavailable', 'http error: error sending request'),
+      ),
+    ).toBe(true);
+  });
+
+  it('leaves answered errors and other codes alone', () => {
+    expect(
+      isSpeechUnreachableError(
+        new RequestError('unavailable', 'speech service returned 500: boom'),
+      ),
+    ).toBe(false);
+    expect(isSpeechUnreachableError(new RequestError('internal', 'speech_unreachable: x'))).toBe(
+      false,
+    );
+    expect(isSpeechUnreachableError(new Error('speech_unreachable: x'))).toBe(false);
+  });
+});
+
 describe('native recorder', () => {
   beforeEach(() => tauri.reset());
 
@@ -119,7 +317,11 @@ describe('native recorder', () => {
     const blob = await rec.stop();
     expect(blob.type).toBe('audio/wav');
     expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual([82, 73, 70, 70]);
-    expect(tauri.calls.map((c) => c.cmd)).toEqual(['vca_mic_start', 'vca_mic_stop']);
+    // The debug log's counter snapshots (`vca_mic_diag`) are not part of the recording.
+    expect(tauri.calls.map((c) => c.cmd).filter((c) => c !== 'vca_mic_diag')).toEqual([
+      'vca_mic_start',
+      'vca_mic_stop',
+    ]);
   });
 
   it('peeks and splits through vca_mic_peek / vca_mic_split', async () => {

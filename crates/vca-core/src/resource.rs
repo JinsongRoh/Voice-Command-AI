@@ -10,6 +10,10 @@ pub struct SessionUsage {
     pub cpu_percent: f32,
     pub memory_bytes: u64,
     pub process_count: u32,
+    /// A session VCA did not start: its usage is shown, nothing more. VCA
+    /// never suspends, kills or reprioritizes its processes.
+    #[serde(default)]
+    pub monitor_only: bool,
 }
 
 /// System-wide resource state at one point in time.

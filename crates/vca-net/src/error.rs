@@ -20,6 +20,9 @@ pub enum AuthFailure {
     AlreadyPaired,
     /// Wrong, expired or already used pairing secret.
     InvalidPairingSecret,
+    /// Too many wrong TOTP or backup codes were sent with one pairing
+    /// secret; the secret is revoked and a new QR code is needed.
+    PairingAttemptsExhausted,
     /// TOTP is required but was not supplied.
     TotpRequired,
     /// TOTP is required by policy but not enrolled on the server.
@@ -61,6 +64,7 @@ impl std::fmt::Display for AuthFailure {
             Self::DeviceRevoked => "device revoked",
             Self::AlreadyPaired => "device already paired",
             Self::InvalidPairingSecret => "invalid pairing secret",
+            Self::PairingAttemptsExhausted => "too many wrong codes; pairing code revoked",
             Self::TotpRequired => "TOTP code required",
             Self::TotpNotEnrolled => "TOTP is required but not enrolled",
             Self::InvalidTotp => "invalid TOTP code",

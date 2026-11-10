@@ -5,6 +5,7 @@
 //! Connectivity providers (tunnels, VPNs, LAN forwarding) only carry bytes
 //! to the listen address; they are never trusted for authentication.
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -14,11 +15,11 @@ use anyhow::Context;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use vca_core::error::ErrorCode;
-use vca_core::{Error, PairedDevice};
+use vca_core::{Envelope, Error, PairedDevice, ServerMsg};
 use vca_net::{
-    AuditEvent, AuditLog, FileDeviceRegistry, FileKeyStore, KillSwitch, NetServer,
-    PendingEnrollment, Scope, ServerConfig, ServerConnection, SharedClock, TokenConfig,
-    TokenService, TotpManager, load_or_generate_keypair, load_or_generate_secret, system_clock,
+    AuditEvent, AuditLog, FileDeviceRegistry, FileKeyStore, KillSwitch, NetError, NetServer, Scope,
+    ServerConfig, ServerConnection, SharedClock, TokenConfig, TokenService, TotpManager,
+    load_or_generate_keypair, load_or_generate_secret, system_clock,
 };
 
 use crate::api::{Api, DeviceAdmin, DeviceIdentity};
@@ -31,7 +32,6 @@ const TOKEN_KEY: &str = "token-key";
 const TOKEN_KEY_LEN: usize = 32;
 const AUDIT_MAX_BYTES: u64 = 10 * 1024 * 1024;
 const AUDIT_KEEP: usize = 5;
-const TOTP_ISSUER: &str = "Voice Command AI";
 
 /// State of the remote transport, for `vca remote status`.
 #[derive(Debug, Clone)]
@@ -39,6 +39,8 @@ pub struct RemoteStatus {
     pub listen: SocketAddr,
     pub server_fingerprint: String,
     pub totp_enrolled: bool,
+    /// The enrollment's date and backup codes (never the secret).
+    pub totp: Option<vca_net::TotpStatus>,
     pub require_totp: bool,
     pub kill_switch_tripped: bool,
     pub paired_devices: usize,
@@ -59,14 +61,19 @@ pub struct Pairing {
 pub struct Remote {
     net: NetServer,
     totp: Arc<TotpManager>,
-    pending_totp: Mutex<Option<PendingEnrollment>>,
     /// `remote.endpoints`; these win over the provider.
     endpoints: Vec<String>,
     connectivity: Option<Arc<Connectivity>>,
     listen: SocketAddr,
     require_totp: bool,
     tasks: Mutex<Vec<JoinHandle<()>>>,
+    /// App version per device from `hello` (in memory, display only).
+    app_versions: Mutex<HashMap<String, String>>,
 }
+
+/// Answer to a request outside the device API.
+const LOCAL_ONLY: &str = "this request is not available to paired devices; pairing links, \
+                          invites and 2-step verification are managed on the host computer";
 
 fn net_err(e: impl std::fmt::Display) -> Error {
     Error::api(ErrorCode::Internal, e.to_string())
@@ -108,6 +115,7 @@ impl Remote {
                 server_name,
                 require_totp: cfg.require_totp,
                 heartbeat_interval: Duration::from_secs(cfg.heartbeat_secs.max(1)),
+                pairing_ttl: Duration::from_secs(cfg.pairing_ttl_secs.clamp(10, 600)),
                 ..ServerConfig::default()
             })
             .clock(clock)
@@ -126,14 +134,25 @@ impl Remote {
         let remote = Arc::new(Self {
             net: net.clone(),
             totp,
-            pending_totp: Mutex::new(None),
             endpoints: cfg.endpoints.clone(),
             connectivity: connectivity.clone(),
             listen,
             require_totp: cfg.require_totp,
             tasks: Mutex::new(Vec::new()),
+            app_versions: Mutex::new(HashMap::new()),
         });
         api.set_device_admin(Arc::clone(&remote) as Arc<dyn DeviceAdmin>);
+        if let Some(attachments) = api.attachments() {
+            attachments.set_audit(Arc::clone(net.audit()));
+        }
+        // Remote shells verify codes with the same TOTP manager (one replay
+        // marker for sign-in and step-up) and stop on the kill switch.
+        let mut shell_watch = None;
+        if let Some(shells) = api.shells() {
+            shells.set_totp(Arc::clone(&remote.totp));
+            shells.set_kill_switch(net.kill_switch().clone());
+            shell_watch = shells.watch_kill_switch();
+        }
 
         let (tx, mut rx) = mpsc::channel::<ServerConnection>(16);
         let accept = tokio::spawn({
@@ -160,6 +179,7 @@ impl Remote {
             }
         });
         lock(&remote.tasks).extend([accept, task]);
+        lock(&remote.tasks).extend(shell_watch);
         if let Some(c) = connectivity {
             // Tunnels take a while to come up; start now so the first
             // pairing code does not wait.
@@ -216,6 +236,16 @@ impl Remote {
         }
     }
 
+    /// The authenticator store (shared with `crate::security`).
+    pub fn totp_manager(&self) -> Arc<TotpManager> {
+        Arc::clone(&self.totp)
+    }
+
+    /// The transport audit log (shared with `crate::security`).
+    pub fn audit_log(&self) -> Arc<AuditLog> {
+        Arc::clone(self.net.audit())
+    }
+
     pub fn listen_addr(&self) -> SocketAddr {
         self.listen
     }
@@ -238,6 +268,18 @@ impl Remote {
         } else {
             endpoints
         };
+        // Enforced here as well as in the app: no client can skip it.
+        if crate::security::pairing_policy::pairing_requirement(
+            &endpoints,
+            self.require_totp,
+            self.totp.is_enrolled(),
+        ) == crate::security::pairing_policy::PairingRequirement::TotpSetupRequired
+        {
+            return Err(Error::api(
+                ErrorCode::Conflict,
+                "set up 2-step verification first: pairing needs an authenticator",
+            ));
+        }
         let payload = self
             .net
             .create_pairing(scope, endpoints)
@@ -247,34 +289,6 @@ impl Remote {
             expires_at: payload.expires_at,
             server_fingerprint: self.net.public_key().fingerprint().to_hex(),
         })
-    }
-
-    /// Starts TOTP enrollment; returns the `otpauth://` URI and the base32
-    /// secret.
-    pub fn totp_begin(&self, account: &str) -> (String, String) {
-        let pending = self.totp.begin_enrollment(TOTP_ISSUER, account);
-        let out = (
-            pending.otpauth_uri.to_string(),
-            pending.secret_base32().to_string(),
-        );
-        *lock(&self.pending_totp) = Some(pending);
-        out
-    }
-
-    /// Confirms the pending enrollment; returns the backup codes.
-    pub fn totp_confirm(&self, code: &str) -> Result<Vec<String>, Error> {
-        let pending = lock(&self.pending_totp).clone().ok_or_else(|| {
-            Error::api(
-                ErrorCode::Conflict,
-                "no enrollment in progress; start one first",
-            )
-        })?;
-        let codes = self
-            .totp
-            .confirm_enrollment(&pending, code)
-            .map_err(|e| Error::api(ErrorCode::Unauthorized, e.to_string()))?;
-        lock(&self.pending_totp).take();
-        Ok(codes)
     }
 
     pub fn reset_kill_switch(&self, by: &str) -> Result<(), Error> {
@@ -290,6 +304,7 @@ impl Remote {
             listen: self.listen,
             server_fingerprint: self.net.public_key().fingerprint().to_hex(),
             totp_enrolled: self.totp.is_enrolled(),
+            totp: self.totp.status(),
             require_totp: self.require_totp,
             kill_switch_tripped: self.net.kill_switch().is_tripped(),
             paired_devices: self
@@ -304,14 +319,61 @@ impl Remote {
     }
 }
 
+/// Maps a vca-net error, keeping rejected input a client error.
+fn admin_err(e: NetError) -> Error {
+    match e {
+        NetError::InvalidArgument(m) => Error::api(ErrorCode::InvalidRequest, m),
+        other => net_err(other),
+    }
+}
+
 impl DeviceAdmin for Remote {
     fn list_devices(&self, current: Option<&str>) -> Result<Vec<PairedDevice>, Error> {
         let records = self.net.registry().list().map_err(net_err)?;
+        let live = self.net.active_connections();
+        let versions = lock(&self.app_versions);
         Ok(records
             .iter()
             .filter(|d| d.is_active())
-            .map(|d| d.to_paired_device(current.unwrap_or("")))
+            .map(|d| {
+                let mut out = d.to_paired_device(current.unwrap_or(""));
+                let conns: Vec<_> = live.iter().filter(|c| c.device_id == d.id).collect();
+                out.connections = conns.len() as u32;
+                out.online = !conns.is_empty();
+                if let Some(latest) = conns.iter().max_by_key(|c| (c.connected_at, c.conn_id)) {
+                    out.last_ip = Some(latest.client_ip.to_string());
+                }
+                out.app_version = versions.get(&d.id).cloned();
+                out
+            })
             .collect())
+    }
+
+    fn rename_device(&self, device_id: &str, name: &str, by: &str) -> Result<bool, Error> {
+        self.net
+            .rename_device(device_id, name, by)
+            .map_err(admin_err)
+    }
+
+    fn set_device_scope(&self, device_id: &str, scope: Scope, by: &str) -> Result<bool, Error> {
+        self.net
+            .set_device_scope(device_id, scope, by)
+            .map_err(admin_err)
+    }
+
+    fn device_scope(&self, device_id: &str) -> Result<Option<Scope>, Error> {
+        self.net.device_scope(device_id).map_err(net_err)
+    }
+
+    fn note_app_version(&self, device_id: &str, version: &str) {
+        let version: String = version
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(32)
+            .collect();
+        if !version.is_empty() {
+            lock(&self.app_versions).insert(device_id.to_string(), version);
+        }
     }
 
     fn revoke_device(&self, device_id: &str) -> Result<bool, Error> {
@@ -320,6 +382,80 @@ impl DeviceAdmin for Remote {
 
     fn trip_kill_switch(&self, by: &str) -> Result<(), Error> {
         self.net.trip_kill_switch(by).map_err(net_err)
+    }
+}
+
+/// A copy of a request for the transport audit log, without TOTP codes and
+/// without audio or file bytes. The audit keeps 512 characters of a JSON
+/// rendering: bytes would become a number array (about 3.6 characters per
+/// byte), so a 5 s dictation clip cost a 570 KB string and a 512 KiB upload
+/// chunk 1.9 MB, built and scanned by every redaction pattern on the
+/// device's receive path, only to be cut off after the WAV header.
+fn without_codes(msg: &vca_core::ClientMsg) -> std::borrow::Cow<'_, vca_core::ClientMsg> {
+    use std::borrow::Cow;
+    use vca_core::ClientMsg;
+    const HIDDEN: &str = "[REDACTED]";
+    match msg {
+        ClientMsg::Transcribe {
+            format,
+            sample_rate,
+            language,
+            session_id,
+            context,
+            is_final,
+            ..
+        } => Cow::Owned(ClientMsg::Transcribe {
+            audio: Vec::new(),
+            format: *format,
+            sample_rate: *sample_rate,
+            language: language.clone(),
+            session_id: session_id.clone(),
+            context: context.clone(),
+            is_final: *is_final,
+        }),
+        ClientMsg::AttachChunk {
+            upload_id, offset, ..
+        } => Cow::Owned(ClientMsg::AttachChunk {
+            upload_id: upload_id.clone(),
+            offset: *offset,
+            data: Vec::new(),
+        }),
+        ClientMsg::Attach {
+            session_id,
+            name,
+            mime,
+            note,
+            submit,
+            ..
+        } => Cow::Owned(ClientMsg::Attach {
+            session_id: session_id.clone(),
+            name: name.clone(),
+            mime: mime.clone(),
+            data: Vec::new(),
+            note: note.clone(),
+            submit: *submit,
+        }),
+        ClientMsg::OpenShell { request } => {
+            let mut request = request.clone();
+            request.totp = HIDDEN.into();
+            Cow::Owned(ClientMsg::OpenShell { request })
+        }
+        ClientMsg::ShellRun {
+            session_id,
+            command,
+            totp: Some(_),
+            confirm,
+        } => Cow::Owned(ClientMsg::ShellRun {
+            session_id: session_id.clone(),
+            command: command.clone(),
+            totp: Some(HIDDEN.into()),
+            confirm: *confirm,
+        }),
+        ClientMsg::ShellJoin { session_id, .. } => Cow::Owned(ClientMsg::ShellJoin {
+            session_id: session_id.clone(),
+            totp: HIDDEN.into(),
+        }),
+        other => Cow::Borrowed(other),
     }
 }
 
@@ -350,16 +486,136 @@ async fn serve_device(api: Api, net: NetServer, conn: ServerConnection) {
                 }
                 // Every state-changing request is audited (SEC-07).
                 if Scope::required_for(&env.body) > Scope::View {
-                    net.audit()
-                        .record(AuditEvent::command(&device.device_id, &env.body));
+                    net.audit().record(AuditEvent::command(
+                        &device.device_id,
+                        &without_codes(&env.body),
+                    ));
                 }
                 api.handle(&client, env).await;
             }
             Err(e) => {
                 tracing::debug!(device = %device.device_id, "remote message error: {e}");
+                // Not part of the device API, e.g. a forged request to mint
+                // a pairing link: say why, then drop the connection.
+                let _ = conn
+                    .send(&Envelope {
+                        id: 0,
+                        body: ServerMsg::Error {
+                            code: ErrorCode::InvalidRequest,
+                            message: LOCAL_ONLY.into(),
+                        },
+                    })
+                    .await;
+                conn.close().await;
                 break;
             }
         }
     }
     writer.abort();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vca_core::{AudioEncoding, ClientMsg};
+    use vca_net::AuditEvent;
+
+    fn detail(msg: &ClientMsg) -> String {
+        match AuditEvent::command("dev_1", &without_codes(msg)) {
+            AuditEvent::Command { detail, .. } => detail,
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn the_audit_copy_drops_audio_and_file_bytes_but_keeps_the_rest() {
+        // A 5 s, 16 kHz mono 16-bit WAV.
+        let transcribe = ClientMsg::Transcribe {
+            audio: vec![200; 160_044],
+            format: AudioEncoding::Wav,
+            sample_rate: None,
+            language: Some("ko".into()),
+            session_id: None,
+            context: Some("earlier words".into()),
+            is_final: true,
+        };
+        let d = detail(&transcribe);
+        assert!(d.contains(r#""audio":[]"#), "{d}");
+        assert!(d.contains(r#""format":"wav""#), "{d}");
+        assert!(d.contains(r#""final":true"#), "{d}");
+        // The dictation context is what the person said: its length only.
+        assert!(!d.contains("earlier words"), "{d}");
+        assert!(d.contains(r#""context_chars":13"#), "{d}");
+
+        let chunk = ClientMsg::AttachChunk {
+            upload_id: "up_1".into(),
+            offset: 524_288,
+            data: vec![7; 512 * 1024],
+        };
+        let d = detail(&chunk);
+        assert!(d.contains(r#""data":[]"#), "{d}");
+        assert!(d.contains(r#""offset":524288"#), "{d}");
+
+        let attach = ClientMsg::Attach {
+            session_id: "s1".into(),
+            name: "a.png".into(),
+            mime: "image/png".into(),
+            data: vec![1; 1000],
+            note: None,
+            submit: false,
+        };
+        let d = detail(&attach);
+        assert!(d.contains(r#""data":[]"#) && d.contains("a.png"), "{d}");
+    }
+
+    #[test]
+    fn the_audit_copy_of_a_prompt_keeps_its_length_only() {
+        let send = ClientMsg::SendInput {
+            session_id: "s1".into(),
+            input: vca_core::Input::Text {
+                text: "summarize the contract for the client".into(),
+                submit: true,
+                at_prompt: false,
+            },
+        };
+        let d = detail(&send);
+        assert!(!d.contains("contract"), "{d}");
+        assert!(d.contains(r#""text_chars":37"#) && d.contains("s1"), "{d}");
+    }
+
+    #[test]
+    fn the_audit_copy_still_hides_totp_codes() {
+        let msg = ClientMsg::ShellJoin {
+            session_id: "s1".into(),
+            totp: "123456".into(),
+        };
+        assert!(!detail(&msg).contains("123456"));
+        // The code of a window arrangement too.
+        let msg = ClientMsg::ArrangeUndo {
+            totp: Some("654321".into()),
+        };
+        assert!(!detail(&msg).contains("654321"), "{}", detail(&msg));
+    }
+
+    #[test]
+    #[ignore = "timing probe, run by hand"]
+    fn audit_cost_probe() {
+        let transcribe = ClientMsg::Transcribe {
+            audio: (0..160_044u32).map(|i| (i * 37 % 256) as u8).collect(),
+            format: AudioEncoding::Wav,
+            sample_rate: None,
+            language: None,
+            session_id: None,
+            context: None,
+            is_final: true,
+        };
+        let t = std::time::Instant::now();
+        let _ = AuditEvent::command("dev_1", &transcribe);
+        let before = t.elapsed();
+        let t = std::time::Instant::now();
+        let _ = AuditEvent::command("dev_1", &without_codes(&transcribe));
+        let after = t.elapsed();
+        let json = serde_json::to_string(&transcribe).unwrap().len();
+        eprintln!("audit before={before:?} after={after:?} json_chars={json}");
+    }
 }

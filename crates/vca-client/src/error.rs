@@ -34,15 +34,38 @@ pub enum ClientError {
     /// Internal failure, e.g. no tokio runtime available.
     #[error("internal error: {0}")]
     Internal(String),
+    /// A DNSPilot step failed. `code` is one of the `dnspilot_*` codes
+    /// documented on [`ClientError::code`].
+    #[error("DNSPilot: {message}")]
+    DnsPilot { code: &'static str, message: String },
+    /// DNSPilot rate limited the request; `dnspilot_rate_limited`.
+    #[error("DNSPilot: rate limited")]
+    DnsPilotRateLimited {
+        /// `Retry-After`, when the console sent it.
+        retry_after_secs: Option<u64>,
+    },
 }
 
 impl ClientError {
     /// Stable machine-readable code: `not_found`, `invalid_pairing`,
     /// `not_connected`, `unreachable`, `server_key_mismatch`, `protocol`,
-    /// `storage`, `internal`, or for [`ClientError::Auth`] one of
+    /// `storage`, `internal`; for [`ClientError::DnsPilot`] one of
+    /// `dnspilot_not_connected` (connect DNSPilot first),
+    /// `dnspilot_reauthorize` (the authorization ended; connect again),
+    /// `dnspilot_denied`, `dnspilot_expired`, `dnspilot_forbidden`,
+    /// `dnspilot_device_not_allowed` (the PC was not picked on approval),
+    /// `dnspilot_not_found`, `dnspilot_conflict`, `dnspilot_rate_limited`,
+    /// `dnspilot_disabled`, `dnspilot_unavailable`, `dnspilot_invalid`,
+    /// `dnspilot_error`, `dnspilot_key_registration_failed` (the tunnel
+    /// exists but this app's key is not on it), `dnspilot_bad_link`, and the
+    /// invite errors `dnspilot_invite_invalid`, `dnspilot_bad_request`,
+    /// `dnspilot_enroll_bad_signature`, `dnspilot_enroll_bad_cert`,
+    /// `dnspilot_tunnel_not_app_mode`, `dnspilot_client_limit`,
+    /// `dnspilot_invite_limit`; or for [`ClientError::Auth`] one of
     /// `revoked`, `totp_required`, `invalid_totp`, `totp_not_enrolled`,
-    /// `auth_failed`, `invalid_pairing`, `already_paired`, `rate_limited`,
-    /// `kill_switch`, `protocol`, `server_error`.
+    /// `auth_failed`, `invalid_pairing`, `pairing_attempts_exhausted` (too
+    /// many wrong codes; the QR code is revoked), `already_paired`,
+    /// `rate_limited`, `kill_switch`, `protocol`, `server_error`.
     pub fn code(&self) -> &'static str {
         match self {
             Self::NotFound(_) => "not_found",
@@ -54,6 +77,8 @@ impl ClientError {
             Self::Protocol(_) => "protocol",
             Self::Storage(_) => "storage",
             Self::Internal(_) => "internal",
+            Self::DnsPilot { code, .. } => code,
+            Self::DnsPilotRateLimited { .. } => "dnspilot_rate_limited",
         }
     }
 
@@ -71,6 +96,7 @@ pub(crate) fn auth_code(f: AuthFailure) -> &'static str {
         AuthFailure::TotpNotEnrolled => "totp_not_enrolled",
         AuthFailure::InvalidToken | AuthFailure::TokenReuse => "auth_failed",
         AuthFailure::InvalidPairingSecret => "invalid_pairing",
+        AuthFailure::PairingAttemptsExhausted => "pairing_attempts_exhausted",
         AuthFailure::AlreadyPaired => "already_paired",
         AuthFailure::RateLimited => "rate_limited",
         AuthFailure::KillSwitch => "kill_switch",

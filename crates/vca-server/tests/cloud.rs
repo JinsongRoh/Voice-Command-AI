@@ -75,10 +75,12 @@ async fn start(dir: &Path, provider_url: &str) -> Server {
     }];
     Server::start(
         Options {
+            verifier: Some(vca_server::security::verifier::FakeVerifier::available()),
             config_file: Some(dir.join("config.toml")),
             control: Some(control_endpoint(dir)),
             data_dir: Some(dir.join("data")),
             process_control: Some(Arc::new(NoProcessControl)),
+            restore_backend: None,
         },
         Some(config),
     )
@@ -311,6 +313,7 @@ async fn cloud_session_lifecycle_through_the_api() {
             input: Input::Text {
                 text: "also update the docs".into(),
                 submit: true,
+                at_prompt: false,
             },
         },
     })
@@ -390,8 +393,9 @@ async fn cloud_session_lifecycle_through_the_api() {
 }
 
 async fn paired_admin(server: &Server) -> ClientConnection {
-    let resp = local_call(server, |id| LocalRequest::Pair {
+    let resp = local_verified(server, |id, step_up| LocalRequest::Pair {
         id,
+        step_up,
         scope: "admin".into(),
         endpoints: Vec::new(),
     })
@@ -509,4 +513,48 @@ fn walk(dir: &Path) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+/// Runs a gated request through the whole flow: the challenge, local
+/// verification through the fake verifier of this test server, the retry.
+async fn local_verified(
+    server: &vca_server::daemon::Server,
+    make: impl Fn(u64, Option<vca_server::security::Sensitive>) -> LocalRequest,
+) -> LocalResponse {
+    let first = local_call(server, |id| make(id, None)).await;
+    let LocalResponse::StepUpRequired { challenge, .. } = first else {
+        return first;
+    };
+    let token = test_step_up(server, challenge).await;
+    local_call(server, |id| make(id, token)).await
+}
+
+/// Local verification through the fake verifier of this test server.
+async fn test_step_up(
+    server: &vca_server::daemon::Server,
+    challenge: vca_server::security::StepUpChallenge,
+) -> Option<vca_server::security::Sensitive> {
+    let call = vca_server::security::SecurityCall::StepUp {
+        nonce: vca_server::security::Sensitive(challenge.nonce),
+        window: None,
+        totp: None,
+        presence: None,
+        language: None,
+    };
+    // As the process that got the challenge: a step-up bound to a process
+    // never answers an unnamed caller.
+    let me = vca_server::security::Caller {
+        pid: Some(std::process::id()),
+        ..Default::default()
+    };
+    match server
+        .api
+        .security()
+        .expect("security")
+        .handle_from(call, &me)
+        .await
+    {
+        vca_server::security::SecurityReply::StepUp { token, .. } => Some(token),
+        other => panic!("step-up failed: {other:?}"),
+    }
 }

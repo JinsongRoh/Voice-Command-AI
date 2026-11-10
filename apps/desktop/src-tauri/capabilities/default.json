@@ -1,12 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: core defaults and reading the launch deep link. App commands (vca_*) are registered by vca-shell.",
+  "description": "The main window: core defaults and reading the launch deep link. App commands (vca_*) are registered by vca-shell. No dialog permission: vca_save_text_file opens the Save as dialog from Rust.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
-    "deep-link:default"
+    "deep-link:default",
+    "notification:default"
   ]
 }

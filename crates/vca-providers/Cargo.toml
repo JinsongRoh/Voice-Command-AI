@@ -1,6 +1,6 @@
 [package]
 name = "vca-providers"
-description = "Connectivity providers (LAN, Tailscale, Cloudflare Tunnel, DNS Pilot, custom)"
+description = "Connectivity providers (LAN, Tailscale, Cloudflare Tunnel, DNSPilot, custom)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -25,6 +25,10 @@ tokio = { workspace = true, features = ["process", "time", "sync", "macros", "rt
 tracing.workspace = true
 url = "2.5.8"
 vca-core.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# DNSPilot local API: verify the named pipe server and find the per-user token file.
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Pipes", "Win32_System_Services", "Win32_System_Threading"] }
 
 [lints]
 workspace = true

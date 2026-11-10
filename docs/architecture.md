@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Draft v0.1. Companion to [requirements.md](requirements.md).
+> **Status:** Describes version 0.1.0, the first public release. The original design is in the historical [requirements](history/requirements.md); where this page and the code differ, the code wins.
 
 ## 1. High-level view
 
@@ -11,42 +11,55 @@
 │ VCA Mobile   │◄───────►│  │ Connectivity│◄─►│ VCA Server (vcad)                         │ │
 │ (Tauri 2)    │ channel │  │ provider    │   │                                           │ │
 └──────────────┘         │  │ DNSPilot / │   │  api ──── auth ──── audit                 │ │
-       ▲                 │  │ Tailscale / │   │   │                                       │ │
-       │ push (E2E)      │  │ Cloudflare /│   │  session manager ── adapters ── hooks     │ │
-┌──────┴───────┐         │  │ LAN         │   │   │        │                              │ │
-│ Push relay   │◄────────┼──┤             │   │  pty host  resource broker   speech       │ │
-│ (DNSPilot)  │         │  └────────────┘   └───┬───────────────┬───────────────────────┘ │
-└──────────────┘         │                       │               │                          │
+                         │  │ Tailscale / │   │   │                                       │ │
+                         │  │ Cloudflare /│   │  session manager ── adapters ── hooks     │ │
+                         │  │ LAN         │   │   │        │                              │ │
+                         │  │             │   │  pty host  resource broker   speech       │ │
+                         │  └────────────┘   └───┬───────────────┬───────────────────────┘ │
+                         │                       │               │                          │
                          │        ┌──────────────┴──┐   ┌────────┴────────┐                 │
                          │        │ Agent processes │   │ Terminal windows│ (attached views)│
                          │        │ claude · codex ·│   │ WT · iTerm2 ·   │                 │
                          │        │ gemini · grok … │   │ tmux · …        │                 │
                          │        └─────────────────┘   └─────────────────┘                 │
                          │  ┌──────────────┐                                                 │
-                         │  │ VCA Desktop  │ tray · dashboard · pairing QR · kill switch     │
+                         │  │ VCA Desktop  │ bundled vcad · pairing QR · settings · updater  │
                          │  └──────────────┘                                                 │
                          └──────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Repository layout (planned)
+## 2. Repository layout
 
 ```
 crates/
-  vca-core/        Shared types, protocol messages, configuration
-  vca-server/      Daemon (vcad): API, session manager, broker, audit
-  vca-pty/         Cross-platform PTY host (ConPTY on Windows, openpty on Unix)
-  vca-adapters/    Agent adapter trait and built-in adapters
-  vca-broker/      Resource monitoring, admission control, policies
-  vca-speech/      STT/TTS engine trait, Whisper and cloud engines, vocabulary engine
-  vca-net/         Connectivity providers, E2E channel, pairing
-  vca-cli/         `vca` command
+  vca-core/        Shared types and the wire protocol (JSON locally, MessagePack on the wire)
+  vca-server/      The daemon (vcad): API, session manager, discovery, broker, audit, restore,
+                   conductor, to-do list, cloud sessions, push registrations
+  vca-pty/         Cross-platform PTY host for managed sessions (ConPTY on Windows, openpty on Unix)
+  vca-adapters/    Local agent adapters (Claude Code, Codex, generic), hooks, heuristics,
+                   terminal input injection (tmux, WezTerm, kitty, iTerm2, Windows consoles)
+  vca-cloud/       Cloud agent adapters on official provider APIs, activity polling
+  vca-broker/      Resource monitoring, admission control and containment
+  vca-speech/      Speech-to-text, correction LLM and TTS engines, vocabulary correction
+  vca-net/         Pairing, authentication, Noise end-to-end encryption, transport
+  vca-providers/   Connectivity providers: LAN, Tailscale, Cloudflare Tunnel, DNSPilot, custom
+  vca-client/      Device-side connection manager: pairing, key storage, supervised
+                   reconnects, DNSPilot app-mode tunnels and push
+  vca-cli/         The `vca` command
 apps/
-  desktop/         Tauri 2 desktop app
-  mobile/          Tauri 2 mobile app (iOS / Android)
-  ui/              Shared front-end used by both apps
+  shell/           Tauri side shared by both apps: the bridge to vca-client, microphone,
+                   desktop-only host control (bundled vcad), updater and autostart
+  desktop/         Tauri 2 desktop app (Windows, macOS, Linux); bundles vcad and vca
+  mobile/          Tauri 2 mobile app (iOS, Android); plugins/vca-push is the optional
+                   native push token plugin (not enabled in 0.1.0 builds)
+  plugins/vca-mic/ Android microphone runtime permission
+  ui/              Shared React front-end used by both apps
 lexicon/           Open-source developer vocabulary, one folder per language
+tools/             Reference STT and TTS servers, license and release scripts, a fake agent for tests
 docs/
 ```
+
+**Keys never reach the web view.** The UI (`apps/ui`) exchanges MessagePack envelopes with Tauri commands in `apps/shell`; `vca-client` owns pairing, authentication, encryption and reconnects, and keeps every secret in the OS credential store. The desktop app also talks to its own PC's `vcad` over the same owner-only local channel as the `vca` CLI, so it needs no pairing for **This PC**.
 
 ## 3. Session model
 
@@ -113,10 +126,7 @@ pub trait AgentAdapter: Send + Sync {
 |---|---|---|---|---|
 | Claude Code | Process scan, session transcripts on disk | Hooks (Stop, Notification, permission, PreToolUse) | Hooks, local session messaging, headless resume | Config directory per profile |
 | OpenAI Codex | Process scan, session files | `notify` configuration, session files | `exec resume`, app-server protocol | Home directory per profile |
-| Gemini CLI | Process scan, checkpoints | To be validated in M0 | To be validated in M0 | To be validated in M0 |
-| Google Antigravity | To be validated in M0 | To be validated in M0 | To be validated in M0 | To be validated in M0 |
-| Grok (xAI) | To be validated in M0 | To be validated in M0 | To be validated in M0 | To be validated in M0 |
-| Generic | Process name match | Output-pattern heuristics | None (tiers 1 and 3 only) | None |
+| Generic (Gemini CLI, Antigravity, Grok, Cursor CLI, Copilot CLI, Aider, opencode, Qwen Code, any command) | Process name match | Output-pattern heuristics | None (tiers 1 and 3 only) | None |
 
 ### 5.1 Cloud agent adapters
 
@@ -136,9 +146,9 @@ pub trait CloudAgentAdapter: Send + Sync {
 ```
 
 - **Polling and webhooks:** progress is polled with backoff (or received through webhooks where offered) and normalized into the same event model as local sessions.
-- **Where it runs:** by default, adapters run inside `vcad`. In direct mode (CLD-06), the same Rust code runs inside the mobile app.
+- **Where it runs:** adapters run inside `vcad`; accounts are configured in `[[cloud.accounts]]` and their secrets stay on the PC (`vca cloud login`). The HTTP adapters do not need the developer machine (direct mode, CLD-06), but the apps do not use direct mode in 0.1.0.
 
-Provider matrix (official APIs only; status as researched on 2026-10-29, re-verified in M0):
+Provider matrix (official APIs only; status as researched on 2026-10-29):
 
 | Provider | Official API | Create | List | Follow-up | Progress | Notes |
 |---|---|---|---|---|---|---|
@@ -203,16 +213,17 @@ mic (device) ─► VAD ─► audio chunks ─► STT engine ─► vocabulary 
                                         or cloud)
 ```
 
-- Engines implement a common `SttEngine` trait. Each engine can run on the device, on the server (local Whisper using the developer machine's CPU or GPU), or in the cloud.
+- Engines implement a common `SttEngine` trait. The device records and streams audio to `vcad`, which calls the engine the user configured: any OpenAI-compatible server (for example a self-hosted Whisper server), OpenAI or Google Cloud. VCA ships no engines or model weights.
 - Language configuration: a primary language plus secondary languages. Code-switching works because recognition is not forced to a single language.
-- TTS for spoken notifications uses platform TTS on the device by default.
+- TTS for spoken notifications uses platform TTS on the device by default, or an OpenAI-compatible TTS engine configured on the PC.
+- Hands-free mode detects speech on the device (an energy VAD); while it waits for the "Voco" wake word, only a short head of each utterance is transcribed.
 
-## 10. Key technical risks (to be resolved in M0)
+## 10. Key technical risks
 
 | Risk | Mitigation |
 |---|---|
 | Focus-free input into existing Windows Terminal sessions | Default to managed PTY through shell integration. Prototype console input buffer injection. |
 | Agents without hooks or native channels | Generic adapter using output heuristics. Contribute hook support upstream where possible. |
 | Pausing an agent mid-request causes API timeouts | Pause child processes only by default. Pause whole sessions only on explicit request. |
-| Tauri 2 mobile audio and background limits | Prototype microphone capture and VAD in M0. Fall back to a native plugin if needed. |
-| DNSPilot gaps (app-token access, P2P SDK, push relay, relay regions) | Tracked in dnspilot-requirements.md. M0 validates connectivity through the provider abstraction with every built-in provider, so no single provider blocks progress. |
+| Tauri 2 mobile audio and background limits | Microphone capture runs natively in `apps/shell` (cpal; AAudio on Android) with a local VAD. Notifications while the phone app is closed need native push, which is not enabled in 0.1.0. |
+| Dependence on one connectivity provider | Every provider implements the same `ConnectivityProvider` trait and none is a default in code; DNSPilot requirements are tracked in [history/dnspilot-requirements.md](history/dnspilot-requirements.md). |

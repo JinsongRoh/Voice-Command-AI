@@ -2,15 +2,36 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- The microphone is open while you dictate (tap the mic button) and,
+       while the app is open, when hands-free mode or the "Voco" wake word is
+       on (it listens for the wake word and your spoken commands). Audio goes
+       end-to-end encrypted to the user's own paired PC, which passes it to
+       the speech-to-text engine the user set up there. No background audio
+       mode: listening stops when the app leaves the screen. -->
   <key>NSMicrophoneUsageDescription</key>
-  <string>Voice Command AI records your voice only while you hold the talk button, to turn it into a prompt.</string>
+  <string>Voice Command AI uses the microphone when you dictate, and while hands-free mode or the Voco wake word is on and the app is open. Your speech is sent encrypted only to your own paired PC and the speech recognition engine you set up there, to turn it into text.</string>
+  <!-- The app connects straight to the user's PC on the local network
+       (direct LAN pairing uses ws:// addresses of the PC); iOS asks before
+       that. No Bonjour/mDNS browsing, so no NSBonjourServices. -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Voice Command AI connects to your own PC on your local network so you can control the coding sessions running on it.</string>
+  <!-- The camera is used to scan the pairing QR code and for "Take photo"
+       in the composer; photos go only to your paired PC. -->
+  <key>NSCameraUsageDescription</key>
+  <string>Voice Command AI uses the camera only while you scan a pairing QR code or when you choose Take photo, to send that photo to a session on your PC.</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>Voice Command AI opens your photos only when you choose Photo library, and sends just the photos you pick to a session on your PC.</string>
+  <!-- Face ID confirms it is you before a remote shell opens on your PC or
+       runs a dangerous command (the device passcode works as a fallback). -->
+  <key>NSFaceIDUsageDescription</key>
+  <string>Voice Command AI uses Face ID to unlock the app and to confirm it is you before it opens a remote shell on your PC or runs a risky command there.</string>
   <!-- vca://pair links (the server's pairing QR code) open the app. Declared
        here too so the scheme survives regenerating gen/apple. -->
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
       <key>CFBundleURLName</key>
-      <string>io.github.voicecommandai.mobile</string>
+      <string>io.metavu.voicecommandai.mobile</string>
       <key>CFBundleURLSchemes</key>
       <array>
         <string>vca</string>

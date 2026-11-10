@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use vca_core::{AgentKind, Decision, DecisionOption, SessionState};
 
-use crate::claude::transcript::tool_summary;
+use crate::claude::question::question_prompt;
+use crate::claude::transcript::{ASK_USER_QUESTION, parse_questions, tool_summary};
 use crate::hook::{AgentHookEvent, HookDecision, HookNotification, HookResponse, HookToolUse};
 use crate::types::truncate;
 
@@ -23,6 +24,7 @@ pub enum ClaudeHookEventName {
     PreToolUse,
     PermissionRequest,
     PostToolUse,
+    PostToolUseFailure,
     Notification,
     Stop,
     StopFailure,
@@ -39,6 +41,7 @@ impl ClaudeHookEventName {
             "PreToolUse" => Self::PreToolUse,
             "PermissionRequest" => Self::PermissionRequest,
             "PostToolUse" => Self::PostToolUse,
+            "PostToolUseFailure" => Self::PostToolUseFailure,
             "Notification" => Self::Notification,
             "Stop" => Self::Stop,
             "StopFailure" => Self::StopFailure,
@@ -55,6 +58,7 @@ impl ClaudeHookEventName {
             Self::PreToolUse => "PreToolUse",
             Self::PermissionRequest => "PermissionRequest",
             Self::PostToolUse => "PostToolUse",
+            Self::PostToolUseFailure => "PostToolUseFailure",
             Self::Notification => "Notification",
             Self::Stop => "Stop",
             Self::StopFailure => "StopFailure",
@@ -168,11 +172,30 @@ impl ClaudeHookPayload {
         })
     }
 
+    /// Stable, opaque decision id. The agent's own `tool_use_id` wins;
+    /// otherwise the id is a hash of session, tool and normalized input
+    /// (`x-` prefix), or of the notification text (`n-` prefix) when the
+    /// payload names no tool. Never time-based, never contains raw input.
     fn decision_id(&self) -> String {
         let session = self.session_id.as_deref().unwrap_or("unknown");
-        match &self.tool_use_id {
-            Some(id) => format!("claude:{session}:{id}"),
-            None => format!("claude:{session}:{}", vca_core::now_millis()),
+        if let Some(id) = &self.tool_use_id {
+            return format!("claude:{session}:{id}");
+        }
+        match &self.tool_name {
+            Some(tool) => {
+                let input = self.tool_input.as_ref().map(canonical_json);
+                let hash = stable_hash(&["claude", session, tool, input.as_deref().unwrap_or("")]);
+                format!("claude:{session}:{DERIVED_TOOL_PREFIX}{hash}")
+            }
+            None => {
+                let hash = stable_hash(&[
+                    "claude",
+                    session,
+                    self.notification_type.as_deref().unwrap_or(""),
+                    self.message.as_deref().unwrap_or(""),
+                ]);
+                format!("claude:{session}:{DERIVED_NOTICE_PREFIX}{hash}")
+            }
         }
     }
 
@@ -195,12 +218,17 @@ impl ClaudeHookPayload {
                     | ClaudeHookEventName::PermissionRequest
                     | ClaudeHookEventName::UserPromptSubmit
             ),
+            subagent_id: None,
+            tool_use_id: self.tool_use_id.clone(),
+            permission_mode: self.permission_mode.clone(),
+            last_message: None,
         };
         match event {
             ClaudeHookEventName::SessionStart => out.state = Some(SessionState::Idle),
             ClaudeHookEventName::UserPromptSubmit
             | ClaudeHookEventName::PreToolUse
-            | ClaudeHookEventName::PostToolUse => out.state = Some(SessionState::Running),
+            | ClaudeHookEventName::PostToolUse
+            | ClaudeHookEventName::PostToolUseFailure => out.state = Some(SessionState::Running),
             ClaudeHookEventName::PermissionRequest => {
                 out.state = Some(SessionState::AwaitingDecision);
                 out.decision = Some(self.permission_decision());
@@ -208,6 +236,7 @@ impl ClaudeHookPayload {
             ClaudeHookEventName::Notification => self.apply_notification(&mut out),
             ClaudeHookEventName::Stop => {
                 out.state = Some(SessionState::Idle);
+                out.last_message = self.last_assistant_message.clone();
                 out.notification = Some(HookNotification {
                     title: "Task complete".into(),
                     body: self
@@ -237,9 +266,59 @@ impl ClaudeHookPayload {
             ClaudeHookEventName::SessionEnd => {
                 out.state = Some(SessionState::Exited { code: None })
             }
-            ClaudeHookEventName::SubagentStop | ClaudeHookEventName::Other(_) => {}
+            ClaudeHookEventName::SubagentStop => {
+                out.subagent_id = self
+                    .extra
+                    .get("agent_id")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
+            }
+            ClaudeHookEventName::Other(_) => {}
+        }
+        // A question form asks the person, like a permission prompt does.
+        // `PreToolUse` runs before the agent's permission flow; in a mode
+        // that settles calls without the person it raises nothing (a form
+        // that still asks arrives as `PermissionRequest` or in the
+        // transcript).
+        let asks = match event {
+            ClaudeHookEventName::PreToolUse => !self.auto_approves(),
+            ClaudeHookEventName::PermissionRequest => true,
+            _ => false,
+        };
+        if asks {
+            if let Some(decision) = self.question_decision() {
+                out.state = Some(SessionState::AwaitingDecision);
+                out.decision = Some(decision);
+            }
         }
         out
+    }
+
+    /// True when the payload's `permission_mode` lets the agent settle tool
+    /// calls without asking the person: `auto` (a classifier decides) and
+    /// `bypassPermissions`. Such a mode can still escalate a call to the
+    /// person through a `PermissionRequest`.
+    pub fn auto_approves(&self) -> bool {
+        self.permission_mode
+            .as_deref()
+            .is_some_and(permission_mode_auto_approves)
+    }
+
+    /// The question form of an `AskUserQuestion` call. Its id is the one
+    /// the transcript gives the same call, so both report one decision.
+    fn question_decision(&self) -> Option<Decision> {
+        if self.tool_name.as_deref() != Some(ASK_USER_QUESTION) {
+            return None;
+        }
+        let questions = parse_questions(self.tool_input.as_ref()?)?;
+        Some(Decision {
+            id: self.decision_id(),
+            prompt: question_prompt(&questions),
+            options: Vec::new(),
+            inferred: false,
+            questions,
+            command: None,
+        })
     }
 
     fn apply_notification(&self, out: &mut AgentHookEvent) {
@@ -266,6 +345,9 @@ impl ClaudeHookPayload {
                 id: self.decision_id(),
                 prompt: message.clone(),
                 options: claude_permission_options(),
+                inferred: false,
+                questions: Vec::new(),
+                command: None,
             });
         }
         out.state = state;
@@ -293,8 +375,73 @@ impl ClaudeHookPayload {
             id: self.decision_id(),
             prompt,
             options: claude_permission_options(),
+            inferred: false,
+            questions: Vec::new(),
+            command: self.shell_command().map(str::to_owned),
         }
     }
+}
+
+/// Whether Claude Code's permission mode (`default`, `acceptEdits`,
+/// `plan`, `auto`, `bypassPermissions`, ...) settles tool calls without
+/// asking the person.
+pub fn permission_mode_auto_approves(mode: &str) -> bool {
+    matches!(mode, "auto" | "bypassPermissions")
+}
+
+const DERIVED_TOOL_PREFIX: &str = "x-";
+const DERIVED_NOTICE_PREFIX: &str = "n-";
+
+/// True for ids derived from content (the agent supplied no id), which
+/// repeat for identical requests and so need answered-state separation.
+pub fn is_derived_decision_id(id: &str) -> bool {
+    id.rsplit(':').next().is_some_and(|last| {
+        last.starts_with(DERIVED_TOOL_PREFIX) || last.starts_with(DERIVED_NOTICE_PREFIX)
+    })
+}
+
+/// True for derived ids built from a payload that named no tool (a bare
+/// permission notification); such a prompt duplicates an already pending
+/// tool decision rather than being a new one.
+pub fn is_notice_decision_id(id: &str) -> bool {
+    id.rsplit(':')
+        .next()
+        .is_some_and(|last| last.starts_with(DERIVED_NOTICE_PREFIX))
+}
+
+/// JSON with object keys sorted, so key order never changes the hash.
+fn canonical_json(value: &Value) -> String {
+    match value {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            let parts: Vec<String> = keys
+                .into_iter()
+                .map(|k| format!("{}:{}", Value::String(k.clone()), canonical_json(&map[k])))
+                .collect();
+            format!("{{{}}}", parts.join(","))
+        }
+        Value::Array(items) => {
+            let parts: Vec<String> = items.iter().map(canonical_json).collect();
+            format!("[{}]", parts.join(","))
+        }
+        other => other.to_string(),
+    }
+}
+
+/// Deterministic 128-bit FNV-1a style hash (two lanes) as 32 hex chars.
+/// Stable across processes and Rust versions, unlike `DefaultHasher`.
+pub fn stable_hash(parts: &[&str]) -> String {
+    let mut lanes = [0xcbf2_9ce4_8422_2325_u64, 0x8422_2325_cbf2_9ce4_u64];
+    for part in parts {
+        for byte in part.bytes().chain(std::iter::once(0x1f)) {
+            for (i, lane) in lanes.iter_mut().enumerate() {
+                *lane ^= u64::from(byte) ^ (i as u64);
+                *lane = lane.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+    }
+    format!("{:016x}{:016x}", lanes[0], lanes[1])
 }
 
 /// The choices of Claude Code's permission dialog. Option ids are the keys
@@ -390,6 +537,37 @@ mod tests {
         assert_eq!(ev.tool.unwrap().command.as_deref(), Some("npm test"));
     }
 
+    fn perm(input: &str, extra: &str) -> Decision {
+        ClaudeHookPayload::parse(&format!(
+            r#"{{"session_id":"s1","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{input}{extra}}}"#
+        ))
+        .unwrap()
+        .to_agent_event()
+        .decision
+        .unwrap()
+    }
+
+    #[test]
+    fn decision_ids_are_stable_opaque_and_prefer_agent_id() {
+        let a = perm(r#"{"command":"rm -rf x","description":"d"}"#, "");
+        let b = perm(r#"{"description":"d","command":"rm -rf x"}"#, "");
+        assert_eq!(a.id, b.id, "key order and repeats do not change the id");
+        assert!(!a.id.contains("rm"));
+        assert!(is_derived_decision_id(&a.id));
+        assert_ne!(a.id, perm(r#"{"command":"ls"}"#, "").id);
+        let own = perm(r#"{"command":"ls"}"#, r#","tool_use_id":"toolu_9""#);
+        assert_eq!(own.id, "claude:s1:toolu_9");
+        assert!(!is_derived_decision_id(&own.id));
+        let n = ClaudeHookPayload::parse(
+            r#"{"session_id":"s1","hook_event_name":"Notification","message":"needs permission","notification_type":"permission_prompt"}"#,
+        )
+        .unwrap()
+        .to_agent_event()
+        .decision
+        .unwrap();
+        assert!(is_notice_decision_id(&n.id));
+    }
+
     #[test]
     fn notification_types_map_to_states() {
         let perm = ClaudeHookPayload::parse(
@@ -438,6 +616,28 @@ mod tests {
             .unwrap()
             .to_agent_event();
         assert_eq!(end.state, Some(SessionState::Exited { code: None }));
+    }
+
+    #[test]
+    fn subagent_stop_names_the_agent() {
+        let ev = ClaudeHookPayload::parse(
+            r#"{"session_id":"s","hook_event_name":"SubagentStop","agent_id":"a54a","agent_type":"general-purpose","stop_hook_active":false}"#,
+        )
+        .unwrap()
+        .to_agent_event();
+        assert_eq!(ev.subagent_id.as_deref(), Some("a54a"));
+        assert_eq!(ev.state, None);
+        let json = serde_json::to_string(&ev).unwrap();
+        assert!(json.contains(r#""subagent_id":"a54a""#));
+        // Other events, and events from older `vca hook` builds, name none.
+        let stop = ClaudeHookPayload::parse(r#"{"hook_event_name":"Stop"}"#)
+            .unwrap()
+            .to_agent_event();
+        assert_eq!(stop.subagent_id, None);
+        let mut old = serde_json::to_value(&stop).unwrap();
+        old.as_object_mut().unwrap().remove("subagent_id");
+        let back: AgentHookEvent = serde_json::from_value(old).unwrap();
+        assert_eq!(back.subagent_id, None);
     }
 
     #[test]
@@ -517,5 +717,81 @@ mod tests {
             assert_eq!(ClaudeHookEventName::from_cli_arg(&ev.cli_arg()), ev);
         }
         assert_eq!(ClaudeHookEventName::PreToolUse.cli_arg(), "pre-tool-use");
+    }
+
+    #[test]
+    fn ask_user_question_hooks_are_question_decisions() {
+        let input = r#"{"questions":[{"question":"Ship it?","header":"Ship","options":[{"label":"Yes","description":"now"},{"label":"No","description":""}],"multiSelect":false}]}"#;
+        for event in ["PreToolUse", "PermissionRequest"] {
+            let json = format!(
+                r#"{{"session_id":"s1","hook_event_name":"{event}","tool_name":"AskUserQuestion","tool_use_id":"toolu_q","tool_input":{input}}}"#
+            );
+            let out = ClaudeHookPayload::parse(&json).unwrap().to_agent_event();
+            assert_eq!(out.state, Some(SessionState::AwaitingDecision), "{event}");
+            let d = out.decision.expect("a decision");
+            assert_eq!(d.id, "claude:s1:toolu_q");
+            assert_eq!(d.prompt, "[Ship] Ship it?");
+            assert!(d.options.is_empty());
+            assert!(d.is_question());
+            assert_eq!(d.questions[0].options[0].description, "now");
+        }
+        // After the answer the agent runs again.
+        let post = format!(
+            r#"{{"session_id":"s1","hook_event_name":"PostToolUse","tool_name":"AskUserQuestion","tool_use_id":"toolu_q","tool_input":{input}}}"#
+        );
+        let out = ClaudeHookPayload::parse(&post).unwrap().to_agent_event();
+        assert_eq!(out.state, Some(SessionState::Running));
+        assert!(out.decision.is_none());
+    }
+
+    #[test]
+    fn events_carry_the_tool_use_id() {
+        let p = ClaudeHookPayload::parse(PRE_TOOL_USE).unwrap();
+        assert_eq!(
+            p.to_agent_event().tool_use_id.as_deref(),
+            Some("toolu_01ABC123")
+        );
+        let ev = ClaudeHookPayload::parse(r#"{"hook_event_name":"Stop"}"#)
+            .unwrap()
+            .to_agent_event();
+        assert_eq!(ev.tool_use_id, None);
+        // Left out when absent; events from older builds parse.
+        let json = serde_json::to_value(&ev).unwrap();
+        assert!(json.get("tool_use_id").is_none());
+        let back: AgentHookEvent = serde_json::from_value(json).unwrap();
+        assert_eq!(back.tool_use_id, None);
+    }
+
+    #[test]
+    fn pre_tool_use_never_asks_in_modes_that_approve_on_their_own() {
+        let input = r#"{"questions":[{"question":"Ship it?","header":"Ship","options":[{"label":"Yes","description":""}],"multiSelect":false}]}"#;
+        let event = |name: &str, mode: &str, tool: &str| {
+            ClaudeHookPayload::parse(&format!(
+                r#"{{"session_id":"s1","hook_event_name":"{name}","permission_mode":"{mode}","tool_name":"{tool}","tool_use_id":"toolu_m","tool_input":{input}}}"#
+            ))
+            .unwrap()
+            .to_agent_event()
+        };
+        for mode in ["auto", "bypassPermissions"] {
+            assert!(permission_mode_auto_approves(mode));
+            let pre = event("PreToolUse", mode, "AskUserQuestion");
+            assert!(pre.decision.is_none(), "{mode}");
+            assert_eq!(pre.state, Some(SessionState::Running), "{mode}");
+            // Such a mode can still hand a call to the person.
+            let perm = event("PermissionRequest", mode, "Bash");
+            assert_eq!(perm.state, Some(SessionState::AwaitingDecision), "{mode}");
+            assert!(perm.decision.is_some(), "{mode}");
+        }
+        for mode in ["default", "acceptEdits", "plan"] {
+            assert!(!permission_mode_auto_approves(mode));
+            let pre = event("PreToolUse", mode, "AskUserQuestion");
+            assert!(pre.decision.is_some_and(|d| d.is_question()), "{mode}");
+        }
+        // A Bash PreToolUse is never a decision, in any mode.
+        for mode in ["default", "auto", "plan"] {
+            let pre = event("PreToolUse", mode, "Bash");
+            assert!(pre.decision.is_none(), "{mode}");
+            assert_eq!(pre.state, Some(SessionState::Running), "{mode}");
+        }
     }
 }

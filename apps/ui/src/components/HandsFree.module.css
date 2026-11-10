@@ -1,0 +1,135 @@
+.toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--chip-h);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toggle:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+@media (pointer: coarse) {
+  .toggle {
+    height: var(--control-h);
+    min-width: var(--control-h);
+  }
+}
+.toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+.note span {
+  flex: 1;
+  min-width: 0;
+}
+
+.help {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+.chip[data-tone='live'],
+.chip[data-tone='wait'] {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.chip[data-tone='stop'] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+/* One line in the composer: an ellipsis, never a tall wrapped bubble. */
+.line {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 26px;
+  white-space: nowrap;
+}
+.chipText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chipIcon {
+  flex: none;
+  opacity: 0.8;
+}
+/* Speech is coming in while waiting: a quiet pulse, not yet "listening". */
+.chip[data-tone='hear'] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.chip[data-tone='hear'] .dot {
+  opacity: 0.7;
+}
+.chip[data-tone='done'] {
+  border-color: var(--st-done);
+  color: var(--st-done);
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}
+
+/* Wake word settings ("보코 … 오버"), under the hands-free switch. */
+.voco {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.voco:disabled {
+  opacity: 0.6;
+}

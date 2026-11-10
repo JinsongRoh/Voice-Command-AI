@@ -14,6 +14,30 @@ describe('i18n', () => {
     expect(translate('es', 'card.unread', { count: 3 })).toBe('3 sin leer');
   });
 
+  it('picks the singular variant by Intl.PluralRules where the language has one', () => {
+    expect(translate('en', 'alerts.count', { count: 1 })).toBe('1 unhandled alert');
+    expect(translate('en', 'alerts.count', { count: 0 })).toBe('0 unhandled alerts');
+    expect(translate('en', 'alerts.count', { count: 3 })).toBe('3 unhandled alerts');
+    expect(translate('es', 'windows.previewConfirm', { count: 1 })).toBe('Abrir 1 ventana');
+    expect(translate('es', 'windows.previewConfirm', { count: 2 })).toBe('Abrir 2 ventanas');
+    // No plural forms: the same text for every count.
+    expect(translate('ko', 'alerts.count', { count: 1 })).toBe(
+      translate('ko', 'alerts.count', { count: 2 }).replace('2', '1'),
+    );
+  });
+
+  // A plural variant must say the same thing: same placeholders as its base key.
+  it('keeps the placeholders of plural variants equal to their base key', () => {
+    const names = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    for (const dict of [en, ko, ja, es] as Record<string, string>[]) {
+      for (const key of Object.keys(dict).filter((k) => /_(zero|one|two|few|many)$/.test(k))) {
+        const base = key.replace(/_(zero|one|two|few|many)$/, '');
+        expect(dict).toHaveProperty(base);
+        expect(names(dict[key]!)).toEqual(names(dict[base]!));
+      }
+    }
+  });
+
   it('interpolates and leaves unknown placeholders alone', () => {
     expect(interpolate('{a} and {b}', { a: 1 })).toBe('1 and {b}');
   });
@@ -22,6 +46,18 @@ describe('i18n', () => {
     for (const dict of [ja, ko, es]) {
       for (const key of Object.keys(dict)) expect(en).toHaveProperty(key);
     }
+  });
+
+  // No exceptions: every English key must be translated, otherwise the app
+  // silently falls back to English for that language.
+  it('has every English key in ko, ja and es', () => {
+    const missing = (dict: Record<string, string>) =>
+      Object.keys(en).filter((key) => !(key in dict));
+    expect({ ko: missing(ko), ja: missing(ja), es: missing(es) }).toEqual({
+      ko: [],
+      ja: [],
+      es: [],
+    });
   });
 
   it('detects locales from BCP 47 tags', () => {

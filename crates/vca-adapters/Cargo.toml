@@ -23,6 +23,11 @@ toml_edit = "0.25.17"
 tracing.workspace = true
 vca-core.workspace = true
 
+[target."cfg(windows)".dependencies]
+# Console input for `vca console-send` (FreeConsole, AttachConsole, CONIN$,
+# WriteConsoleInputW; OpenProcess and GetProcessTimes for the target's identity).
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Threading"] }
+
 [lints]
 workspace = true
 

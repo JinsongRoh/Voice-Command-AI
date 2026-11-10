@@ -1,0 +1,20 @@
+# English radio-style voice words of hands-free mode: the wake word, the send
+# word and the app's reply. They are sent to the speech engine as hints.
+# Plain words ("over", "roger") are never rewritten (see `match_term`).
+# Format: see lexicon/README.md.
+language = "en"
+category = "voice"
+tags = ["voice"]
+
+[[entry]]
+term = "Voco"
+variants = ["vocco", "voko"]
+weight = 2.0
+
+[[entry]]
+term = "Over"
+weight = 2.0
+
+[[entry]]
+term = "Roger"
+weight = 2.0
