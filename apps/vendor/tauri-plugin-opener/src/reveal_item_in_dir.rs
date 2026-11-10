@@ -286,6 +286,8 @@ mod imp {
     use objc2_foundation::{NSArray, NSString, NSURL};
     use std::path::PathBuf;
 
+    // Newer objc2 bindings mark these calls safe; keep the block for older ones.
+    #[allow(unused_unsafe)]
     pub fn reveal_items_in_dir(paths: &[PathBuf]) -> crate::Result<()> {
         unsafe {
             let mut urls = Vec::new();
