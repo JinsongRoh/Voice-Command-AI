@@ -2,7 +2,7 @@
 # main workspace (and its CI) does not need the WebView toolchains.
 [workspace]
 resolver = "3"
-members = ["shell", "plugins/vca-mic", "desktop/src-tauri", "mobile/src-tauri"]
+members = ["shell", "plugins/vca-mic", "plugins/vca-share", "desktop/src-tauri", "mobile/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -27,6 +27,7 @@ tauri-plugin-biometric = "2"
 # Pinned: 2.5+ needs Rust 1.90, the workspace builds on 1.85.
 tauri-plugin-notification = "=2.4.0"
 tauri-plugin-vca-mic = { path = "plugins/vca-mic" }
+tauri-plugin-vca-share = { path = "plugins/vca-share" }
 tauri-plugin-deep-link = "2.6"
 # Desktop "Save as" dialog (`save_file`). Pinned: 2.8+ needs Rust 1.90, the workspace builds on 1.85.
 tauri-plugin-dialog = "=2.7.3"

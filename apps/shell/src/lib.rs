@@ -13,6 +13,7 @@
 //! `vca_mic_stop`, `vca_mic_peek`, `vca_mic_split`, `vca_mic_cancel`, `vca_mic_diag`, `vca_platform`,
 //! `vca_launch_links`, the "Connect DNSPilot" commands `vca_dnspilot_*` (see [`dnspilot`])
 //! and the approval alert commands `vca_push_*` (see [`push`]).
+//! Phones only: `vca_share_text_file` (the system share sheet, see `share_file`).
 //! Desktop only (`apps/ui/src/native/host.ts`): `vca_host_*` for the VCA
 //! server on this PC (see [`host`]), whose sessions appear as the machine
 //! `"local"` in the machine commands above, and the in-app updates
@@ -26,12 +27,15 @@ mod dnspilot;
 #[cfg(desktop)]
 mod host;
 mod ios_audio;
+#[cfg(target_os = "ios")]
+mod ios_share;
 mod mic;
 mod noise;
 pub mod push;
-#[cfg(desktop)]
 mod save_file;
 mod secrets;
+#[cfg(any(not(desktop), test))]
+mod share_file;
 #[cfg(desktop)]
 mod updater;
 
@@ -499,6 +503,9 @@ pub fn builder() -> tauri::Builder<tauri::Wry> {
     // RECORD_AUDIO runtime permission (see `ensure_mic_permission`).
     #[cfg(target_os = "android")]
     let builder = builder.plugin(tauri_plugin_vca_mic::init());
+    // The ACTION_SEND chooser of `vca_share_text_file` (called from Rust only).
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_vca_share::init());
     builder
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
@@ -658,6 +665,8 @@ pub fn builder() -> tauri::Builder<tauri::Wry> {
             host::security::vca_host_recovery_finish,
             #[cfg(desktop)]
             save_file::vca_save_text_file,
+            #[cfg(not(desktop))]
+            share_file::vca_share_text_file,
             #[cfg(desktop)]
             updater::vca_update_check,
             #[cfg(desktop)]

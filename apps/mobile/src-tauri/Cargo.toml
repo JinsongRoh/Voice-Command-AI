@@ -67,6 +67,8 @@ objc2-user-notifications = { version = "0.3", optional = true, default-features 
 # RECORD_AUDIO manifest entry) to the Gradle build; vca-shell registers it.
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-vca-mic.workspace = true
+# Likewise for the share sheet's Kotlin project and its FileProvider.
+tauri-plugin-vca-share.workspace = true
 # FCM device token (src/android_push.rs), only with the `native-push` feature.
 tauri-plugin-vca-push = { path = "plugins/vca-push", optional = true }
 

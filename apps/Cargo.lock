@@ -5291,6 +5291,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-vca-share"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5998,6 +6007,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-vca-mic",
  "tauri-plugin-vca-push",
+ "tauri-plugin-vca-share",
  "vca-shell",
 ]
 
@@ -6061,12 +6071,14 @@ dependencies = [
 name = "vca-shell"
 version = "0.1.0"
 dependencies = [
+ "block2",
  "cpal",
  "data-encoding",
  "interprocess",
  "nnnoiseless",
  "objc2",
  "objc2-foundation",
+ "objc2-ui-kit",
  "qrcode",
  "rmp-serde",
  "serde",
@@ -6079,6 +6091,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-updater",
  "tauri-plugin-vca-mic",
+ "tauri-plugin-vca-share",
  "tempfile",
  "tokio",
  "tracing",

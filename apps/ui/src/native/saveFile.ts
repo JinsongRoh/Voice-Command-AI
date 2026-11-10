@@ -4,8 +4,12 @@
  * Tauri webviews ignore `<a download>` blob links, so:
  * - desktop shell: `vca_save_text_file` opens the OS "Save as" dialog from
  *   Rust and writes only the path the user picked;
- * - phones (mobile shell): the Web Share API with a file, or the text when
- *   the webview cannot share files;
+ * - phones (mobile shell): `vca_share_text_file` writes a temporary file and
+ *   presents the system share sheet natively (iOS: UIActivityViewController,
+ *   Android: an ACTION_SEND chooser). WKWebView lays out its own share sheet
+ *   wrongly (squeezed into a corner) and Android's WebView has no Web Share
+ *   API. A shell without that command falls back to the Web Share API (a
+ *   file, or the text when the webview cannot share files);
  * - a plain browser: the usual blob download.
  */
 import type { TranslateFn } from '../i18n/i18n';
@@ -59,7 +63,35 @@ async function saveWithDialog(suggestedName: string, text: string): Promise<Save
   }
 }
 
+/** A shell that predates `cmd` rejects it with "Command … not found". */
+function isMissingCommand(err: NativeError): boolean {
+  return err.code === null && /\bnot found\b/i.test(err.message);
+}
+
+/**
+ * The phone's share sheet, presented by the shell. `null` when this shell has
+ * no such command (then the Web Share API is tried).
+ */
+async function shareNatively(name: string, text: string): Promise<SaveTextResult | null> {
+  try {
+    const res = await call<{ status: 'shared'; fileName: string } | { status: 'cancelled' }>(
+      'vca_share_text_file',
+      { name, text, mime: mimeFor(name) },
+    );
+    return res.status === 'shared'
+      ? { status: 'shared', fileName: res.fileName || name }
+      : { status: 'cancelled' };
+  } catch (err) {
+    const error = toNativeError(err);
+    return isMissingCommand(error) ? null : { status: 'error', error };
+  }
+}
+
 async function saveWithShare(name: string, text: string): Promise<SaveTextResult> {
+  return (await shareNatively(name, text)) ?? shareWithWebApi(name, text);
+}
+
+async function shareWithWebApi(name: string, text: string): Promise<SaveTextResult> {
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
     return {
       status: 'error',

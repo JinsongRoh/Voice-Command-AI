@@ -5,17 +5,26 @@
 //! The dialog runs from Rust, so the webview has no dialog or file system
 //! permission. Only the path the user picked in the dialog is written; the
 //! webview only suggests a file name, never a directory.
+//!
+//! The name and write helpers are shared with the phones' share sheet
+//! (`share_file`); the dialog command itself is desktop only.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(desktop)]
+use std::path::PathBuf;
 
+#[cfg(desktop)]
 use serde::Serialize;
+#[cfg(desktop)]
 use tauri::{AppHandle, Window};
+#[cfg(desktop)]
 use tauri_plugin_dialog::DialogExt;
 
+#[cfg(not(target_os = "android"))]
 use crate::{CommandError, CommandResult};
 
 /// Largest text accepted (backup codes and exports are a few KiB).
-const MAX_TEXT_BYTES: usize = 8 * 1024 * 1024;
+pub(crate) const MAX_TEXT_BYTES: usize = 8 * 1024 * 1024;
 /// Longest suggested file name kept, in characters.
 const MAX_NAME_CHARS: usize = 120;
 const FALLBACK_NAME: &str = "vca.txt";
@@ -30,6 +39,7 @@ const RESERVED_STEMS: &[&str] = &[
 ];
 
 /// What happened, returned to the webview. Failures are a [`CommandError`].
+#[cfg(desktop)]
 #[derive(Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum SaveOutcome {
@@ -60,7 +70,7 @@ fn is_invisible(c: char) -> bool {
 /// Windows or macOS reject or that disguise the name, a plain text
 /// extension ([`TEXT_EXTENSIONS`]), not a device name, not empty, not too
 /// long (the extension survives shortening).
-fn sanitize_name(suggested: &str) -> String {
+pub(crate) fn sanitize_name(suggested: &str) -> String {
     // Keep only the last path component a caller might have sent.
     let base = suggested.rsplit(['/', '\\']).next().unwrap_or_default();
     let cleaned: String = base
@@ -104,13 +114,14 @@ fn sanitize_name(suggested: &str) -> String {
 }
 
 /// The extension of `name` for the dialog's file type filter, if it has one.
-fn extension(name: &str) -> Option<&str> {
+pub(crate) fn extension(name: &str) -> Option<&str> {
     Path::new(name)
         .extension()
         .and_then(|e| e.to_str())
         .filter(|e| !e.is_empty() && e.chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
+#[cfg(any(desktop, test))]
 fn file_name_of(path: &Path) -> String {
     path.file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -118,8 +129,10 @@ fn file_name_of(path: &Path) -> String {
 }
 
 /// Writes `text` to `path` (the path the user picked), replacing the file.
-/// A new file is readable by its owner only on Unix (backup codes).
-fn write_text(path: &Path, text: &str) -> CommandResult<()> {
+/// A new file is readable by its owner only on Unix (backup codes). Android
+/// shares write their file in Kotlin.
+#[cfg(not(target_os = "android"))]
+pub(crate) fn write_text(path: &Path, text: &str) -> CommandResult<()> {
     use std::io::Write as _;
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -133,6 +146,7 @@ fn write_text(path: &Path, text: &str) -> CommandResult<()> {
 
 /// Opens the OS "Save as" dialog with `suggested_name` and writes `text` to
 /// the file the user picks.
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn vca_save_text_file(
     app: AppHandle,

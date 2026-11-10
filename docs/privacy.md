@@ -9,6 +9,8 @@ A copy of this policy is published at <https://vca.metavu.io/privacy.html>.
 
 ## 1. Summary
 
+- **VCA is free and open source, and you run it yourself.** You install the apps and the server on your own computers and phones. When you use VCA that way, **MetaVu collects no personal data**: nothing about you, your sessions, your voice or your use of the apps reaches MetaVu.
+- **DNSPilot is the only exception, and it is optional.** DNSPilot is a separate connectivity service from the team that maintains VCA. Only if you choose **Connect DNSPilot** does it receive data: your DNSPilot account, the app's public key and device registrations, and the encrypted traffic it carries, which it cannot read (section 6). Without DNSPilot, no VCA team service is involved at all.
 - **There is no VCA account and no VCA cloud.** VCA runs on your own computers and phones. MetaVu runs no server that relays your sessions, stores your data or receives your voice.
 - **No analytics, advertising, tracking or crash reporting** is built into VCA. MetaVu receives no usage data from the apps.
 - **Your phone talks to your own PC.** Everything between a paired device and the server on your PC is end-to-end encrypted (the Noise protocol).

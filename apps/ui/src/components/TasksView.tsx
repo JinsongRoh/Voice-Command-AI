@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNow } from '../hooks/useNow';
 import { useI18n } from '../i18n/context';
-import type { MessageKey } from '../i18n/i18n';
+import type { MessageKey, TranslateFn } from '../i18n/i18n';
 import { isLocalMachine } from '../native/host';
 import { useNative } from '../native/context';
-import { describeSaveResult, saveTextFile } from '../native/saveFile';
+import { describeSaveResult, saveTextFile, type SaveTextResult } from '../native/saveFile';
 import { isStepUpCanceled } from '../native/security';
 import { useStepUp } from './StepUpPrompt';
 import type {
@@ -47,6 +47,19 @@ const STATUS_FILTERS: { value: StatusFilter; label: MessageKey }[] = [
 ];
 
 const HOUR = 3_600_000;
+
+/**
+ * The second line of the export toast, whose title already says whether the
+ * text was copied: only what happened besides ("Shared vca-tasks.csv.",
+ * "Saved to …" or the error). A dismissed share sheet adds nothing, and
+ * "this device can't save files" is left out while the text is on the
+ * clipboard anyway.
+ */
+function exportNote(t: TranslateFn, saved: SaveTextResult, copied: boolean): string {
+  if (saved.status === 'cancelled') return '';
+  if (copied && saved.status === 'error' && saved.error.code === 'save_unsupported') return '';
+  return describeSaveResult(t, saved);
+}
 
 /**
  * True in the app running on the PC itself (the desktop app connected to its
@@ -500,19 +513,19 @@ export function TasksView() {
         session_id: filter.sessionId || null,
       });
       if (res.type !== 'task_exported') return;
-      void copyText(res.text);
-      // The text was copied as well, so a cancelled or failed save only
-      // changes the toast's second line.
+      const copying = copyText(res.text);
       const saved = await saveTextFile(
         format === 'csv' ? 'vca-tasks.csv' : 'vca-tasks.md',
         res.text,
       );
+      const copied = await copying;
       actions.showToast({
         id: `task-export:${Date.now()}`,
-        category: 'completed',
+        category:
+          copied || saved.status === 'saved' || saved.status === 'shared' ? 'completed' : 'error',
         sessionId: null,
-        title: t('tasks.exported'),
-        body: describeSaveResult(t, saved),
+        title: t(copied ? 'tasks.exportCopied' : 'tasks.exportNotCopied'),
+        body: exportNote(t, saved, copied),
         security: true,
       });
     } catch (err) {

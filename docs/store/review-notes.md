@@ -1,66 +1,82 @@
 # App Review notes (0.1.0)
 
-Notes for Apple App Review and Google Play review, plus what the company must
-set up so a reviewer can actually use the app. Publisher: **MetaVu Co., Ltd.**
+Notes for Apple App Review and Google Play review. Publisher: **MetaVu Co., Ltd.**
 
-## Demo mode: does one exist?
+## How a reviewer tests the app
 
-No, not in the phone builds. `apps/ui/src/main.tsx` uses the simulated
-servers (`MockTransport`, mock transcriber) only when the UI runs in a plain
-browser (development and web demos). Inside the Tauri shell it always starts
-the real app (`NativeApp`), so a store build shows the pairing screen until it
-is paired with a real computer. There is no "Try the demo" entry.
+The phone app is a companion to a desktop app on the user's own computer, so
+a reviewer has three ways in, in order of effort:
 
-Options, in order of preference:
+1. **In-app demo mode.** The first screen has a "Try the demo" button. It
+   opens sample computers and agent sessions with a "Demo" strip on top. The
+   demo makes no network connections. "Exit demo" returns to pairing.
+2. **Walkthrough video.** About two minutes, narrated: the desktop app, voice
+   commands, approvals from the phone, remote control from a tablet or another
+   computer, and the Command Center. Attach it in App Store Connect and link
+   it for Google Play.
+3. **The real thing.** The desktop app is free and open source. A reviewer
+   can install it on a Windows or macOS computer and pair the phone by QR
+   code in about two minutes.
 
-1. **Hosted demo computer (works with today's build).** Run `vcad` on a
-   company-owned demo computer with a demo agent session, reachable from the
-   internet through a connectivity provider (not LAN-only: reviewers are not
-   on your network). Give the reviewer a pairing link and the steps below.
-   Pairing secrets are one-time: create several pairing links, or one that
-   stays valid for the review window, and refresh them for each submission.
-   Keep the demo account free of real code and secrets; revoke the reviewer
-   devices afterwards.
-2. **In-app demo mode (needs development).** A "Try the demo" button on the
-   pairing screen that loads the existing `MockTransport` machines. This
-   would let reviewers and new users try the app without a computer; it is
-   the most robust answer to "the app needs hardware we don't have".
-3. **Video only.** A screen recording of pairing and a voice command. Apple
-   accepts a video as supporting material, but usually still wants a working
-   path; use it together with option 1.
+Before submitting, the download links below must work: the GitHub release
+with the signed desktop installers, and the site pages (home, privacy,
+support). Store review checks the privacy policy URL.
 
-## Reviewer note (paste into App Review Information / Play "App access")
+## Reviewer note: Apple (App Review Information > Notes)
 
 > Voice Command AI is a companion app for software developers. It controls
-> AI coding agents that run on the user's own computer, through the free,
-> open-source Voice Command AI server ("vcad") installed on that computer. The
-> app has no accounts and no cloud service of its own: every connection goes
-> end-to-end encrypted from the phone to the user's own computer.
+> AI coding agents (Claude Code, Codex CLI, Gemini CLI, Antigravity and
+> others) that run on the user's own computer, through the free, open-source
+> Voice Command AI desktop app. The app has no accounts, no sign-in and no
+> cloud service of its own: the phone pairs with the user's computer by QR
+> code and every connection is end-to-end encrypted.
 >
-> To test, we have prepared a demo computer:
-> 1. Open the app and allow notifications if asked.
-> 2. On "Add a computer", tap Scan QR code and scan the attached QR image, or
->    open this pairing link on the device: `<vca://pair link>`.
->    If asked for a code, enter: `<authenticator code or instructions>`.
-> 3. The demo computer appears with a few agent sessions. Tap a session to
->    see its live chat view.
-> 4. Tap the microphone, say "list the files in this project", review the
->    text and tap Send. The agent's reply appears in the session.
-> 5. Hands-free mode: Settings > Voice. Say "Voco" and then a command.
+> Quickest way to review (no computer needed):
+> 1. Open the app. On the first screen tap "Try the demo".
+> 2. Sample computers and agent sessions open; a "Demo" strip shows on top.
+> 3. Open "payments-api" and answer its pending decision with "Yes".
+> 4. Tap the microphone: the demo fills in a sample transcript.
+> 5. Check Alerts, Command Center and Windows in the bottom bar.
+> 6. "Exit demo" returns to the pairing screen.
+> The demo makes no network connections and stores nothing.
 >
-> Microphone: used only while dictating, or while hands-free mode or the Voco
-> wake word is on with the app open. Audio goes only to the paired computer
-> and the speech engine configured there.
-> Local network: used to connect directly to the user's computer on the same
-> network.
-> Face ID / biometrics: optional app lock and confirmation before a remote
-> shell opens.
-> Remote push notifications are not part of this version.
+> To test with a real computer (optional):
+> 1. Download the free desktop app for Windows or macOS:
+>    https://vca.metavu.io (or GitHub Releases:
+>    https://github.com/JinsongRoh/Voice-Command-AI/releases/latest).
+>    Installers are signed (Windows) and notarized (macOS).
+> 2. In the desktop app open Settings > Connection & security > "Connect a
+>    phone" and create a QR code (valid for 60 seconds).
+> 3. In the phone app tap Pair > "Scan QR code" and scan it. The computer and its
+>    agent sessions appear.
+> The source code is public at
+> https://github.com/JinsongRoh/Voice-Command-AI.
+>
+> A narrated walkthrough video is attached.
+>
+> Permissions:
+> - Microphone: only while dictating, or while hands-free mode is on with the
+>   app open. Audio goes only to the paired computer and the speech engine
+>   configured there.
+> - Camera: only to scan the pairing QR code.
+> - Local network: to connect directly to the user's computer on the same
+>   network.
+> - Face ID: optional app lock and confirmation before a remote shell opens.
 >
 > Contact: `<name, e-mail, phone>`
 
-Fill in the placeholders for each submission. Verify the menu names in step 5
-against the current build before pasting.
+## Reviewer note: Google Play (App access, 500 characters max)
+
+> No account or login. The app pairs with the user's own computer by QR code.
+> To review without a computer: on the first screen tap "Try the demo" (sample
+> computers and sessions, no network). To test for real, install the free
+> desktop app from vca.metavu.io (Windows/macOS) and scan its QR code
+> (Settings > Connect a phone). Video: see store listing.
+>
+> (348 characters.)
+
+Check the length in the Play form before saving. Play also takes the video
+as a YouTube link in the store listing.
 
 ## Points the reviewer may raise
 
@@ -68,11 +84,12 @@ against the current build before pasting.
   software on the user's own computer. Make clear that the computer is owned
   by the user, all agent work runs on that computer, and the app is not a
   thin client for a cloud service or a store of apps.
-- **Guideline 2.1 (app completeness).** Without a working demo computer the
-  app cannot be tested and will be rejected; keep the demo computer and its
-  agent session running through the whole review.
+- **Guideline 2.1 (app completeness).** Demo mode, the video and the free
+  desktop app together give a full test path. If a review is rejected
+  anyway, the fallback is a company demo computer with a pairing link for
+  the reviewer.
 - **Guideline 5.1.1 (data collection).** The purpose strings and the privacy
   answers in [privacy-answers.md](privacy-answers.md) state that audio and
   photos go only to the user's own computer.
-- **Google Play "App access".** Declare that all or some functionality is
-  restricted and give the same instructions as above.
+- **Google Play "App access".** Declare that some functionality is
+  restricted and give the instructions above.

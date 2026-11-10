@@ -251,6 +251,10 @@
   .search {
     width: 100%;
   }
+  /* In a column the 160px basis would become the box's height. */
+  .search {
+    flex: 0 0 auto;
+  }
   .spacer {
     display: none;
   }

@@ -36,26 +36,35 @@ submission; the points marked **Confirm** need a company decision.
   scanning (via the Tauri barcode-scanner plugin). Google states that ML Kit
   may send device and app metadata and API performance metrics to Google.
   On iOS the scanner uses Apple's camera framework only.
-- **Optional tunnel enrollment** (**Confirm**): the app contains an optional
-  "app-mode tunnel" setup that signs in to a connectivity provider's console
-  (OAuth device flow) and registers a per-install public client certificate
-  and tunnel host names there. If that provider is operated by MetaVu or an
-  affiliate, MetaVu receives that data and the answers below must add it
-  (Identifiers: device ID or user ID; purpose App functionality; linked to the
-  user). If it is an unaffiliated third party chosen by the user, no change.
+- **Optional DNSPilot tunnel enrollment (decided 2026-11-10):** the app
+  contains an optional "app-mode tunnel" setup that signs in to the DNSPilot
+  console (OAuth device flow) and registers a per-install public client
+  certificate and tunnel host names there. DNSPilot comes from the team that
+  maintains VCA, so this counts as collection by the developer and is
+  declared below: Identifiers (device ID and user ID), purpose App
+  functionality, linked to the user, not used for tracking, optional (only
+  if the user connects DNSPilot).
+
+**Principle stated to users (privacy policy section 1):** VCA is free and
+open source and runs on the user's own devices. Used that way, MetaVu
+collects no personal data. DNSPilot, which is optional, is the only VCA team
+service that receives data. Third parties outside the team: Google ML Kit on
+Android, GitHub for desktop update checks, and the engines and providers the
+user configures.
 
 ## App Store: privacy details
 
 **Data Used to Track You:** none.
-**Data Linked to You:** none.
+**Data Linked to You:** Identifiers: User ID and Device ID, purpose App
+Functionality. Only collected when the user connects DNSPilot.
 **Data Not Linked to You:** none.
 
-Answer **"No, we do not collect data from this app."** Apple counts data as
-collected only when it leaves the device in a way the developer or its
-partners can access beyond real-time servicing; all app traffic ends at the
-user's own computer, end-to-end encrypted, and the iOS build has no
-third-party SDK that collects data. (Subject to the tunnel-enrollment
-**Confirm** above.)
+Answer **"Yes, we collect data from this app"** and declare only the two
+DNSPilot identifiers above (not used for tracking). Everything else stays out
+of the label. Apple counts data as collected only when it leaves the device
+in a way the developer or its partners can access beyond real-time
+servicing. All other app traffic ends at the user's own computer, end-to-end
+encrypted, and the iOS build has no third-party SDK that collects data.
 
 Privacy manifest: the app and its Rust/Tauri dependencies use
 required-reason APIs (for example file timestamps, `UserDefaults` via the

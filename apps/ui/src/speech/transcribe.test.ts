@@ -464,7 +464,7 @@ describe('native recorder', () => {
     });
     const rec = createNativeRecorder();
     await expect(rec.start()).rejects.toThrow('microphone permission denied');
-    rec.cancel(); // unhandled command rejects; must be swallowed
+    rec.cancel(); // a missing command rejects; must be swallowed
     await Promise.resolve();
     expect(tauri.callsOf('vca_mic_cancel')).toHaveLength(1);
   });

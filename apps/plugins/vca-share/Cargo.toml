@@ -1,0 +1,22 @@
+[package]
+name = "tauri-plugin-vca-share"
+description = "System share sheet for text files in the Voice Command AI mobile app (Android)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+# Required by tauri-plugin: exposes the Android library path to the app's
+# build script, which adds the Kotlin project to the Gradle build.
+links = "tauri-plugin-vca-share"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }
+
+[dependencies]
+serde.workspace = true
+tauri.workspace = true
+
+[lints]
+workspace = true

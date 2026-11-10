@@ -26,14 +26,32 @@ vca-net.workspace = true
 [target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "ios"))'.dependencies]
 vca-client = { workspace = true, features = ["keychain"] }
 
-# AVAudioSession setup before recording (src/ios_audio.rs); the versions tao already builds.
+# AVAudioSession setup before recording (src/ios_audio.rs) and the share sheet
+# (src/ios_share.rs); the versions tao already builds.
 [target.'cfg(target_os = "ios")'.dependencies]
+block2 = "0.6"
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSError", "NSString"] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSEnumerator",
+  "NSError",
+  "NSSet",
+  "NSString",
+  "NSURL",
+] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "UIApplication",
+  "UIResponder",
+  "UIScene",
+] }
 
-# RECORD_AUDIO runtime permission before cpal opens the microphone.
+# RECORD_AUDIO runtime permission before cpal opens the microphone, and the
+# ACTION_SEND chooser of `vca_share_text_file`.
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-vca-mic.workspace = true
+tauri-plugin-vca-share.workspace = true
 
 # Desktop only (`cfg(desktop)`, see build.rs): running and pairing the local
 # VCA server (vcad) over its owner-only control channel.

@@ -45,7 +45,8 @@ export const tauri = {
 export const invoke = vi.fn(async (cmd: string, args?: unknown, options?: unknown) => {
   tauri.calls.push({ cmd, args, options });
   const handler = tauri.handlers.get(cmd);
-  if (!handler) throw `unhandled command ${cmd}`;
+  // The same rejection as a real shell without the command.
+  if (!handler) throw `Command ${cmd} not found`;
   return handler(args, options);
 });
 

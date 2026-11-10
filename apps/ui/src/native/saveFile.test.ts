@@ -84,6 +84,61 @@ describe('saveTextFile', () => {
       tauri.handlers.set('vca_platform', () => 'ios');
     });
 
+    it('asks the shell for the native share sheet', async () => {
+      tauri.handlers.set('vca_share_text_file', () => ({
+        status: 'shared',
+        fileName: 'vca-tasks.csv',
+      }));
+      const share = stubShare(async () => {}, true);
+      expect(await saveTarget()).toBe('phone');
+      const res = await saveTextFile('vca-tasks.csv', 'a,b\n');
+      expect(res).toEqual({ status: 'shared', fileName: 'vca-tasks.csv' });
+      expect(tauri.callsOf('vca_share_text_file')[0]?.args).toEqual({
+        name: 'vca-tasks.csv',
+        text: 'a,b\n',
+        mime: 'text/csv',
+      });
+      expect(share).not.toHaveBeenCalled();
+      expect(tauri.callsOf('vca_save_text_file')).toHaveLength(0);
+      expect(describeSaveResult(t, res)).toBe('Shared vca-tasks.csv.');
+    });
+
+    it('reports a dismissed native share sheet as cancelled', async () => {
+      tauri.handlers.set('vca_share_text_file', () => ({ status: 'cancelled' }));
+      const share = stubShare(async () => {}, true);
+      expect(await saveTextFile('vca-tasks.md', '# tasks')).toEqual({ status: 'cancelled' });
+      expect(tauri.callsOf('vca_share_text_file')[0]?.args).toMatchObject({
+        mime: 'text/markdown',
+      });
+      expect(share).not.toHaveBeenCalled();
+    });
+
+    it('reports a native share error without trying the webview', async () => {
+      tauri.handlers.set('vca_share_text_file', () => {
+        throw { code: 'share_failed', message: 'no window to present the share sheet from' };
+      });
+      const share = stubShare(async () => {}, true);
+      const res = await saveTextFile('a.txt', 'x');
+      expect(res.status).toBe('error');
+      expect(share).not.toHaveBeenCalled();
+      expect(describeSaveResult(t, res)).toBe(
+        'Could not save the file: no window to present the share sheet from',
+      );
+    });
+
+    it('falls back to the Web Share API in a shell without the command', async () => {
+      tauri.handlers.set('vca_share_text_file', () => {
+        throw 'Command vca_share_text_file not found';
+      });
+      const share = stubShare(async () => {}, true);
+      const res = await saveTextFile('vca-backup-codes.txt', 'AAAA\n');
+      expect(res).toEqual({ status: 'shared', fileName: 'vca-backup-codes.txt' });
+      expect(share).toHaveBeenCalledTimes(1);
+    });
+
+    // The tests below run without a `vca_share_text_file` handler: the mock
+    // rejects it like a shell that predates the command.
+
     it('shares a file when the webview can', async () => {
       const share = stubShare(async () => {}, true);
       expect(await saveTarget()).toBe('phone');
