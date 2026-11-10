@@ -14,7 +14,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use serde_json::{Value, json};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tokio::io::{AsyncWriteExt, BufReader};
 
 use super::control::{
@@ -174,6 +174,8 @@ fn field(mut reply: Value, key: &str) -> CommandResult<Value> {
 /// The app's window, for the OS prompt (an `HWND` on Windows).
 #[cfg(windows)]
 fn window_handle(app: &AppHandle) -> Option<u64> {
+    use tauri::Manager;
+
     let windows = app.webview_windows();
     let window = windows.values().next()?;
     window.hwnd().ok().map(|h| h.0 as usize as u64)
