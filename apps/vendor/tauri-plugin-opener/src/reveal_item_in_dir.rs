@@ -32,7 +32,11 @@ pub fn reveal_item_in_dir<P: AsRef<Path>>(path: P) -> crate::Result<()> {
         target_os = "netbsd",
         target_os = "openbsd"
     )))]
-    Err(crate::Error::UnsupportedPlatform)
+    {
+        // Mobile has no file explorer; the path is only checked.
+        let _ = path;
+        Err(crate::Error::UnsupportedPlatform)
+    }
 }
 
 /// Reveal multiple paths in the system's default explorer.
