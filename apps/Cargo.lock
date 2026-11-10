@@ -5129,8 +5129,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-biometric"
 version = "2.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b9da80a13cea8a9e7d81af3e6347c04e28d109ec0a33ac5460950fbe72f3f4b"
 dependencies = [
  "log",
  "serde",
@@ -5207,8 +5205,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-notification"
 version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad2fd40946aef810c4be9fd33a2d1b9b397cb79042b2d21c81a0a8f204354fd1"
 dependencies = [
  "log",
  "notify-rust",
@@ -5226,8 +5222,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-opener"
 version = "2.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60d60366174b745b4ef5824b8bbc1c457fd08f0ce101ff643c0a49181a9f4e91"
 dependencies = [
  "dunce",
  "glob",

@@ -36,6 +36,17 @@ tauri-plugin-updater = "=2.12.0"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
 tracing = "0.1"
 
+# iOS release builds: these plugin versions declare their Swift entry point
+# (`@_cdecl("init_plugin_*") func initPlugin()`) without `public`, and the
+# Swift compiler in current Xcode drops it from optimized builds, so the app
+# fails to link. The vendored copies are unchanged except for `public` on that
+# one function (tauri-plugin-opener 2.7 has the same fix upstream but needs
+# Rust 1.90). Remove a patch when the pinned version includes the fix.
+[patch.crates-io]
+tauri-plugin-biometric = { path = "vendor/tauri-plugin-biometric" }
+tauri-plugin-notification = { path = "vendor/tauri-plugin-notification" }
+tauri-plugin-opener = { path = "vendor/tauri-plugin-opener" }
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 
