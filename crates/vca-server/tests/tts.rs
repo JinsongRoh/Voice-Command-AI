@@ -341,13 +341,16 @@ async fn view_devices_are_rate_limited_and_capped() {
     .await;
 
     // View scope is enough to have an alert spoken.
-    for _ in 0..2 {
-        let reply = as_device(&server, "dev_a", say("Build failed", None)).await;
+    for n in 0..2 {
+        let reply = as_device(&server, "dev_a", say(&format!("Build {n} failed"), None)).await;
         assert!(matches!(reply, ServerMsg::Audio { .. }), "{reply:?}");
     }
     let reply = as_device(&server, "dev_a", say("Build failed", None)).await;
     let message = expect_error(&reply, ErrorCode::Unavailable);
     assert_eq!(message, vca_server::tts::RATE_LIMITED);
+    // A prompt the device already had comes from the cache, over the limit too.
+    let reply = as_device(&server, "dev_a", say("Build 0 failed", None)).await;
+    assert!(matches!(reply, ServerMsg::Audio { .. }), "{reply:?}");
     // Another device has its own budget.
     let reply = as_device(&server, "dev_b", say("Build failed", None)).await;
     assert!(matches!(reply, ServerMsg::Audio { .. }), "{reply:?}");
@@ -485,13 +488,13 @@ async fn a_gateway_token_is_sent_and_replaced_without_a_restart() {
     assert_eq!(resp, LocalResponse::Done { id: 1 });
 
     // Key header only: the key travels raw in X-VCA-Key, no Authorization.
-    client.api(say("Build done", None)).await.unwrap();
+    client.api(say("Build done 1", None)).await.unwrap();
     assert_eq!(auth_headers(&tts).await, (None, Some(KEY.to_owned())));
 
     // A gateway token is used from the next request on.
     let resp = local(&mut client, gateway(2, Some(TOKEN_1))).await;
     assert!(matches!(resp, LocalResponse::Engines { .. }), "{resp:?}");
-    client.api(say("Build done", None)).await.unwrap();
+    client.api(say("Build done 2", None)).await.unwrap();
     assert_eq!(
         auth_headers(&tts).await,
         (Some(format!("Bearer {TOKEN_1}")), Some(KEY.to_owned()))
@@ -499,7 +502,7 @@ async fn a_gateway_token_is_sent_and_replaced_without_a_restart() {
 
     // Rotated without restarting vcad.
     local(&mut client, gateway(3, Some(TOKEN_2))).await;
-    client.api(say("Build done", None)).await.unwrap();
+    client.api(say("Build done 3", None)).await.unwrap();
     assert_eq!(
         auth_headers(&tts).await,
         (Some(format!("Bearer {TOKEN_2}")), Some(KEY.to_owned()))
@@ -507,7 +510,7 @@ async fn a_gateway_token_is_sent_and_replaced_without_a_restart() {
 
     // Deleted: straight to the engine again.
     local(&mut client, gateway(4, None)).await;
-    client.api(say("Build done", None)).await.unwrap();
+    client.api(say("Build done 4", None)).await.unwrap();
     assert_eq!(auth_headers(&tts).await, (None, Some(KEY.to_owned())));
     server.shutdown().await;
 

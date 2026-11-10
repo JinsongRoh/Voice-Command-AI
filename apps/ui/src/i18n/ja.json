@@ -1573,6 +1573,7 @@
   "search.close": "検索を閉じる",
   "pairing.enrollWait": "登録しました。接続まで最大{seconds}秒かかることがあります。",
   "pairing.enrollNext": "登録しました。続けて、PC に表示された VCA のペアリング QR コードを読み取ってください。",
+  "pairing.needLink": "PC に表示された VCA のペアリング QR コードを読み取るか、vca://pair リンクを貼り付けてください。",
   "pairing.enrollEnterCode": "PC で認証コードを使っている場合はコードを入力し、「ペアリング」をタップしてください。",
   "native.error.dnspilot_key_registration_failed": "トンネルは準備できましたが、このアプリのキーを登録できませんでした。新しいトンネルは作らず、下の「このアプリをトンネルに登録」を選んでください。",
   "native.error.dnspilot_bad_link": "有効な DNSPilot 招待リンクではありません。",

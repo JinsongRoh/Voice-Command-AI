@@ -54,7 +54,6 @@ import {
   shortSessionName,
   spokenSessionName,
 } from './sessionNames';
-import { speakUntilEnd, ttsAvailable } from './tts';
 
 /** One-word STT prompt of the wake check (biases the recognizer toward the call). */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -288,18 +287,8 @@ export function useVoco(composer: VocoComposer): VocoView | null {
         if (match.kind === 'ambiguous') return 'ambiguous';
         return found(match.id);
       },
-      // "네" with the device voice: no PC round trip before the user hears it.
-      ack: hooks
-        ? undefined
-        : (text) =>
-            withVoice(async () => {
-              const s = cur().settings;
-              if (!ttsAvailable()) {
-                await cur().io.speak(text, new AbortController().signal);
-                return;
-              }
-              await speakUntilEnd(text, lang(), { voice: s.ttsVoice, rate: s.ttsRate });
-            }),
+      // "네" goes through `speak` like every prompt, in the chosen voice; the
+      // PC clip is synthesized ahead (`fixedPhrases.ts`), so it plays at once.
       briefing: () => void cur().briefing.run(),
       onView: (v) => {
         setVocoActive(v.phase !== 'waiting');

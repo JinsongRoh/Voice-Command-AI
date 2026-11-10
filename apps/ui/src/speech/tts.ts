@@ -147,9 +147,29 @@ function utteranceFor(
 }
 
 /**
+ * Utterances being spoken. WebKit (iOS) fires no `end` for an utterance
+ * nothing refers to any more once it was garbage-collected, so each one is
+ * kept here until its `end` or `error`.
+ */
+const live = new Set<SpeechSynthesisUtterance>();
+
+/** Utterances still referenced (tests). */
+export function liveUtterances(): number {
+  return live.size;
+}
+
+/**
+ * Longest time `text` may take to say: generous for slow voices (about 3.5
+ * characters a second at the slowest rate) plus a start-up allowance.
+ */
+export function utteranceLimitMs(text: string, rate: number = TTS_RATE_DEFAULT): number {
+  return Math.round(4_000 + (Array.from(text).length * 230) / clampRate(rate));
+}
+
+/**
  * Speaks `text` without interrupting anything and resolves when the device
- * voice reports the end (or an error). Used by the voice queue, which plays
- * one item at a time; it also bounds the wait.
+ * voice reports the end (or an error). A voice that never reports its end
+ * is cancelled after `utteranceLimitMs`, so nobody waits for it forever.
  */
 export function speakUntilEnd(
   text: string,
@@ -160,13 +180,36 @@ export function speakUntilEnd(
   const s = synth();
   if (!s) return Promise.resolve();
   return new Promise<void>((resolve) => {
-    try {
-      const utterance = utteranceFor(text, lang, prefs, voices);
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      s.speak(utterance);
-    } catch {
+    let utterance: SpeechSynthesisUtterance | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const done = () => {
+      clearTimeout(timer);
+      if (utterance) live.delete(utterance);
       resolve();
+    };
+    try {
+      const u = utteranceFor(text, lang, prefs, voices);
+      utterance = u;
+      u.onend = done;
+      u.onerror = done;
+      live.add(u);
+      timer = setTimeout(
+        () => {
+          // Still ours and silent about its end: stop it and go on.
+          if (live.delete(u)) {
+            try {
+              s.cancel();
+            } catch {
+              // Nothing is speaking.
+            }
+          }
+          resolve();
+        },
+        utteranceLimitMs(u.text, u.rate),
+      );
+      s.speak(u);
+    } catch {
+      done();
     }
   });
 }
@@ -181,9 +224,9 @@ export function cancelSpeech(): void {
 }
 
 /**
- * Speaks `text` at once, cancelling whatever the device voice is saying
- * (previews and the hands-free read-back; queued alerts use
- * `speakUntilEnd`).
+ * Speaks `text` at once, cancelling whatever the device voice is saying.
+ * The app speaks through `alertVoice.ts` (which uses `speakUntilEnd`), so
+ * the PC voice and the device voice never overlap; this is the bare player.
  */
 export function speak(
   text: string,
@@ -195,7 +238,12 @@ export function speak(
   if (!s) return;
   try {
     s.cancel();
-    s.speak(utteranceFor(text, lang, prefs, voices));
+    const u = utteranceFor(text, lang, prefs, voices);
+    const forget = () => live.delete(u);
+    u.onend = forget;
+    u.onerror = forget;
+    live.add(u);
+    s.speak(u);
   } catch {
     // Speech synthesis can be blocked (no voices, autoplay policy); alerts are still shown.
   }

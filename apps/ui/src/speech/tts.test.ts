@@ -4,9 +4,12 @@ import {
   clampRate,
   detectTtsPlatform,
   fullLangTag,
+  liveUtterances,
   onlyLegacyVoices,
   pickVoice,
   speak,
+  speakUntilEnd,
+  utteranceLimitMs,
   voicesForLang,
   watchVoices,
 } from './tts';
@@ -139,6 +142,46 @@ describe('tts', () => {
     expect(synth.cancel.mock.invocationCallOrder[1]).toBeLessThan(
       synth.speak.mock.invocationCallOrder[1] ?? 0,
     );
+  });
+
+  it('keeps the utterance until its end, so WebKit reports the end', async () => {
+    const before = liveUtterances();
+    const said = speakUntilEnd('세션 완료', 'ko');
+    const u = synth.speak.mock.calls[0]?.[0] as FakeUtterance & { onend?: () => void };
+    expect(liveUtterances()).toBe(before + 1);
+    u.onend?.();
+    await said;
+    expect(liveUtterances()).toBe(before);
+  });
+
+  it('stops waiting for a voice that never reports its end', async () => {
+    vi.useFakeTimers();
+    try {
+      const before = liveUtterances();
+      let done = false;
+      void speakUntilEnd('완료', 'ko').then(() => {
+        done = true;
+      });
+      const limit = utteranceLimitMs('완료');
+      await vi.advanceTimersByTimeAsync(limit - 1);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(done).toBe(true);
+      // The silent utterance is cancelled and forgotten.
+      expect(synth.cancel).toHaveBeenCalledOnce();
+      expect(liveUtterances()).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('allows longer texts and slower rates more time', () => {
+    expect(utteranceLimitMs('a'.repeat(100))).toBeGreaterThan(utteranceLimitMs('a'));
+    expect(utteranceLimitMs('a'.repeat(100), 0.8)).toBeGreaterThan(
+      utteranceLimitMs('a'.repeat(100), 1.3),
+    );
+    // About 3.5 characters a second at the slowest rate.
+    expect(utteranceLimitMs('a'.repeat(300), 0.8)).toBeGreaterThan(80_000);
   });
 
   it('clamps rates and detects platforms', () => {

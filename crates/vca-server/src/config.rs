@@ -148,7 +148,7 @@
 //! [tts]
 //! default_engine = "local-tts"
 //! max_audio_bytes = 2097152
-//! requests_per_minute = 20      # per device
+//! requests_per_minute = 20      # syntheses per device; repeats from the cache are free
 //! [[tts.engines]]
 //! name = "local-tts"
 //! kind = "openai_compatible"
@@ -978,7 +978,8 @@ pub struct TtsConfig {
     pub default_engine: Option<String>,
     /// Largest audio answer accepted from an engine.
     pub max_audio_bytes: usize,
-    /// Requests per device per minute.
+    /// Syntheses per device per minute. A clip the device already had
+    /// (the same text, voice and language, kept in memory) does not count.
     pub requests_per_minute: u32,
     /// Syntheses running at the same time.
     pub max_concurrent: usize,

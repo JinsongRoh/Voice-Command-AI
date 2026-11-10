@@ -307,6 +307,13 @@ function NativePairing({
   const process = async (link: string, scanned: boolean, typed?: string) => {
     const kind = classifyLink(link);
     setErrorCode(null);
+    if (!link.trim()) {
+      // Nothing to check yet (for example right after a console invite
+      // enrolled and cleared the field): say what to do, not "invalid".
+      setError(null);
+      if (!scanNotice) setScanNotice(t('pairing.needLink'));
+      return;
+    }
     if (kind === null) {
       setError(t('native.error.invalid_uri'));
       return;

@@ -67,6 +67,11 @@ export interface VoiceQueue {
   enqueue(item: VoiceItem): boolean;
   /** Stops the current item and drops everything waiting. */
   stopAll(): void;
+  /**
+   * Drops the item with `key`, waiting or playing (another flow says the
+   * same thing). Returns whether there was one.
+   */
+  drop(key: string): boolean;
   /** Runs `fn` with the queue paused (the current item is stopped and replayed later). */
   exclusive<T>(fn: () => Promise<T>): Promise<T>;
   /** Something is playing or waiting (and the queue is not paused). */
@@ -189,6 +194,21 @@ export function createVoiceQueue(options: VoiceQueueOptions = {}): VoiceQueue {
       playing?.stop();
       release?.();
       notify();
+    },
+    drop(key) {
+      const before = waiting.length;
+      waiting = waiting.filter((e) => e.key !== key);
+      let found = waiting.length !== before;
+      if (current?.key === key) {
+        found = true;
+        const playing = current;
+        current = null;
+        playing.stop();
+        // The pump moves on to the next item.
+        release?.();
+      }
+      if (found) notify();
+      return found;
     },
     async exclusive(fn) {
       if (paused === 0) pausedAt = now();

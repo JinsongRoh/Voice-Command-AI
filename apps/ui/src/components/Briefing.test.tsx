@@ -78,6 +78,7 @@ describe('status briefing', () => {
       expect.any(String),
       expect.anything(),
       expect.any(Function),
+      expect.any(AbortSignal),
     );
   });
 
@@ -188,6 +189,7 @@ describe('result summaries', () => {
         expect.any(String),
         expect.anything(),
         expect.any(Function),
+        expect.any(AbortSignal),
       ),
     );
     expect(off.bodies('summarize')).toHaveLength(0);
@@ -221,11 +223,13 @@ describe('result summaries', () => {
         expect.any(String),
         expect.anything(),
         expect.any(Function),
+        expect.any(AbortSignal),
       ),
     );
     // The summary replaces the plain completion alert.
     expect(speak).not.toHaveBeenCalledWith(
       'web finished its work.',
+      expect.anything(),
       expect.anything(),
       expect.anything(),
       expect.anything(),

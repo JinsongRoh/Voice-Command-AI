@@ -60,6 +60,7 @@ export const RELEASE_PREFIXES = [
   'composer.hidden.',
   'voco.',
   'handsfree.',
+  'voice.',
   'lock.',
   'lifecycle.',
   'link.',

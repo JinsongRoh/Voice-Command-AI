@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Toasts } from '../components/Toasts';
 import type { SessionInfo } from '../protocol/types';
+import { claimDecisionVoice, resetDecisionVoice } from '../speech/decisionVoice';
 import { voiceQueue } from '../speech/voiceQueue';
 import { defaultResponse, FakeTransport } from '../test/fakeTransport';
 import { localSession } from '../test/fixtures';
@@ -92,6 +93,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   resetInputGuard();
+  resetDecisionVoice();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -108,6 +110,7 @@ describe('Switch automatically', () => {
         expect.any(String),
         expect.anything(),
         expect.any(Function),
+        expect.any(AbortSignal),
       ),
     );
     // The card is open: no Go / Later on top of it.
@@ -124,6 +127,16 @@ describe('Switch automatically', () => {
     wait(transport, { type: 'awaiting_decision' });
     await waitFor(() => expect(speak).toHaveBeenCalled());
     expect(shown).toEqual(['web needs a decision']);
+  });
+
+  it('does not speak a decision hands-free mode is already reading', async () => {
+    const transport = await setup('auto', { focused: false, settings: { spokenAlerts: true } });
+    // The decision card claimed it (`useSpokenDecision`).
+    claimDecisionVoice('alert:w:s2:decision');
+    wait(transport, { type: 'awaiting_decision' });
+    await waitFor(() => expect(shown).toEqual(['web needs a decision']));
+    await act(async () => {});
+    expect(speak).not.toHaveBeenCalled();
   });
 
   it('sends no OS notification while the app is in front', async () => {

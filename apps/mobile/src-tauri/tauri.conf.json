@@ -44,7 +44,7 @@
       "icons/icon.ico"
     ],
     "iOS": {
-      "bundleVersion": "3",
+      "bundleVersion": "4",
       "minimumSystemVersion": "15.0",
       "frameworks": [
         "AudioToolbox",
@@ -54,7 +54,7 @@
     },
     "android": {
       "minSdkVersion": 26,
-      "versionCode": 1002
+      "versionCode": 1003
     }
   },
   "plugins": {

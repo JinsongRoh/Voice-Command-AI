@@ -13,6 +13,9 @@
 //!
 //! Requests are capped at [`TTS_MAX_TEXT_CHARS`] characters, limited per
 //! device and per server, and neither the text nor the audio is logged.
+//! Recent clips are kept in memory per device ([`ClipCache`]): a device that
+//! asks for the same prompt again gets it without a synthesis, and such a
+//! repeat does not count towards its limit.
 
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
@@ -40,6 +43,10 @@ const MAX_LIMITER_KEYS: usize = 10_000;
 pub const RATE_LIMITED: &str = "too many spoken alerts; try again in a minute";
 /// Longest wait for a free synthesis slot.
 const QUEUE_TIMEOUT: Duration = Duration::from_secs(20);
+/// Clips kept in memory, over all devices.
+const CLIP_CACHE_ENTRIES: usize = 256;
+/// Bytes of audio kept in memory, over all devices.
+const CLIP_CACHE_BYTES: usize = 16 * 1024 * 1024;
 
 fn api_error(code: ErrorCode, message: impl Into<String>) -> Error {
     Error::api(code, message)
@@ -106,6 +113,76 @@ impl Limiter {
         }
         q.push_back(now);
         true
+    }
+}
+
+/// What a clip was made from: the device that asked, the engine, the
+/// resolved voice, the language and the final text. Keyed per device, so a
+/// device never learns from the timing what another device had spoken.
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct ClipKey {
+    device: String,
+    engine: String,
+    voice: Option<String>,
+    language: Option<String>,
+    text: String,
+}
+
+#[derive(Default)]
+struct ClipLru {
+    /// Least recently used first.
+    order: VecDeque<ClipKey>,
+    clips: HashMap<ClipKey, Synthesized>,
+    bytes: usize,
+}
+
+/// Recently synthesized clips, bounded by count and by bytes.
+struct ClipCache {
+    entries: usize,
+    max_bytes: usize,
+    inner: Mutex<ClipLru>,
+}
+
+impl ClipCache {
+    fn new(entries: usize, max_bytes: usize) -> Self {
+        Self {
+            entries,
+            max_bytes,
+            inner: Mutex::new(ClipLru::default()),
+        }
+    }
+
+    fn get(&self, key: &ClipKey) -> Option<Synthesized> {
+        let mut lru = lock(&self.inner);
+        let clip = lru.clips.get(key)?.clone();
+        if let Some(at) = lru.order.iter().position(|k| k == key) {
+            if let Some(k) = lru.order.remove(at) {
+                lru.order.push_back(k);
+            }
+        }
+        Some(clip)
+    }
+
+    fn put(&self, key: ClipKey, clip: &Synthesized) {
+        let size = clip.audio.len();
+        if size > self.max_bytes {
+            return;
+        }
+        let mut lru = lock(&self.inner);
+        if let Some(old) = lru.clips.insert(key.clone(), clip.clone()) {
+            lru.bytes = lru.bytes.saturating_sub(old.audio.len());
+            lru.order.retain(|k| k != &key);
+        }
+        lru.bytes += size;
+        lru.order.push_back(key);
+        while lru.order.len() > self.entries || lru.bytes > self.max_bytes {
+            let Some(oldest) = lru.order.pop_front() else {
+                break;
+            };
+            if let Some(gone) = lru.clips.remove(&oldest) {
+                lru.bytes = lru.bytes.saturating_sub(gone.audio.len());
+            }
+        }
     }
 }
 
@@ -244,6 +321,7 @@ pub struct Tts {
     limiter: Limiter,
     permits: Semaphore,
     max_audio_bytes: usize,
+    clips: ClipCache,
     /// The pronunciation dictionary applied before synthesis.
     pronunciations: OnceLock<Arc<crate::pronunciations::Pronunciations>>,
 }
@@ -291,6 +369,7 @@ impl Tts {
             limiter: Limiter::new(cfg.requests_per_minute),
             permits: Semaphore::new(cfg.max_concurrent.max(1)),
             max_audio_bytes: cfg.max_audio_bytes.max(1),
+            clips: ClipCache::new(CLIP_CACHE_ENTRIES, CLIP_CACHE_BYTES),
             pronunciations: OnceLock::new(),
         })
     }
@@ -406,6 +485,18 @@ impl Tts {
         };
         let slot = self.slot(&name)?;
         let voice = slot.resolve_voice(voice, language)?;
+        let language = nonempty(language).map(str::to_owned);
+        let key = ClipKey {
+            device: device.to_owned(),
+            engine: name.clone(),
+            voice: voice.clone(),
+            language: language.clone(),
+            text: text.to_owned(),
+        };
+        // A repeated prompt costs no synthesis, so it is not counted either.
+        if let Some(clip) = self.clips.get(&key) {
+            return Ok(clip);
+        }
         if !self.limiter.allow(device) {
             return Err(api_error(ErrorCode::Unavailable, RATE_LIMITED));
         }
@@ -414,14 +505,17 @@ impl Tts {
             text: text.to_owned(),
             voice,
             speed: None,
-            language: nonempty(language).map(str::to_owned),
+            language,
         };
         let _permit = tokio::time::timeout(QUEUE_TIMEOUT, self.permits.acquire())
             .await
             .map_err(|_| api_error(ErrorCode::Unavailable, "the TTS engine is busy"))?
             .map_err(|_| api_error(ErrorCode::Unavailable, "TTS is shutting down"))?;
         match engine.synthesize(&request).await {
-            Ok(out) => Ok(out),
+            Ok(out) => {
+                self.clips.put(key, &out);
+                Ok(out)
+            }
             Err(err) => {
                 // Only the engine name and the kind of failure: an engine's
                 // error text may quote the input.
@@ -594,6 +688,105 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(err.code(), ErrorCode::NotFound);
+    }
+
+    /// Counts its syntheses.
+    struct Counting(std::sync::atomic::AtomicUsize);
+
+    #[async_trait]
+    impl TtsEngine for Counting {
+        fn name(&self) -> &str {
+            "counting"
+        }
+        async fn synthesize(&self, req: &SynthesisRequest) -> vca_speech::Result<Synthesized> {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(Synthesized {
+                format: TtsFormat::Wav,
+                audio: req.text.clone().into_bytes(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn repeated_prompts_come_from_the_cache_and_do_not_count_towards_the_limit() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let dir = tempfile::tempdir().unwrap();
+        let engine = Arc::new(Counting(AtomicUsize::new(0)));
+        let mut fixed: HashMap<String, Arc<dyn TtsEngine>> = HashMap::new();
+        fixed.insert("local".into(), engine.clone());
+        let t = Tts::with_engines(&cfg(2), dir.path(), fixed).unwrap();
+        // The same prompt many times: one synthesis, never limited.
+        for _ in 0..5 {
+            let out = t.synthesize("a", "네", Some("ko-KR"), None, None).await;
+            assert_eq!(out.unwrap().audio, "네".as_bytes());
+        }
+        assert_eq!(engine.0.load(Ordering::SeqCst), 1);
+        // A second real synthesis fits, a third is over the limit.
+        assert!(
+            t.synthesize("a", "보냈습니다.", Some("ko-KR"), None, None)
+                .await
+                .is_ok()
+        );
+        let err = t
+            .synthesize("a", "취소했습니다.", Some("ko-KR"), None, None)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains(RATE_LIMITED), "{err}");
+        // Cached prompts still play while the device is over its limit.
+        assert!(
+            t.synthesize("a", "네", Some("ko-KR"), None, None)
+                .await
+                .is_ok()
+        );
+        // Another speaker, language or device is another clip.
+        assert!(
+            t.synthesize("b", "네", Some("ko-KR"), None, None)
+                .await
+                .is_ok()
+        );
+        assert!(
+            t.synthesize("b", "네", Some("ko-KR"), None, Some("M1"))
+                .await
+                .is_ok()
+        );
+        assert_eq!(engine.0.load(Ordering::SeqCst), 4);
+        let err = t
+            .synthesize("b", "네", Some("en-US"), None, None)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains(RATE_LIMITED), "{err}");
+    }
+
+    #[test]
+    fn the_clip_cache_is_bounded_by_entries_and_bytes() {
+        let key = |text: &str| ClipKey {
+            device: "d".into(),
+            engine: "e".into(),
+            voice: None,
+            language: None,
+            text: text.into(),
+        };
+        let clip = |n: usize| Synthesized {
+            format: TtsFormat::Wav,
+            audio: vec![0; n],
+        };
+        let cache = ClipCache::new(2, 10);
+        cache.put(key("a"), &clip(4));
+        cache.put(key("b"), &clip(4));
+        // "a" is used, so "b" is the oldest when "c" comes.
+        assert!(cache.get(&key("a")).is_some());
+        cache.put(key("c"), &clip(4));
+        assert!(cache.get(&key("b")).is_none());
+        assert!(cache.get(&key("a")).is_some());
+        // Over the byte budget: the oldest goes.
+        cache.put(key("d"), &clip(8));
+        assert!(cache.get(&key("c")).is_none());
+        assert!(cache.get(&key("a")).is_none());
+        assert!(cache.get(&key("d")).is_some());
+        // A clip larger than the whole budget is not kept.
+        cache.put(key("e"), &clip(11));
+        assert!(cache.get(&key("e")).is_none());
+        assert!(cache.get(&key("d")).is_some());
     }
 
     #[test]

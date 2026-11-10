@@ -1573,6 +1573,7 @@
   "search.close": "Cerrar la búsqueda",
   "pairing.enrollWait": "Registrado. La conexión puede tardar hasta {seconds} segundos.",
   "pairing.enrollNext": "Registrado. Ahora escanea el código QR de emparejamiento de VCA que aparece en tu PC.",
+  "pairing.needLink": "Escanea el código QR de emparejamiento de VCA que aparece en tu PC o pega su enlace vca://pair.",
   "pairing.enrollEnterCode": "Si tu PC pide un código de autenticación, introdúcelo y toca Emparejar.",
   "native.error.dnspilot_key_registration_failed": "El túnel está listo, pero no se pudo registrar la clave de esta app. No crees otro túnel: elige «Registrar esta app en el túnel» abajo.",
   "native.error.dnspilot_bad_link": "Ese no es un enlace de invitación de DNSPilot válido.",

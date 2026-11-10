@@ -68,7 +68,14 @@ import {
   type ShellRequest,
   type TtsEngineInfo,
 } from '../protocol/types';
-import { createAlertVoice, type AlertVoicePrefs, type Synthesize } from '../speech/alertVoice';
+import {
+  createAlertVoice,
+  type AlertVoicePrefs,
+  type SpeakOutcome,
+  type Synthesize,
+} from '../speech/alertVoice';
+import { decisionVoiceClaimed } from '../speech/decisionVoice';
+import { fixedPhrases } from '../speech/fixedPhrases';
 import { resolveSpeaker } from '../speech/speakers';
 import { voiceQueue, type VoicePriority } from '../speech/voiceQueue';
 import { alertsFor } from './alerts';
@@ -89,6 +96,12 @@ import { APP_VERSION, createStore, RequestError, ShellConfirmNeeded, type Store 
 
 /** How long "Remove from VCA" waits for a stopped session to exit (older servers). */
 const STOP_WAIT_MS = 15_000;
+/** Longest wait for the PC's TTS engine list before speaking with its default voice. */
+const SPEAKER_LIST_WAIT_MS = 3_000;
+/** Warming starts this long after the app connected (the sync goes first). */
+const WARM_DELAY_MS = 2_000;
+/** The same voice choice is warmed at most this often. */
+const WARM_MIN_INTERVAL_MS = 60_000;
 
 /** Resolves once `id` has exited or left the list; rejects after `ms`. */
 function waitForExit(store: Store, id: SessionId, ms = STOP_WAIT_MS): Promise<void> {
@@ -265,10 +278,18 @@ export interface Actions {
   /** TTS engines on the PC (names and languages); empty when there are none. */
   listTtsEngines(): Promise<TtsEngineInfo[]>;
   /**
-   * Speaks a generic alert title with the chosen voice source; the device
-   * voice when the PC cannot. Resolves with the source that spoke.
+   * Speaks at once with the chosen voice source (the app's one speaker:
+   * whatever it was saying stops); the device voice only when the PC cannot
+   * before any PC audio played. `prefs.serverVoice` is the saved speaker,
+   * checked against what the engine offers. `signal` stops it. Resolves
+   * when it has been said, with the source that spoke.
    */
-  speakAlert(text: string, lang: string, prefs: AlertVoicePrefs): Promise<'server' | 'device'>;
+  speakAlert(
+    text: string,
+    lang: string,
+    prefs: AlertVoicePrefs,
+    signal?: AbortSignal,
+  ): Promise<SpeakOutcome>;
   /** Saves this device's engine and LLM choice; resolves with the new options. */
   setSpeechPreferences(engine: string | null, llm: string | null): Promise<SpeechOptions>;
   revokeDevice(deviceId: string): Promise<void>;
@@ -522,6 +543,30 @@ export function AppProvider({
     return ttsEnginesRef.current;
   }, [request]);
   /**
+   * The PC speaker for a saved id, checked against what the engine offers
+   * now (the same for every path, so every prompt has the same voice). A
+   * list that cannot be fetched in time leaves the engine's configured voice.
+   */
+  const serverVoiceFor = useCallback(
+    async (engine: string | null, saved: string | null | undefined): Promise<string | null> => {
+      if (engine === null) return null;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), SPEAKER_LIST_WAIT_MS);
+      });
+      const list = await Promise.race([ttsEngines().catch(() => null), late]);
+      clearTimeout(timer);
+      if (!list) return null;
+      return (
+        resolveSpeaker(
+          list.find((e) => e.name === engine),
+          saved ?? '',
+        )?.id ?? null
+      );
+    },
+    [ttsEngines],
+  );
+  /**
    * Queues `text` on the one voice queue (`voiceQueue.ts`): it plays after
    * what is already playing, most urgent first, with the chosen voice.
    */
@@ -535,35 +580,92 @@ export function AppProvider({
         rate: current.ttsRate,
       };
       const engine = current.ttsServerEngine;
+      /** The playback in progress; a replay after `exclusive` gets its own. */
+      let active: AbortController | null = null;
       voiceQueue.enqueue({
         key: opts.key,
         priority: opts.priority ?? 'completion',
-        stop: () => alertVoice.stop(),
+        // Stops this item only, also while its audio is still being made:
+        // a clip that arrives after the stop is never played.
+        stop: () => active?.abort(),
         play: async () => {
-          // The saved speaker is checked against what the engine offers now;
-          // a list that cannot be fetched leaves the engine's configured voice.
-          const speaker =
-            engine === null
-              ? null
-              : await ttsEngines()
-                  .then((list) =>
-                    resolveSpeaker(
-                      list.find((e) => e.name === engine),
-                      current.ttsServerVoice,
-                    ),
-                  )
-                  .catch(() => null);
+          const controller = new AbortController();
+          active = controller;
+          const serverVoice = await serverVoiceFor(engine, current.ttsServerVoice);
+          if (controller.signal.aborted) return 'stopped';
           return alertVoice.play(
             text,
             current.language,
-            { ...prefs, serverVoice: speaker?.id ?? null },
+            { ...prefs, serverVoice },
             synthesize,
+            controller.signal,
           );
         },
       });
     },
-    [alertVoice, synthesize, ttsEngines],
+    [alertVoice, synthesize, serverVoiceFor],
   );
+
+  // Fixed prompts ("네", "보냈습니다.", ...) of hands-free mode are
+  // synthesized ahead in the PC voice: when the app connects and when the
+  // engine, speaker or language changes, or hands-free mode is turned on.
+  // At most once a minute per choice, one phrase at a time.
+  const warmedAt = useRef(new Map<string, number>());
+  const handsFreeOn = settings.handsFree;
+  useEffect(() => {
+    const engine = settings.ttsServerEngine;
+    if (engine === null || !handsFreeOn) return;
+    const lang = settings.language;
+    const saved = settings.ttsServerVoice;
+    const transport = machine.transport;
+    const key = JSON.stringify([machine.id, engine, saved, lang]);
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (controller.signal.aborted || transport.state !== 'connected') return;
+        const last = warmedAt.current.get(key);
+        if (last !== undefined && Date.now() - last < WARM_MIN_INTERVAL_MS) return;
+        warmedAt.current.set(key, Date.now());
+        void serverVoiceFor(engine, saved)
+          .then((serverVoice) =>
+            controller.signal.aborted
+              ? undefined
+              : alertVoice.warm(
+                  fixedPhrases(voiceLang(lang)),
+                  lang,
+                  { serverEngine: engine, serverVoice },
+                  synthesize,
+                  { signal: controller.signal },
+                ),
+          )
+          .catch(() => {})
+          .finally(() => {
+            // Cut short: the next chance tries again.
+            if (controller.signal.aborted) warmedAt.current.delete(key);
+          });
+      }, WARM_DELAY_MS);
+    };
+    const off = transport.onStateChange((state) => {
+      if (state === 'connected') schedule();
+    });
+    schedule();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+      off();
+    };
+  }, [
+    machine,
+    handsFreeOn,
+    settings.ttsServerEngine,
+    settings.ttsServerVoice,
+    settings.language,
+    alertVoice,
+    synthesize,
+    serverVoiceFor,
+  ]);
 
   // Connection lifecycle for the selected machine.
   useEffect(() => {
@@ -1126,8 +1228,13 @@ export function AppProvider({
         ttsEnginesRef.current = null;
         return ttsEngines();
       },
-      speakAlert(text, lang, prefs) {
-        return alertVoice.speak(text, lang, prefs, synthesize);
+      async speakAlert(text, lang, prefs, signal) {
+        const serverVoice =
+          prefs.serverEngine === null
+            ? null
+            : await serverVoiceFor(prefs.serverEngine, prefs.serverVoice);
+        if (signal?.aborted) return 'stopped';
+        return alertVoice.speak(text, lang, { ...prefs, serverVoice }, synthesize, signal);
       },
       async setSpeechPreferences(engine, llm) {
         const res = await request({ type: 'set_speech_preferences', engine, llm });
@@ -1346,6 +1453,7 @@ export function AppProvider({
     alertVoice,
     synthesize,
     ttsEngines,
+    serverVoiceFor,
     speakAlert,
     serverFeatures,
     conductorStore,
@@ -1420,7 +1528,9 @@ export function AppProvider({
       // alert would only say the same thing twice.
       const onScreen = onScreenSession(store.getState().selectedId, alert.sessionId);
       const readOnScreen = current.handsFree && alert.kind === 'decision' && onScreen;
-      if (!readOnScreen && shouldSpeak(current, alert.kind, now)) {
+      // Hands-free mode already reads this decision (`decisionVoice.ts`).
+      const claimed = decisionVoiceClaimed(`alert:${alert.key}`);
+      if (!readOnScreen && !claimed && shouldSpeak(current, alert.kind, now)) {
         speakAlert(normalizeKoreanNumbers(title, lang), current, {
           priority: 'decision',
           key: `alert:${alert.key}`,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAlertVoice } from './alertVoice';
+import { createAlertVoice, type AlertAudio } from './alertVoice';
 import { createVoiceQueue, MAX_AGE_MS, type VoiceItem, type VoicePriority } from './voiceQueue';
 
 /** An item whose playback the test ends by hand. */
@@ -253,5 +253,147 @@ describe('voice queue', () => {
     await flush();
     queue.stopAll();
     expect(events.at(-1)).toBe('stop');
+  });
+
+  it('drops a waiting or playing item by key', async () => {
+    const { queue, played, quick } = setup();
+    const first = controlled('alert:d:s1:d1', 'decision');
+    queue.enqueue(first);
+    await flush();
+    queue.enqueue(quick('other'));
+    queue.enqueue(quick('alert:d:s2:d2'));
+    expect(queue.drop('alert:d:s2:d2')).toBe(true);
+    expect(queue.drop('alert:d:s1:d1')).toBe(true);
+    expect(first.stop).toHaveBeenCalledOnce();
+    expect(queue.drop('missing')).toBe(false);
+    await flush();
+    expect(played).toEqual(['other']);
+  });
+});
+
+/**
+ * The real alert voice on the real queue, with players that record how many
+ * voices sound at once, and items made like the store's (`speakAlert`).
+ */
+function oneSpeaker() {
+  let sounding = 0;
+  let most = 0;
+  const heard: string[] = [];
+  const ends: (() => void)[] = [];
+  const sound = (label: string) =>
+    new Promise<void>((resolve) => {
+      sounding += 1;
+      most = Math.max(most, sounding);
+      heard.push(label);
+      let done = false;
+      const end = () => {
+        if (done) return;
+        done = true;
+        sounding -= 1;
+        resolve();
+      };
+      ends.push(end);
+    });
+  const voice = createAlertVoice({
+    playToEnd: (audio) => sound(`pc:${new TextDecoder().decode(audio.data)}`),
+    speakDeviceToEnd: (text) => sound(`device:${text}`),
+    // Silencing ends whatever sounds.
+    stopAll: () => {
+      for (const end of ends.splice(0)) end();
+    },
+  });
+  const clips = new Map<string, { promise: Promise<AlertAudio>; resolve(): void }>();
+  const synthesize = vi.fn((text: string) => {
+    let resolve = () => {};
+    const promise = new Promise<AlertAudio>((res) => {
+      resolve = () => res({ format: 'mp3', data: new TextEncoder().encode(text) });
+    });
+    clips.set(text, { promise, resolve });
+    return promise;
+  });
+  const queue = createVoiceQueue({ gapMs: 0, sleep: async () => {} });
+  const enqueue = (text: string, priority: VoicePriority = 'decision') => {
+    let active: AbortController | null = null;
+    queue.enqueue({
+      key: text,
+      priority,
+      stop: () => active?.abort(),
+      play: async () => {
+        const controller = new AbortController();
+        active = controller;
+        return voice.play(text, 'en', { serverEngine: 'local-tts' }, synthesize, controller.signal);
+      },
+    });
+  };
+  return {
+    voice,
+    queue,
+    enqueue,
+    synthesize,
+    clips,
+    heard,
+    endCurrent: () => ends.shift()?.(),
+    most: () => most,
+  };
+}
+
+describe('one speaker', () => {
+  // (c) An alert whose PC clip is still being made when a hands-free flow
+  // takes the voice: it is not played then, and played exactly once after.
+  it('plays an interrupted alert once, after the exclusive use', async () => {
+    const s = oneSpeaker();
+    s.enqueue('Build failed');
+    await flush();
+    expect(s.synthesize).toHaveBeenCalledOnce();
+    let finishFlow: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      finishFlow = resolve;
+    });
+    const flow = s.queue.exclusive(() => gate);
+    await flush();
+    // The read-back speaks while the alert's clip arrives.
+    const readBack = s.voice.speak('Send it?', 'en', { serverEngine: null }, s.synthesize);
+    await flush();
+    s.clips.get('Build failed')!.resolve();
+    await flush();
+    expect(s.heard).toEqual(['device:Send it?']);
+    s.endCurrent();
+    await expect(readBack).resolves.toBe('device');
+    finishFlow();
+    await flow;
+    await flush();
+    // Heard once, from the cache, after the flow.
+    expect(s.heard).toEqual(['device:Send it?', 'pc:Build failed']);
+    expect(s.synthesize).toHaveBeenCalledOnce();
+    s.endCurrent();
+    await flush();
+    expect(s.heard).toHaveLength(2);
+    expect(s.most()).toBe(1);
+  });
+
+  // (d) Device voice and PC clip never sound at the same time, whatever
+  // starts them: queue items, direct prompts, previews and stops.
+  it('never lets two voices sound at once', async () => {
+    const s = oneSpeaker();
+    s.enqueue('First alert', 'error');
+    s.enqueue('Second alert', 'completion');
+    await flush();
+    s.clips.get('First alert')!.resolve();
+    await flush();
+    expect(s.heard).toEqual(['pc:First alert']);
+    // A direct prompt (a preview, a read-back result) while the alert plays.
+    const direct = s.voice.speak('Sent.', 'en', { serverEngine: null }, s.synthesize);
+    await flush();
+    expect(s.most()).toBe(1);
+    s.endCurrent();
+    await direct;
+    await flush();
+    // The queue goes on with the next alert; its clip arrives late.
+    expect(s.synthesize).toHaveBeenCalledWith('Second alert', 'en-US', 'local-tts', null);
+    s.queue.stopAll();
+    s.clips.get('Second alert')!.resolve();
+    await flush();
+    expect(s.heard).toEqual(['pc:First alert', 'device:Sent.']);
+    expect(s.most()).toBe(1);
   });
 });

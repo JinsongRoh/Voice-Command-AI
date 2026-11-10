@@ -11,6 +11,7 @@ import {
 import { useI18n } from '../i18n/context';
 import type { Pronunciation } from '../protocol/pronunciations';
 import { useSpeech } from '../speech/context';
+import { previewVoice } from '../speech/handsFree';
 import type { Recorder } from '../speech/recorder';
 import {
   MAX_SPOKEN_CHARS,
@@ -38,17 +39,27 @@ function usePronunciations(): readonly Pronunciation[] {
   return useSyncExternalStore(subscribePronunciations, getPronunciations, getPronunciations);
 }
 
-/** Speaks text with the voice chosen for spoken alerts (device or PC engine). */
+/**
+ * Speaks text with the voice chosen for spoken alerts (device or PC engine),
+ * through the app's one speaker, holding the voice like any spoken flow.
+ */
 function usePreview(): (text: string, lang: string) => void {
   const actions = useActions();
   const { settings } = useSettings();
   return (text, lang) => {
-    void actions.speakAlert(text, lang, {
-      serverEngine: settings.ttsServerEngine,
-      serverVoice: settings.ttsServerVoice,
-      voice: settings.ttsVoice,
-      rate: settings.ttsRate,
-    });
+    void previewVoice((signal) =>
+      actions.speakAlert(
+        text,
+        lang,
+        {
+          serverEngine: settings.ttsServerEngine,
+          serverVoice: settings.ttsServerVoice,
+          voice: settings.ttsVoice,
+          rate: settings.ttsRate,
+        },
+        signal,
+      ),
+    );
   };
 }
 

@@ -8,11 +8,11 @@ import {
   TTS_RATE_MIN,
   detectTtsPlatform,
   onlyLegacyVoices,
-  speak,
   ttsAvailable,
   voicesForLang,
   watchVoices,
 } from '../speech/tts';
+import { previewVoice } from '../speech/handsFree';
 import { offeredGenders, resolveSpeaker, speakersByGender, speakersOf } from '../speech/speakers';
 import { useActions, useAppState, useSettings } from '../state/store';
 
@@ -83,18 +83,22 @@ export function TtsSettings() {
       ? t(`settings.tts.hint.${detectTtsPlatform()}`)
       : null;
 
+  // Both sources through the app's one speaker, holding the voice.
   const preview = () => {
     const sample = t('settings.tts.sample');
-    if (server === null) {
-      speak(sample, settings.language, { voice: selected, rate: settings.ttsRate }, voices);
-      return;
-    }
-    void actions.speakAlert(sample, settings.language, {
-      serverEngine: server,
-      serverVoice: speaker?.id ?? null,
-      voice: selected,
-      rate: settings.ttsRate,
-    });
+    void previewVoice((signal) =>
+      actions.speakAlert(
+        sample,
+        settings.language,
+        {
+          serverEngine: server,
+          serverVoice: speaker?.id ?? null,
+          voice: selected,
+          rate: settings.ttsRate,
+        },
+        signal,
+      ),
+    );
   };
 
   return (

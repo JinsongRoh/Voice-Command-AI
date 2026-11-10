@@ -1573,6 +1573,7 @@
   "search.close": "검색 닫기",
   "pairing.enrollWait": "등록되었습니다. 연결까지 최대 {seconds}초 걸릴 수 있습니다.",
   "pairing.enrollNext": "등록되었습니다. 이제 PC에 표시된 VCA 페어링 QR 코드를 스캔하세요.",
+  "pairing.needLink": "PC에 표시된 VCA 페어링 QR 코드를 스캔하거나 vca://pair 링크를 붙여 넣으세요.",
   "pairing.enrollEnterCode": "PC에서 인증 코드를 사용한다면 코드를 입력한 뒤 페어링을 누르세요.",
   "native.error.dnspilot_key_registration_failed": "터널은 준비되었지만 이 앱의 키를 등록하지 못했습니다. 터널을 새로 만들지 말고 아래의 “이 앱을 터널에 등록”을 누르세요.",
   "native.error.dnspilot_bad_link": "올바른 DNSPilot 초대 링크가 아닙니다.",

@@ -201,6 +201,19 @@ describe('pairing with a DNSPilot invite', () => {
     expect(screen.getByLabelText('Pairing link')).toHaveValue('');
   });
 
+  it('after the console QR, Pair with an empty field asks for the pairing QR, not "invalid"', async () => {
+    const user = userEvent.setup();
+    const { native, pair } = fixture(30);
+    native.qrScanner = scannerFor({ kind: 'link', uri: CONSOLE });
+    renderView(native);
+    await user.click(await screen.findByRole('button', { name: /Scan QR code/ }));
+    await screen.findByText(/Now scan the VCA pairing QR code/);
+    await user.click(screen.getByRole('button', { name: 'Pair' }));
+    expect(screen.queryByText(/not a valid vca:\/\/pair link/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(pair).not.toHaveBeenCalled();
+  });
+
   it('the wait also covers the pairing QR scanned after the console QR', async () => {
     const user = userEvent.setup();
     const { native, pair } = fixture(1);

@@ -19,6 +19,8 @@ import { mockRestoreLocal } from '../protocol/mockRestore';
 import { MockTransport, type MockTransportOptions } from '../protocol/mockTransport';
 import type { Recorder } from '../speech/recorder';
 import type { SpeechServices } from '../speech/context';
+import { stopVoice } from '../speech/handsFreeIO';
+import { voiceQueue } from '../speech/voiceQueue';
 import type { Transcript, TranscribeFn } from '../speech/transcribe';
 import type { Locale } from '../i18n/i18n';
 import type { Settings } from '../state/settings';
@@ -198,11 +200,9 @@ export function startDemo(base: Settings, options: MockTransportOptions = {}): D
 /** Ends a demo: closes the simulated machines and removes every trace. */
 export function stopDemo(session: DemoSession, clearMemory: () => void = () => {}): void {
   for (const m of session.machines) m.transport.disconnect();
-  try {
-    globalThis.speechSynthesis?.cancel();
-  } catch {
-    // No speech synthesis here.
-  }
+  // Nothing of the demo is said after it: the queue empties, both voices stop.
+  voiceQueue.stopAll();
+  stopVoice();
   clearMemory();
   recoverDemoStorage();
 }

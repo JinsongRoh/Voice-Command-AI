@@ -903,7 +903,8 @@ export async function spokenDecision(o: SpokenDecisionOptions): Promise<SpokenDe
     }
     const result = answer === 'allow' ? 'approved' : 'denied';
     o.onStatus(result);
-    void io.speak(result === 'approved' ? phrases.approved : phrases.denied, signal);
+    // Said before the voice is handed back: a queued alert never talks over it.
+    await io.speak(result === 'approved' ? phrases.approved : phrases.denied, signal);
     return { result, optionId };
   }
 }
@@ -1000,6 +1001,23 @@ export function withVoice<T>(fn: () => Promise<T>): Promise<T> {
   const run = voiceTail.then(exclusive, exclusive);
   voiceTail = run.catch(() => {});
   return run;
+}
+
+let previewing: AbortController | null = null;
+
+/**
+ * A voice preview of Settings: holds the voice like any spoken flow (queued
+ * alerts pause and resume after it); a new preview stops the one before.
+ */
+export function previewVoice(say: (signal: AbortSignal) => Promise<unknown>): Promise<void> {
+  previewing?.abort();
+  const controller = new AbortController();
+  previewing = controller;
+  return withVoice(async () => {
+    if (!controller.signal.aborted) await say(controller.signal);
+  }).finally(() => {
+    if (previewing === controller) previewing = null;
+  });
 }
 
 /** Borrow key of the composer's own dictation. */

@@ -19,6 +19,7 @@ import type { Decision, SessionInfo } from '../protocol/types';
 import { speechLanguageParam } from '../state/settings';
 import { useActions, useSettings } from '../state/store';
 import { useSpeech } from './context';
+import { claimDecisionVoice, decisionVoiceKey } from './decisionVoice';
 import {
   ANSWER_PROMPTS,
   confirmSend,
@@ -68,13 +69,19 @@ export function useVoiceIO(sessionId: string | null): VoiceIO {
         speak: (text, signal) => {
           const s = latest.current.settings;
           return speakAndWait(text, signal, {
+            // The signal goes along: a stop also drops audio still being made.
             speak: (t) =>
-              actions.speakAlert(t, s.language, {
-                serverEngine: s.ttsServerEngine,
-                serverVoice: s.ttsServerVoice,
-                voice: s.ttsVoice,
-                rate: s.ttsRate,
-              }),
+              actions.speakAlert(
+                t,
+                s.language,
+                {
+                  serverEngine: s.ttsServerEngine,
+                  serverVoice: s.ttsServerVoice,
+                  voice: s.ttsVoice,
+                  rate: s.ttsRate,
+                },
+                signal,
+              ),
           });
         },
         listen: (signal) => {
@@ -190,7 +197,8 @@ export function useReadBack(sessionId: string | null, sessionName?: string | nul
             : phrases[result];
         const controller = new AbortController();
         const stopOnTap = interruptOnTap(controller);
-        void io.speak(phrase, controller.signal).finally(stopOnTap);
+        // Holds the voice like the read-back: queued alerts wait for it.
+        void withVoice(() => io.speak(phrase, controller.signal)).finally(stopOnTap);
       }
     },
     [io],
@@ -235,12 +243,17 @@ export function useSpokenDecision(
     const { signal } = controller;
     const stopOnTap = interruptOnTap(controller);
     const choices = voiceChoices(read);
+    // This card reads the decision: the spoken alert for it is not said too.
+    const voiceKey = decisionVoiceKey(sessionId, read.id);
+    claimDecisionVoice(voiceKey);
     // A Voco message being dictated is not interrupted: wait before queueing.
     void waitForMicFree(signal)
       .then(() =>
         withVoice(async () => {
           await waitForMicFree(signal);
           if (signal.aborted || !sameDecision(latest.current.decision, read)) return;
+          // An alert that was playing is replayed after `exclusive`: drop it.
+          claimDecisionVoice(voiceKey);
           const result = await spokenDecision({
             decision: read,
             sessionName: latest.current.name,
