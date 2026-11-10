@@ -11,9 +11,15 @@
 
 **Control every AI coding agent on your machine from your phone, with your voice.**
 
+<p align="center">
+  <a href="https://youtu.be/y1nxSgDrQi8"><img src="docs/assets/vca-walkthrough.gif" alt="Voice Command AI walkthrough (click to watch the full video)" width="800"></a>
+  <br>
+  <sub>▶ Click the animation to watch the full 2-minute walkthrough: <a href="https://youtu.be/y1nxSgDrQi8">https://youtu.be/y1nxSgDrQi8</a></sub>
+</p>
+
 Voice Command AI (VCA) is an open-source, cross-platform tool. It lets you watch, command and orchestrate AI coding agents running on your development machine. Supported agents include Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, Grok and more. You can reach them from anywhere, without fighting for keyboard focus and without letting runaway builds bring your machine down.
 
-> **Status:** Version 0.1.0, the first public release (November 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) and updates itself; the iPhone and Android apps are coming to the App Store and Google Play. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
+> **Status:** Version 0.1.0, the first public release (November 11, 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) and updates itself; the iPhone and Android apps are in review at the App Store and Google Play. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
 
 ---
 
@@ -31,13 +37,16 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 
 | Platform | Get it | Notes |
 |---|---|---|
-| Windows | [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest): `*_x64-setup.exe` | Signed by MetaVu Co., Ltd. Includes the server. |
-| macOS | [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest): `.dmg` (Apple silicon or Intel) | Developer ID signed and notarized. Includes the server. |
-| Linux | Coming in a later version. Until then, [build from source](docs/user-guide.md). | The server also runs on Linux when built from source. |
-| iPhone | App Store: *coming soon* | iOS 15 or later. |
-| Android | Google Play: *coming soon* | Android 8.0 or later. |
+| Windows 10/11 (x64) | [Installer (.exe)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64-setup.exe) | Signed by MetaVu Co., Ltd. Includes the server. |
+| macOS (Apple silicon) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_aarch64.dmg) | Developer ID signed and notarized. Includes the server. |
+| macOS (Intel) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) | Developer ID signed and notarized. Includes the server. |
+| Linux | Coming in a later version. Until then, [build from source](docs/user-guide.md#build-from-source). | The server also runs on Linux when built from source. |
+| iPhone, iPad | App Store: *in review, coming soon* | iOS 15 or later. Includes a demo mode. |
+| Android | Google Play: *in review, coming soon* | Android 8.0 or later. Includes a demo mode. |
 
-Install the desktop app on the PC where your agents run, then pair your phone. The [user guide](docs/user-guide.md#2-install-vca) has the steps for each platform, and how to build everything from source. Before you open VCA to other devices, read [Security setup](docs/security-setup.md); the [privacy policy](docs/privacy.md) explains what stays on your machine and what leaves it.
+All files, release notes and update signatures are on the [v0.1.0 release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0).
+
+Install the desktop app on the PC where your agents run, then pair your phone: one QR code from **Settings › Connection & security › Connect a phone** pairs it (and registers it for remote access when you use DNSPilot). The [user guide](docs/user-guide.md#2-install-vca) has the steps for each platform, and how to build everything from source. Before you open VCA to other devices, read [Security setup](docs/security-setup.md); the [privacy policy](docs/privacy.md) explains what stays on your machine and what leaves it.
 
 ## Highlights
 
@@ -54,10 +63,10 @@ Install the desktop app on the PC where your agents run, then pair your phone. T
 - **Screen layout.** Arrange open terminal windows in a grid on each monitor, and save layouts to apply again.
 - **Cloud agents.** Start and follow sessions at Jules, Cursor, Devin, GitHub Copilot, Claude managed agents and Codex cloud with your own accounts.
 - **Resource broker.** CPU, memory, disk and network are monitored per session. Heavy jobs are admitted, queued, throttled or paused, automatically or by your own policies.
-- **Made for the phone.** Swipe through sessions, attach photos and files, open a locked-down remote shell (admin devices only, with an authenticator code), and pick a light, dark or black theme.
+- **Made for the phone.** Swipe through sessions, attach photos and files, open a locked-down remote shell (admin devices only, with an authenticator code), and pick a light, dark or black theme. **Try the demo** on the first screen explores the app with sample sessions before you have a PC set up. The app speaks English, Korean, Japanese and Spanish.
 - **Multiple machines.** Pair your home, office and server machines with one app.
 - **Secure remote access.** Device pairing via QR code, TOTP two-factor authentication, short-lived tokens, end-to-end encryption, audit log and a kill switch. The apps open locked and unlock with Windows Hello, Touch ID, Face ID or fingerprint.
-- **Private by design.** No VCA account, no VCA cloud, no analytics. The diagnostic log is off by default and never uploaded.
+- **Private by design.** No VCA account, no VCA cloud, no analytics. Self-hosted use sends MetaVu no personal data; optional DNSPilot is the only VCA-team service that receives any. The diagnostic log is off by default and never uploaded.
 - **Your choice of connectivity.** Pluggable providers: Tailscale, Cloudflare Tunnel, direct LAN, DNSPilot (app-mode tunnel: only the VCA app's pinned key gets in, no open ports), or bring your own.
 - **Pluggable speech-to-text.** Use any OpenAI-compatible server (for example a self-hosted Whisper server), OpenAI or Google Cloud; live dictation streams as you speak.
 - **Your own engines, no company servers.** VCA ships no speech servers and no model weights. Set up your own speech-to-text, correction LLM and text-to-speech engines (local or your own cloud account) in the desktop app, with presets and a one-click test: see [Your own speech engines](docs/speech-engines.md) and the [reference TTS server](tools/tts-server/README.md).
@@ -84,6 +93,7 @@ The core is written in Rust. The desktop and mobile apps are built with [Tauri 2
 
 **Using VCA**
 
+- [Walkthrough video](https://youtu.be/y1nxSgDrQi8) (2 minutes; [Korean](https://youtu.be/I3vdZhCmwQg))
 - [User guide](docs/user-guide.md): install, pair, talk to your agents, reach your PC
 - [Your own speech engines](docs/speech-engines.md): speech-to-text, correction LLM and text-to-speech
 - [Your own Whisper server](docs/whisper-server.md): a self-hosted speech-to-text server

@@ -5,9 +5,9 @@ All notable changes to Voice Command AI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-11-11
 
-The first public release. The desktop app for Windows (NSIS installer signed by MetaVu Co., Ltd.), macOS (Developer ID signed and notarized) on GitHub Releases, with in-app updates (Linux packages come in a later version); the iPhone app on the App Store and the Android app on Google Play.
+The first public release. The desktop app for Windows 10/11 x64 (NSIS installer signed by MetaVu Co., Ltd.) and macOS (Apple silicon and Intel, Developer ID signed and notarized) is on GitHub Releases, with in-app updates; Linux packages come in a later version. The iPhone/iPad app and the Android app are in App Store and Google Play review. Walkthrough video: https://youtu.be/y1nxSgDrQi8.
 
 ### Added
 
@@ -39,6 +39,7 @@ The first public release. The desktop app for Windows (NSIS installer signed by 
 - An Alerts menu with a count badge for every session waiting for a decision or input.
 - Exact approval alerts through optional agent hooks for Claude Code and Codex, installed, repaired and removed from the desktop app; inferred approval alerts without hooks.
 - Spoken alerts through the device voice or your own OpenAI-compatible TTS engine, a spoken status briefing, and opt-in spoken result summaries.
+- One voice at a time, in the voice you chose: when a TTS engine on the PC is selected, everything spoken (alerts, briefings, summaries, hands-free read-backs) uses that voice; the device voice is only a fallback before any PC audio starts.
 - Desktop system notifications while the app is in the background.
 
 **Command Center (the conductor)**
@@ -48,6 +49,7 @@ The first public release. The desktop app for Windows (NSIS installer signed by 
 **To-do list**
 
 - Requests that agents need you for, collected from the chat, from agents through MCP (`request_human_action`) or added by hand; reminders, snooze, export and sending the result back to the session.
+- Markdown and CSV exports on phones open the system share sheet and are also copied to the clipboard.
 
 **Windows back after a restart**
 
@@ -58,16 +60,19 @@ The first public release. The desktop app for Windows (NSIS installer signed by 
 
 - Desktop app for Windows, macOS and Linux with a bundled `vcad` and `vca`, and an in-app updater that checks GitHub Releases, verifies the signature and installs only when you confirm. See [Releasing](docs/releasing.md).
 - **Start VCA when I sign in** on the desktop (off by default).
-- iPhone and Android apps with a phone UI: session carousel, attachments, light, dark and black themes, distributed through the App Store and Google Play. Phones show alerts while the app is open; notifications while it is closed are not part of this release.
+- iPhone/iPad and Android apps with a phone UI: session carousel, attachments, light, dark and black themes, for the App Store and Google Play. Phones show alerts while the app is open; notifications while it is closed are not part of this release.
+- A demo mode in the phone app: **Try the demo** on the first screen shows sample computers and sessions without any network connection; **Exit demo** leaves it.
+- Step-by-step phone pairing with one QR code: a step card shows scanning the PC's QR code, remote access registration (when the code carries a DNSPilot invite), the 2-step verification code (only if the PC asks for one) and connecting. One QR code from **Settings › Connection & security › Connect a phone** registers the phone for remote access and pairs it; **Reconnect DNSPilot** on the PC when the code can't carry an invite. DNSPilot sign-in and the console QR fallback are under **Advanced** on the phone.
+- The Android app's native library is aligned for 16 KB memory pages.
 - App lock: the apps open locked and unlock with Windows Hello, Touch ID, Face ID, fingerprint or the device passcode, and lock again after 1 to 60 minutes without use.
 - A diagnostic log on each device (off by default, kept for 7 days, never uploaded) that you can copy and send yourself.
 - Connectivity providers: direct LAN, Tailscale, Cloudflare Tunnel, DNSPilot (app-mode tunnel) or your own.
 - Pairing several PCs with one app.
-- App languages: English, Korean, Japanese and Spanish.
+- App languages: English, Korean, Japanese and Spanish, following the device language (English otherwise); the iOS permission prompts are localized too.
 
 ### Security
 
-- One-time pairing codes (valid for 5 minutes) with a QR code, and TOTP two-factor sign-in with backup codes.
+- One-time pairing codes (valid for 60 seconds) with a QR code, and TOTP two-factor sign-in with backup codes.
 - End-to-end Noise (`XX`) encryption between each paired device and `vcad`; connectivity providers are treated as untrusted transports.
 - Per-device permissions (view, command, admin), short-lived tokens, device revocation and a kill switch.
 - Workspace allow-list (`workspace_roots`) for new sessions, remote shells, window restore and attachments.
@@ -77,7 +82,7 @@ The first public release. The desktop app for Windows (NSIS installer signed by 
 - Desktop updates are verified against the app's minisign public key before they are installed, and nothing is installed until you click.
 - Audit logs on the PC: connection and sign-in attempts, and an activity log (`audit.jsonl`) for remote shells, the conductor, window restore and arrangement, and to-do changes. Messages sent to sessions are recorded by length only, never their text; authenticator codes are never written and secrets in commands are masked.
 - Arranging windows from a paired device needs an authenticator code (or a recent step-up), like a remote window restore.
-- No analytics, tracking or crash reporting; the diagnostic log is opt-in and stays on the device. See the [privacy policy](docs/privacy.md).
+- No analytics, tracking or crash reporting; the diagnostic log is opt-in and stays on the device. Self-hosted use sends MetaVu no personal data; optional DNSPilot is the only VCA-team service that receives data. See the [privacy policy](https://vca.metavu.io/privacy).
 - Device keys and tokens kept in the OS credential store in the desktop and iOS apps.
 - A local verification approves one request, chosen by the server from that request; the grace window is 5 minutes at most and only covers flows of several requests. See [Security setup](docs/security-setup.md), including what this does not stop.
 - New backup codes and a new place for mail need the authenticator as well as the approval. Recovery needs two separate proofs and opens one operation. On computers with no OS verifier a backup code can start recovery, and the first authenticator needs a person's confirmation.
@@ -87,4 +92,4 @@ The first public release. The desktop app for Windows (NSIS installer signed by 
 - Failed sign-ins from an address no longer lock out paired devices, and connections that have not signed in have their own slots.
 - Stored engine keys only go to the address they were saved with, over https or on this computer, and never follow a redirect to another host.
 
-[0.1.0]: https://github.com/JinsongRoh/Voice-Command-AI/releases
+[0.1.0]: https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0
