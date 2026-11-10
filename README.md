@@ -70,7 +70,6 @@ Install the desktop app on the PC where your agents run, then pair your phone: o
 - **Your choice of connectivity.** Pluggable providers: Tailscale, Cloudflare Tunnel, direct LAN, DNSPilot (app-mode tunnel: only the VCA app's pinned key gets in, no open ports), or bring your own.
 - **Pluggable speech-to-text.** Use any OpenAI-compatible server (for example a self-hosted Whisper server), OpenAI or Google Cloud; live dictation streams as you speak.
 - **Your own engines, no company servers.** VCA ships no speech servers and no model weights. Set up your own speech-to-text, correction LLM and text-to-speech engines (local or your own cloud account) in the desktop app, with presets and a one-click test: see [Your own speech engines](docs/speech-engines.md) and the [reference TTS server](tools/tts-server/README.md).
-- **Account profiles.** Keep several legitimately owned agent accounts or API keys side by side, see usage at a glance, and choose which profile a session uses.
 
 ## Architecture at a glance
 

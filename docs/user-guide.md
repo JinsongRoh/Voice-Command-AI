@@ -165,7 +165,7 @@ The **Bring in** button of the session list (on a phone, pull the list down) loo
 - **Browse:** starts at your workspace roots (**Locations**). Open folders, go **Up one level** with the path at the top, filter long lists, and see which folders are **Git** repositories. On a computer, the arrow keys move between folders and Enter opens one. **Use this folder** picks the folder you are in.
 - **New folder:** type a name; the folder is created inside the chosen folder when the session starts. An existing folder of that name is used as is.
 
-Only folders inside `workspace_roots` are listed or created. You can also pick an **Account profile** and a **Display name**. For Claude Code, the session continues the last conversation in that folder (`claude -c`) unless you turn on **Start a new conversation**.
+Only folders inside `workspace_roots` are listed or created. You can also give the session a **Display name**. For Claude Code, the session continues the last conversation in that folder (`claude -c`) unless you turn on **Start a new conversation**.
 
 ### Cloud agent sessions
 
