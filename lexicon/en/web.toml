@@ -1,0 +1,232 @@
+# English base lexicon: Protocols, formats and web platform terms.
+# Format: see lexicon/README.md.
+language = "en"
+category = "web"
+
+[[entry]]
+term = "API"
+variants = ["a p i"]
+tags = ["web"]
+weight = 1.3
+
+[[entry]]
+term = "REST API"
+variants = ["rest a p i", "rest api"]
+tags = ["web"]
+
+[[entry]]
+term = "REST"
+tags = ["web"]
+weight = 0.6
+
+[[entry]]
+term = "HTTP"
+variants = ["h t t p"]
+tags = ["web"]
+
+[[entry]]
+term = "HTTPS"
+variants = ["h t t p s"]
+tags = ["web"]
+
+[[entry]]
+term = "WebSocket"
+variants = ["web socket"]
+tags = ["web"]
+weight = 1.2
+
+[[entry]]
+term = "WebRTC"
+variants = ["web r t c", "web rtc"]
+tags = ["web"]
+
+[[entry]]
+term = "JWT"
+variants = ["j w t"]
+tags = ["auth"]
+weight = 1.2
+
+[[entry]]
+term = "OAuth"
+variants = ["o auth", "oh auth"]
+tags = ["auth"]
+weight = 1.2
+
+[[entry]]
+term = "OIDC"
+variants = ["o i d c"]
+tags = ["auth"]
+
+[[entry]]
+term = "SSO"
+variants = ["s s o"]
+tags = ["auth"]
+
+[[entry]]
+term = "CORS"
+variants = ["cors", "c o r s"]
+tags = ["web"]
+
+[[entry]]
+term = "CSRF"
+variants = ["c s r f", "sea surf"]
+tags = ["web"]
+
+[[entry]]
+term = "XSS"
+variants = ["x s s"]
+tags = ["web"]
+
+[[entry]]
+term = "URL"
+variants = ["u r l"]
+tags = ["web"]
+
+[[entry]]
+term = "URI"
+variants = ["u r i"]
+tags = ["web"]
+
+[[entry]]
+term = "UUID"
+variants = ["u u i d", "you you id"]
+tags = ["web"]
+
+[[entry]]
+term = "CRUD"
+variants = ["crud"]
+tags = ["web"]
+
+[[entry]]
+term = "DOM"
+variants = ["dom"]
+tags = ["web"]
+
+[[entry]]
+term = "SSR"
+variants = ["s s r"]
+tags = ["web"]
+
+[[entry]]
+term = "SPA"
+variants = ["s p a"]
+tags = ["web"]
+
+[[entry]]
+term = "PWA"
+variants = ["p w a"]
+tags = ["web"]
+
+[[entry]]
+term = "SEO"
+variants = ["s e o"]
+tags = ["web"]
+
+[[entry]]
+term = "CLI"
+variants = ["c l i"]
+tags = ["cli"]
+weight = 1.2
+
+[[entry]]
+term = "GUI"
+variants = ["g u i", "gooey"]
+tags = ["ui"]
+
+[[entry]]
+term = "UI"
+variants = ["u i"]
+tags = ["ui"]
+weight = 1.2
+
+[[entry]]
+term = "UX"
+variants = ["u x"]
+tags = ["ui"]
+
+[[entry]]
+term = "CSV"
+variants = ["c s v"]
+tags = ["data"]
+
+[[entry]]
+term = "PDF"
+variants = ["p d f"]
+tags = ["data"]
+
+[[entry]]
+term = "SVG"
+variants = ["s v g"]
+tags = ["web"]
+
+[[entry]]
+term = "PNG"
+variants = ["p n g"]
+tags = ["data"]
+
+[[entry]]
+term = "UTF-8"
+variants = ["utf eight", "u t f 8", "u t f eight"]
+tags = ["data"]
+
+[[entry]]
+term = "ASCII"
+variants = ["ask ee", "as key"]
+tags = ["data"]
+
+[[entry]]
+term = "regex"
+variants = ["reg ex", "red jacks"]
+tags = ["data"]
+weight = 1.2
+
+[[entry]]
+term = "cron"
+tags = ["devops"]
+
+[[entry]]
+term = "stdout"
+variants = ["std out"]
+tags = ["cli"]
+
+[[entry]]
+term = "stderr"
+variants = ["std err"]
+tags = ["cli"]
+
+[[entry]]
+term = "stdin"
+variants = ["std in"]
+tags = ["cli"]
+
+[[entry]]
+term = "env var"
+variants = ["env variable"]
+tags = ["config"]
+
+[[entry]]
+term = ".env"
+variants = ["dot env", "dotenv"]
+tags = ["config"]
+weight = 1.2
+
+[[entry]]
+term = "README"
+variants = ["readme"]
+tags = ["docs"]
+weight = 1.3
+
+[[entry]]
+term = "CHANGELOG"
+variants = ["change log"]
+tags = ["docs"]
+
+[[entry]]
+term = "localhost:3000"
+variants = ["localhost three thousand", "local host three thousand"]
+tags = ["web"]
+
+[[entry]]
+term = "port 8080"
+variants = ["port eighty eighty"]
+tags = ["web"]

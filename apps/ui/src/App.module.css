@@ -1,0 +1,193 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  /* The visual viewport (set from JS) shrinks while the iOS keyboard is open. */
+  height: var(--vvh, 100dvh);
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+/* Demo: the banner on top takes the notch inset; the header and the phone
+   session bar below it do not add it again. */
+.app[data-demo] {
+  --safe-top: 0px;
+  --demo-banner-h: 36px;
+}
+/* The setup screen has no header to take the notch / status bar inset. */
+.setup {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  outline: none;
+}
+.page {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+/* Command Center: the tabs on top, the conversation (a session view) fills the rest. */
+.command {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+.app:has(.command) .main {
+  overflow: hidden;
+}
+/* Phone sessions: the session fills the screen (its top bar floats over the
+   chat); the card row, when turned on, sits inside that bar. */
+.phone {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.phoneLive {
+  flex: 1;
+  min-height: 0;
+  /* No bottom menu here: the composer clears the home indicator itself. */
+  /* The expanded editor shares the height with the top bar and the row. */
+  --composer-expanded-h: min(50dvh, max(160px, var(--vvh, 100dvh) - 320px));
+  overflow: hidden;
+}
+.app:has(.phone) .main {
+  overflow: hidden;
+}
+/* Inside a session on phones there is no header or bottom menu to clear. */
+.app[data-phone-session] .main {
+  padding-bottom: 0;
+}
+.nav {
+  position: fixed;
+  z-index: 30;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.navItem {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding-inline: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+.navItem[aria-current='page'] {
+  color: var(--accent-ink);
+}
+.navLabel {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.navIcon {
+  position: relative;
+  display: inline-flex;
+}
+.navBadge {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -14px;
+}
+/*
+ * On-screen keyboard open (phones): the bottom menu sits behind the keyboard,
+ * so its reserved space would be a blank band right above the keys, covering
+ * the composer. Drop both, and while the composer is being typed in
+ * (`data-keyboard-compact`) the session card row gives its height to the
+ * text too.
+ */
+@media (max-width: 899px) {
+  :global(html[data-keyboard='open']) .main {
+    padding-bottom: 0;
+  }
+  :global(html[data-keyboard='open']) .nav {
+    display: none;
+  }
+}
+
+/* Six menu items on a 360 px phone: a slightly smaller label still fits. */
+@media (max-width: 420px) {
+  .navItem {
+    padding-inline: 1px;
+    font-size: 11px;
+    letter-spacing: -0.01em;
+  }
+}
+
+@media (min-width: 900px) {
+  .app {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .app > header {
+    grid-column: 1 / -1;
+  }
+  /* The pairing screen has no header or menu: keep it one full-width column
+     (otherwise it lands in the 88 px menu column on tablets in landscape). */
+  .app.setup {
+    display: flex;
+    flex-direction: column;
+  }
+  .nav {
+    position: static;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    height: auto;
+    padding: 12px 0;
+    border-top: 0;
+    border-inline-end: 1px solid var(--border);
+  }
+  .navItem {
+    flex: none;
+    height: 64px;
+  }
+  .main {
+    padding-bottom: 0;
+  }
+  .split {
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) 1fr;
+    height: 100%;
+    min-height: 0;
+  }
+  .deckPane {
+    padding: 16px;
+    overflow-y: auto;
+    border-inline-end: 1px solid var(--border);
+  }
+  .livePane {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .app:has(.split) .main {
+    overflow: hidden;
+  }
+}

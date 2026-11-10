@@ -1,0 +1,76 @@
+[package]
+name = "vca-server"
+description = "Voice Command AI server daemon (vcad)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+directories = "6.0.0"
+futures.workspace = true
+# Step-up tokens, mailed recovery codes (security::*).
+getrandom = "0.4.3"
+interprocess = { version = "2.4.7", features = ["tokio"] }
+sysinfo = "0.36.1"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-tungstenite = "0.28.0"
+tokio-util = { version = "0.7.20", features = ["codec"] }
+toml = "1.1.8"
+# Engine setup edits config.toml in place, keeping comments and layout.
+toml_edit = "0.25"
+# Security notifications and recovery codes by mail (security::mail): SMTP
+# with rustls, or an HTTP relay.
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+sha2 = "0.11.0"
+subtle = "2.6.1"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+vca-adapters.workspace = true
+vca-broker.workspace = true
+vca-cloud.workspace = true
+vca-net.workspace = true
+vca-providers.workspace = true
+vca-core.workspace = true
+vca-pty.workspace = true
+vca-speech.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "vcad"
+path = "src/main.rs"
+
+[target."cfg(unix)".dependencies]
+nix = { version = "0.31.3", features = ["user", "fs"] }
+
+[target."cfg(windows)".dependencies]
+widestring = "1.2.1"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_Environment", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
+# COM (IShellLinkW + IPersistFile) for the restore shortcuts, known folders
+# and ShellExecuteExW for the administrator shell. Same version sysinfo uses.
+windows = { version = "0.61.3", features = ["Foundation", "Security_Credentials_UI", "Win32_Foundation", "Win32_System_Com", "Win32_System_Registry", "Win32_System_WinRT", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+# Waiting on the Windows Hello prompt (security::verifier, IAsyncOperation).
+windows-future = "0.2.1"
+
+# Local user verification with Touch ID or the login password
+# (security::verifier, LocalAuthentication).
+[target."cfg(target_os = \"macos\")".dependencies]
+block2 = "0.6.2"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSError", "NSString"] }
+objc2-local-authentication = { version = "0.3.2", default-features = false, features = ["std", "block2", "LAContext", "LAError"] }
+
+[dev-dependencies]
+data-encoding = "2.11.1"
+tempfile = "3.27.0"
+wiremock = "0.6.5"

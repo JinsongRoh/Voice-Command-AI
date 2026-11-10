@@ -1,0 +1,7 @@
+# Runtime dependencies of the reference speech-to-text server.
+# After a working install, pin exact versions with:
+#   venv/bin/pip freeze > requirements.lock
+faster-whisper>=1.1,<2
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9

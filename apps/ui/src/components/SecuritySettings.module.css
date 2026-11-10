@@ -1,0 +1,256 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.box > p {
+  margin: 0;
+}
+.help {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.success {
+  margin: 0;
+  color: var(--accent-text);
+}
+.warning {
+  margin: 0;
+  color: var(--danger-text);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linkButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Status list: one row per protection, a badge on the right. */
+.status {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.statusRow + .statusRow {
+  border-top: 1px solid var(--border);
+}
+.statusText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.statusLabel {
+  font-weight: var(--fw-semibold);
+}
+.statusValue {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.statusDetail {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.badge {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.badgeOk {
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.badgeWarn {
+  color: var(--st-decision);
+  background: var(--st-decision-bg);
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.settingRow > div {
+  min-width: 0;
+}
+.settingRow select {
+  width: auto;
+  flex: none;
+}
+
+/* Inline panels (authenticator setup, backup codes). */
+.panelBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.panelBox > p {
+  margin: 0;
+}
+.qrRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.qr {
+  width: 200px;
+  height: 200px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: #fff;
+}
+.secret {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+}
+.secret code {
+  font-family: var(--mono);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.form input {
+  max-width: 18ch;
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+}
+.codesBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.codesBox > p {
+  margin: 0;
+}
+.codes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12ch, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+  padding: 12px 14px;
+  list-style: none;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 15px;
+  user-select: all;
+}
+
+/* Mail form. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 16px;
+}
+.mailField input[readonly],
+.mailField select:disabled {
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.fieldHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.fieldHead label,
+.fieldHead :global(.label) {
+  margin: 0;
+}
+.preset,
+.savedChip {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.preset {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.savedChip {
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.fieldset legend {
+  padding: 0 4px;
+  font-weight: var(--fw-semibold);
+}
+.indent {
+  margin-left: 24px;
+}
+
+@media (max-width: 520px) {
+  .settingRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

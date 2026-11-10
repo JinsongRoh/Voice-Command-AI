@@ -1,0 +1,105 @@
+.wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wizard > p {
+  margin: 0;
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+}
+.steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 3px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  min-width: 0;
+}
+.steps li.past {
+  border-top-color: var(--accent-soft);
+}
+.steps li.current {
+  border-top-color: var(--accent);
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+}
+.num {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.stepLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stepTitle {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+.big {
+  align-self: flex-start;
+  min-height: 44px;
+  padding-inline: 18px;
+}
+.note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+.success {
+  margin: 0;
+  color: var(--accent-text);
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.spacer {
+  flex: 1;
+}
+
+/* The gentle reminder after "Later": small, at the top right, dismissible. */
+.banner {
+  position: fixed;
+  z-index: 40;
+  top: calc(var(--header-h, 56px) + 10px);
+  right: 12px;
+  left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(440px, calc(100vw - 24px));
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+.banner > svg {
+  flex: none;
+  color: var(--st-decision);
+}
+.bannerText {
+  flex: 1;
+  min-width: 0;
+}

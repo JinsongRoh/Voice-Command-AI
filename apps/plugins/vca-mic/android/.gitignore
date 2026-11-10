@@ -1,0 +1,3 @@
+/build
+# Copied here by the plugin's build script (tauri-plugin).
+/.tauri

@@ -1,0 +1,109 @@
+name: Bug report
+description: Something in Voice Command AI does not work as described.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **Security problems:** do not report them here. Use [private vulnerability reporting](https://github.com/JinsongRoh/Voice-Command-AI/security/advisories/new) instead.
+
+        **Before you paste anything, remove secrets and personal data:** authenticator or backup codes, pairing links (`vca://pair?...`), tokens and API keys, DNSPilot codes, private keys, and personal paths, user names, machine names, hostnames and IP addresses. Replace them with placeholders such as `<token>` or `~/code/project`.
+  - type: input
+    id: version
+    attributes:
+      label: VCA version
+      description: The desktop app shows it in Settings. For a build from source, give the commit (`git rev-parse --short HEAD`).
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system of the PC running vcad
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version
+      placeholder: "Windows 11 24H2, macOS 15.5, Ubuntu 24.04, ..."
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      description: Which agent session is affected?
+      multiple: true
+      options:
+        - Claude Code
+        - Codex
+        - Gemini CLI
+        - Google Antigravity
+        - Grok
+        - Cursor CLI
+        - Copilot CLI
+        - Other or generic command
+        - Remote shell
+        - The conductor
+        - Not agent related
+  - type: input
+    id: agent_version
+    attributes:
+      label: Agent version
+      placeholder: "claude --version, codex --version, ..."
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device where you see the problem
+      multiple: true
+      options:
+        - Desktop app on the same PC
+        - Desktop app on another computer
+        - iPhone or iPad
+        - Android
+        - vca CLI
+    validations:
+      required: true
+  - type: input
+    id: connection
+    attributes:
+      label: Connection
+      description: How the device reaches the PC, if relevant.
+      placeholder: "same PC, LAN, Tailscale, Cloudflare Tunnel, DNSPilot, custom"
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant output of `vcad`, `vca` or the app. Remove tokens, codes, keys and paths first. Do not attach the full audit log.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed tokens, codes, keys, personal paths, hostnames and IP addresses from this report.
+          required: true
+        - label: I searched the existing issues and the user guide's troubleshooting section.
+          required: true

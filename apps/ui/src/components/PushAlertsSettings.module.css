@@ -1,0 +1,46 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.note {
+  margin: 0;
+  font-size: 13px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.code {
+  font-family: var(--font-mono, monospace);
+  font-size: 22px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+.phones {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.phone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.phoneName {
+  font-weight: var(--fw-semibold);
+}
+.phoneState {
+  font-size: 13px;
+}

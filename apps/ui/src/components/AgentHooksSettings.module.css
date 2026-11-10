@@ -1,0 +1,85 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.box > p {
+  margin: 0;
+}
+.note {
+  font-size: 13px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.notice {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.agents {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.agent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.name {
+  font-weight: var(--fw-semibold);
+}
+.state {
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.installed {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.outdated,
+.other_path {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.path {
+  margin: 0;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+}
+.help {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.explain {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

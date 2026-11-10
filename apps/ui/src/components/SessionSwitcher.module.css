@@ -1,0 +1,11 @@
+/* The deck's category filter, above the search box of the switcher sheet. */
+.filters {
+  margin-bottom: var(--space-3);
+  overflow-x: auto;
+  max-width: 100%;
+}
+@media (pointer: coarse) {
+  .filters button {
+    min-height: 44px;
+  }
+}

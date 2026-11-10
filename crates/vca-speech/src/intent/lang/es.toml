@@ -1,0 +1,43 @@
+# Spanish intent table. See en.toml for the format.
+language = "es"
+
+session_words = ["sesión", "sesion", "sesiones", "terminal", "pestaña", "tarjeta", "agente"]
+current_words = ["esta", "este", "actual", "esta sesión"]
+template_words = ["plantilla", "macro"]
+fillers = [
+    "por favor", "la", "el", "los", "las", "a", "al", "de", "del", "número", "numero", "ahora",
+    "ya", "puedes", "podrías", "oye", "vale", "me", "otra vez", "favor", "gracias",
+]
+
+[actions]
+select = ["cambia a", "cambiar a", "ve a", "ir a", "selecciona", "seleccionar", "abre", "abrir", "enfoca"]
+pause = ["pausa", "pausar", "pausa la", "suspende", "suspender"]
+resume = ["reanuda", "reanudar", "continúa", "continua", "continuar", "despausa"]
+stop = ["detén", "deten", "detener", "para", "parar", "termina", "terminar", "mata", "cierra"]
+restart = ["reinicia", "reiniciar", "relanza", "volver a empezar"]
+show_resources = ["recursos", "muestra los recursos", "mostrar recursos", "uso de recursos", "uso de cpu", "uso de memoria", "estado del sistema"]
+approve = ["aprueba", "aprobar", "sí", "si", "permite", "permitir", "acepta", "aceptar", "confirma"]
+deny = ["deniega", "denegar", "rechaza", "rechazar", "no permitas", "niega"]
+read_last_output = ["lee la última salida", "lee la ultima salida", "última salida", "ultima salida", "lee el resultado", "léelo", "qué dijo", "que dijo"]
+run_template = ["ejecuta la plantilla", "ejecutar plantilla", "usa la plantilla", "corre la plantilla"]
+
+[numbers]
+"uno" = 1
+"una" = 1
+"dos" = 2
+"tres" = 3
+"cuatro" = 4
+"cinco" = 5
+"seis" = 6
+"siete" = 7
+"ocho" = 8
+"nueve" = 9
+"diez" = 10
+"primera" = 1
+"primero" = 1
+"segunda" = 2
+"segundo" = 2
+"tercera" = 3
+"tercero" = 3
+"cuarta" = 4
+"quinta" = 5

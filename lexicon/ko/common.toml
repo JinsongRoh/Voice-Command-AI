@@ -1,0 +1,404 @@
+# Korean spoken forms (hangul) of common developer terms.
+# Spoken variants only; categories and tags come from the English entries.
+# Format: see lexicon/README.md.
+language = "ko"
+
+[[entry]]
+term = "JavaScript"
+variants = ["자바스크립트", "자바 스크립트"]
+
+[[entry]]
+term = "TypeScript"
+variants = ["타입스크립트", "타입 스크립트"]
+
+[[entry]]
+term = "Python"
+variants = ["파이썬"]
+
+[[entry]]
+term = "Rust"
+variants = ["러스트"]
+
+[[entry]]
+term = "Go"
+variants = ["고랭", "고 언어"]
+
+[[entry]]
+term = "Java"
+variants = ["자바"]
+
+[[entry]]
+term = "Kotlin"
+variants = ["코틀린"]
+
+[[entry]]
+term = "Swift"
+variants = ["스위프트"]
+
+[[entry]]
+term = "C++"
+variants = ["씨플플", "씨쁠쁠", "시플플"]
+
+[[entry]]
+term = "C#"
+variants = ["씨샵", "씨샾"]
+
+[[entry]]
+term = "Ruby"
+variants = ["루비"]
+
+[[entry]]
+term = "PHP"
+variants = ["피에이치피"]
+
+[[entry]]
+term = "React"
+variants = ["리액트"]
+
+[[entry]]
+term = "Next.js"
+variants = ["넥스트 제이에스", "넥스트js"]
+
+[[entry]]
+term = "Vue.js"
+variants = ["뷰 제이에스", "뷰js"]
+
+[[entry]]
+term = "Node.js"
+variants = ["노드 제이에스", "노드js"]
+
+[[entry]]
+term = "Tailwind CSS"
+variants = ["테일윈드"]
+
+[[entry]]
+term = "Django"
+variants = ["장고"]
+
+[[entry]]
+term = "FastAPI"
+variants = ["패스트 에이피아이", "패스트api"]
+
+[[entry]]
+term = "PyTorch"
+variants = ["파이토치"]
+
+[[entry]]
+term = "TensorFlow"
+variants = ["텐서플로", "텐서플로우"]
+
+[[entry]]
+term = "NumPy"
+variants = ["넘파이"]
+
+[[entry]]
+term = "pandas"
+variants = ["판다스"]
+
+[[entry]]
+term = "Docker"
+variants = ["도커"]
+
+[[entry]]
+term = "Docker Compose"
+variants = ["도커 컴포즈"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["쿠버네티스", "쿠베르네티스"]
+
+[[entry]]
+term = "kubectl"
+variants = ["쿠브컨트롤", "큐브컨트롤", "쿠브 컨트롤", "큐브 컨트롤", "쿠베씨티엘", "쿠브씨티엘"]
+
+[[entry]]
+term = "Terraform"
+variants = ["테라폼"]
+
+[[entry]]
+term = "GitHub"
+variants = ["깃허브", "깃헙"]
+
+[[entry]]
+term = "GitLab"
+variants = ["깃랩"]
+
+[[entry]]
+term = "Git"
+variants = ["깃"]
+
+[[entry]]
+term = "git commit"
+variants = ["깃 커밋"]
+
+[[entry]]
+term = "git push"
+variants = ["깃 푸시"]
+
+[[entry]]
+term = "pull request"
+variants = ["풀 리퀘스트", "풀리퀘스트", "풀리퀘"]
+
+[[entry]]
+term = "PR"
+variants = ["피알"]
+
+[[entry]]
+term = "rebase"
+variants = ["리베이스"]
+
+[[entry]]
+term = "cherry-pick"
+variants = ["체리픽"]
+
+[[entry]]
+term = "VS Code"
+variants = ["브이에스 코드", "비주얼 스튜디오 코드", "브이에스코드"]
+
+[[entry]]
+term = "Neovim"
+variants = ["네오빔"]
+
+[[entry]]
+term = "npm"
+variants = ["엔피엠"]
+
+[[entry]]
+term = "pnpm"
+variants = ["피엔피엠"]
+
+[[entry]]
+term = "Yarn"
+variants = ["얀"]
+
+[[entry]]
+term = "Cargo"
+variants = ["카고"]
+
+[[entry]]
+term = "pytest"
+variants = ["파이테스트"]
+
+[[entry]]
+term = "ESLint"
+variants = ["이에스린트"]
+
+[[entry]]
+term = "Prettier"
+variants = ["프리티어"]
+
+[[entry]]
+term = "Claude Code"
+variants = ["클로드 코드", "클로드코드"]
+
+[[entry]]
+term = "Claude"
+variants = ["클로드"]
+
+[[entry]]
+term = "Codex"
+variants = ["코덱스"]
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["제미나이 씨엘아이", "제미나이 cli"]
+
+[[entry]]
+term = "Gemini"
+variants = ["제미나이", "제미니"]
+
+[[entry]]
+term = "Antigravity"
+variants = ["안티그래비티"]
+
+[[entry]]
+term = "Grok"
+variants = ["그록"]
+
+[[entry]]
+term = "GitHub Copilot"
+variants = ["코파일럿"]
+
+[[entry]]
+term = "OpenAI"
+variants = ["오픈 에이아이", "오픈ai"]
+
+[[entry]]
+term = "ChatGPT"
+variants = ["챗지피티", "챗gpt"]
+
+[[entry]]
+term = "MCP"
+variants = ["엠씨피"]
+
+[[entry]]
+term = "LLM"
+variants = ["엘엘엠"]
+
+[[entry]]
+term = "API"
+variants = ["에이피아이"]
+
+[[entry]]
+term = "JSON"
+variants = ["제이슨"]
+
+[[entry]]
+term = "YAML"
+variants = ["야믈", "얌엘"]
+
+[[entry]]
+term = "README"
+variants = ["리드미"]
+
+[[entry]]
+term = "useEffect"
+variants = ["유즈 이펙트", "유즈이펙트"]
+
+[[entry]]
+term = "useState"
+variants = ["유즈 스테이트", "유즈스테이트"]
+
+[[entry]]
+term = "async"
+variants = ["어싱크", "에이싱크"]
+
+[[entry]]
+term = "WebSocket"
+variants = ["웹소켓"]
+
+[[entry]]
+term = "PostgreSQL"
+variants = ["포스트그레스큐엘", "포스트그레"]
+
+[[entry]]
+term = "MySQL"
+variants = ["마이에스큐엘"]
+
+[[entry]]
+term = "SQLite"
+variants = ["에스큐엘라이트"]
+
+[[entry]]
+term = "MongoDB"
+variants = ["몽고디비", "몽고db"]
+
+[[entry]]
+term = "Redis"
+variants = ["레디스"]
+
+[[entry]]
+term = "nginx"
+variants = ["엔진엑스"]
+
+[[entry]]
+term = "AWS"
+variants = ["에이더블유에스"]
+
+[[entry]]
+term = "Vercel"
+variants = ["버셀"]
+
+[[entry]]
+term = "Supabase"
+variants = ["수파베이스"]
+
+[[entry]]
+term = "Firebase"
+variants = ["파이어베이스"]
+
+[[entry]]
+term = "Cloudflare"
+variants = ["클라우드플레어"]
+
+[[entry]]
+term = "localhost"
+variants = ["로컬호스트"]
+
+[[entry]]
+term = "GraphQL"
+variants = ["그래프큐엘"]
+
+[[entry]]
+term = "gRPC"
+variants = ["지알피씨"]
+
+[[entry]]
+term = "Tauri"
+variants = ["타우리"]
+
+[[entry]]
+term = "Electron"
+variants = ["일렉트론"]
+
+[[entry]]
+term = "Flutter"
+variants = ["플러터"]
+
+[[entry]]
+term = "Playwright"
+variants = ["플레이라이트"]
+
+[[entry]]
+term = "Jest"
+variants = ["제스트"]
+
+[[entry]]
+term = "Webpack"
+variants = ["웹팩"]
+
+[[entry]]
+term = "Homebrew"
+variants = ["홈브루"]
+
+[[entry]]
+term = "tmux"
+variants = ["티먹스"]
+
+[[entry]]
+term = "WSL"
+variants = ["더블유에스엘"]
+
+[[entry]]
+term = "Ollama"
+variants = ["올라마"]
+
+[[entry]]
+term = "Hugging Face"
+variants = ["허깅페이스", "허깅 페이스"]
+
+[[entry]]
+term = "LangChain"
+variants = ["랭체인"]
+
+[[entry]]
+term = "Serde"
+variants = ["서데"]
+
+[[entry]]
+term = "Svelte"
+variants = ["스벨트"]
+
+[[entry]]
+term = "Angular"
+variants = ["앵귤러"]
+
+[[entry]]
+term = "Spring Boot"
+variants = ["스프링 부트"]
+
+[[entry]]
+term = "Ubuntu"
+variants = ["우분투"]
+
+[[entry]]
+term = "Linux"
+variants = ["리눅스"]
+
+[[entry]]
+term = "macOS"
+variants = ["맥오에스"]
+
+[[entry]]
+term = "Android"
+variants = ["안드로이드"]

@@ -1,0 +1,178 @@
+.panel,
+.bare {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel {
+  padding: 14px 16px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.bare .head {
+  justify-content: flex-end;
+}
+.count {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  margin: 0;
+  font-size: 13px;
+}
+.error {
+  margin: 0 0 8px;
+  color: var(--danger);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  border-bottom: 1px solid var(--border);
+}
+.item:last-child {
+  border-bottom: 0;
+}
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.badge,
+.selected {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.badge {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.selected {
+  color: var(--st-done);
+  background: var(--st-done-bg);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.state[data-state='connected'] {
+  color: var(--st-done);
+}
+.state[data-state='connected'] .dot {
+  background: var(--st-done);
+}
+.state[data-state='connecting'] .dot,
+.state[data-state='reconnecting'] .dot {
+  background: var(--st-input);
+}
+.state[data-state='login_required'] {
+  color: var(--danger);
+}
+.state[data-state='login_required'] .dot {
+  background: var(--danger);
+}
+.order {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+.order :global(.icon-btn) {
+  width: 44px;
+  height: 44px;
+}
+.aliasForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.aliasForm :global(.field) {
+  align-self: stretch;
+  margin-bottom: 8px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.subhead {
+  margin: 14px 0 6px;
+  font-size: 15px;
+}
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+.details dt {
+  color: var(--text-muted);
+}
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--mono);
+}

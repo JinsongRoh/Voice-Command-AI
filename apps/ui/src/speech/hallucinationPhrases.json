@@ -1,0 +1,60 @@
+{
+  "note": "Stock phrases Whisper invents on silence or noise (YouTube-trained data). Shared by vca_speech::cleanup (Rust), apps/ui/src/speech/hallucinations.ts and tools/stt-server. Matching ignores case, punctuation and spacing. A '*' stands for a short free part (a name); a phrase is only ever removed when it is a whole segment or a whole chunk.",
+  "phrases": {
+    "ko": [
+      "감사합니다",
+      "시청해 주셔서 감사합니다",
+      "구독과 좋아요 부탁드립니다",
+      "구독과 좋아요 알림설정 부탁드립니다",
+      "다음 영상에서 만나요",
+      "MBC 뉴스 * 입니다",
+      "자막 제공 *"
+    ],
+    "en": [
+      "Thank you",
+      "Thanks for watching",
+      "Thank you for watching",
+      "Please subscribe",
+      "Please like and subscribe",
+      "See you in the next video",
+      "Subtitles by the Amara.org community"
+    ],
+    "ja": [
+      "ご視聴ありがとうございました",
+      "ご視聴ありがとうございます",
+      "最後までご視聴いただきありがとうございました",
+      "チャンネル登録お願いします"
+    ],
+    "es": [
+      "¡Gracias por ver!",
+      "Gracias por ver el video",
+      "Subtítulos realizados por *",
+      "Subtítulos por la comunidad de Amara.org"
+    ]
+  },
+  "cases": [
+    { "text": "감사합니다.", "phrase": true },
+    { "text": " 감사합니다 ", "phrase": true },
+    { "text": "시청해주셔서 감사합니다!", "phrase": true },
+    { "text": "구독과 좋아요 부탁드립니다.", "phrase": true },
+    { "text": "다음 영상에서 만나요~", "phrase": true },
+    { "text": "MBC 뉴스 김철수입니다.", "phrase": true },
+    { "text": "자막 제공 배달의민족", "phrase": true },
+    { "text": "Thank you.", "phrase": true },
+    { "text": "THANKS FOR WATCHING!", "phrase": true },
+    { "text": "Please subscribe", "phrase": true },
+    { "text": "ご視聴ありがとうございました。", "phrase": true },
+    { "text": "「ご視聴ありがとうございました」", "phrase": true },
+    { "text": "¡Gracias por ver!", "phrase": true },
+    { "text": "Subtítulos realizados por la comunidad de Amara.org", "phrase": true },
+    { "text": "도와주셔서 감사합니다 다음 작업 진행해", "phrase": false },
+    { "text": "감사합니다 로그인 버그 고쳐줘", "phrase": false },
+    { "text": "로그인 고쳐줘 감사합니다", "phrase": false },
+    { "text": "Thank you for fixing the login bug.", "phrase": false },
+    { "text": "Thank you, now run the tests", "phrase": false },
+    { "text": "감사합니다 감사합니다", "phrase": false },
+    { "text": "자막", "phrase": false },
+    { "text": "MBC 뉴스", "phrase": false },
+    { "text": "", "phrase": false }
+  ]
+}

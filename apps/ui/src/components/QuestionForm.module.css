@@ -1,0 +1,146 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.card {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  min-width: 0;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.header {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+.check {
+  color: var(--accent-ink);
+  font-weight: var(--fw-semibold);
+}
+.question {
+  margin: 6px 0;
+  font-weight: var(--fw-semibold);
+  overflow-wrap: anywhere;
+}
+.hint {
+  margin: -2px 0 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.option:hover {
+  border-color: var(--border-strong);
+}
+.option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.option[data-selected='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mark {
+  flex: none;
+  width: 1.2em;
+  color: var(--accent-ink);
+}
+.optionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.optionLabel {
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+.recommended {
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  vertical-align: 1px;
+}
+.description {
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.other {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.other input {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.otherLabel {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.progress {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: var(--fw-semibold);
+}
+.errorDetail {
+  font-weight: var(--fw-regular);
+}
+.form[data-compact='true'] .card {
+  padding: 8px 10px;
+}
+.form[data-compact='true'] .option {
+  min-height: 40px;
+  padding: 6px 8px;
+}

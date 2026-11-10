@@ -1,0 +1,127 @@
+/* Settings › Voice: the dictation button animation picker. */
+.help {
+  margin: 0;
+  font-size: 13px;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.summary .text {
+  flex: 1;
+}
+.toggle {
+  flex: none;
+}
+.groups[hidden] {
+  display: none;
+}
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+.option:hover {
+  border-color: var(--border-strong);
+}
+.option[data-selected] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
+}
+/* The radio is drawn by the card: its focus ring goes around the card. */
+.option:has(.radio:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.radio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+/* The mini dictation button: the composer's Deep Navy plate. */
+.preview {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--brand-navy);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-cyan) 30%, transparent);
+  pointer-events: none;
+}
+.option[data-active] .preview {
+  box-shadow:
+    0 0 0 2px var(--brand-cyan),
+    0 4px 12px color-mix(in srgb, var(--brand-cyan) 30%, transparent);
+}
+.previewLogo {
+  width: 24px;
+}
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: var(--fw-semibold);
+  font-size: 14px;
+}
+.code {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}

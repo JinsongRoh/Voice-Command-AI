@@ -1,0 +1,271 @@
+# English base lexicon: AI coding agents, models and LLM terms.
+# Format: see lexicon/README.md.
+language = "en"
+category = "ai"
+
+[[entry]]
+term = "Claude Code"
+variants = ["cloud code", "clod code", "claude cold", "claud code", "clawed code"]
+tags = ["agent"]
+weight = 2.0
+
+[[entry]]
+term = "Claude"
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "Anthropic"
+variants = ["anthropic", "and tropic"]
+tags = ["agent"]
+weight = 1.2
+
+[[entry]]
+term = "Codex"
+variants = ["code x", "codecs agent"]
+tags = ["agent"]
+weight = 1.8
+
+[[entry]]
+term = "Codex CLI"
+variants = ["codex c l i", "codecs c l i", "codecs cli", "codex cli"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["gemini c l i", "jim and i c l i", "gemini cli"]
+tags = ["agent"]
+weight = 1.8
+
+[[entry]]
+term = "Gemini"
+variants = ["jemini"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "Antigravity"
+variants = ["anti gravity"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "Grok"
+variants = ["grock", "grok cli"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "Cursor"
+tags = ["agent"]
+weight = 1.2
+
+[[entry]]
+term = "GitHub Copilot"
+variants = ["git hub copilot", "github co pilot"]
+tags = ["agent"]
+weight = 1.2
+
+[[entry]]
+term = "Copilot"
+variants = ["co pilot"]
+tags = ["agent"]
+
+[[entry]]
+term = "Aider"
+variants = ["ader", "aid er"]
+tags = ["agent"]
+
+[[entry]]
+term = "Windsurf"
+variants = ["wind surf"]
+tags = ["agent"]
+
+[[entry]]
+term = "Cline"
+variants = ["c line"]
+tags = ["agent"]
+
+[[entry]]
+term = "Roo Code"
+variants = ["roo code", "rue code"]
+tags = ["agent"]
+
+[[entry]]
+term = "OpenCode"
+tags = ["agent"]
+
+[[entry]]
+term = "Amp"
+tags = ["agent"]
+weight = 0.5
+
+[[entry]]
+term = "Devin"
+tags = ["agent"]
+
+[[entry]]
+term = "Jules"
+tags = ["agent"]
+
+[[entry]]
+term = "Kiro"
+variants = ["kee ro"]
+tags = ["agent"]
+
+[[entry]]
+term = "OpenAI"
+variants = ["open ai", "open a i"]
+tags = ["ai"]
+weight = 1.3
+
+[[entry]]
+term = "ChatGPT"
+variants = ["chat gpt", "chat g p t"]
+tags = ["ai"]
+weight = 1.3
+
+[[entry]]
+term = "GPT"
+variants = ["g p t"]
+tags = ["ai"]
+weight = 1.2
+
+[[entry]]
+term = "o3"
+variants = ["o three"]
+tags = ["ai"]
+
+[[entry]]
+term = "Sonnet"
+tags = ["ai"]
+weight = 1.2
+
+[[entry]]
+term = "Opus"
+tags = ["ai"]
+weight = 1.2
+
+[[entry]]
+term = "Haiku"
+tags = ["ai"]
+
+[[entry]]
+term = "Llama"
+tags = ["ai"]
+
+[[entry]]
+term = "Ollama"
+variants = ["o llama", "oh llama"]
+tags = ["ai"]
+weight = 1.2
+
+[[entry]]
+term = "Mistral"
+tags = ["ai"]
+
+[[entry]]
+term = "DeepSeek"
+variants = ["deep seek"]
+tags = ["ai"]
+
+[[entry]]
+term = "Qwen"
+variants = ["qwen", "chwen", "kwen"]
+tags = ["ai"]
+
+[[entry]]
+term = "Whisper"
+tags = ["ai"]
+
+[[entry]]
+term = "MCP"
+variants = ["m c p"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "MCP server"
+variants = ["m c p server"]
+tags = ["agent"]
+weight = 1.2
+
+[[entry]]
+term = "LLM"
+variants = ["l l m"]
+tags = ["ai"]
+weight = 1.3
+
+[[entry]]
+term = "RAG"
+variants = ["r a g"]
+tags = ["ai"]
+
+[[entry]]
+term = "embedding"
+tags = ["ai"]
+weight = 0.6
+
+[[entry]]
+term = "vector database"
+variants = ["vector db"]
+tags = ["ai"]
+
+[[entry]]
+term = "prompt"
+tags = ["ai"]
+weight = 0.5
+
+[[entry]]
+term = "system prompt"
+tags = ["ai"]
+
+[[entry]]
+term = "token"
+tags = ["ai"]
+weight = 0.4
+
+[[entry]]
+term = "context window"
+tags = ["ai"]
+
+[[entry]]
+term = "CLAUDE.md"
+variants = ["claude md", "claude dot md", "cloud md", "cloud dot md"]
+tags = ["agent"]
+weight = 1.5
+
+[[entry]]
+term = "AGENTS.md"
+variants = ["agents md", "agents dot md"]
+tags = ["agent"]
+weight = 1.2
+
+[[entry]]
+term = "GEMINI.md"
+variants = ["gemini md", "gemini dot md"]
+tags = ["agent"]
+
+[[entry]]
+term = "slash command"
+tags = ["agent"]
+
+[[entry]]
+term = "subagent"
+variants = ["sub agent"]
+tags = ["agent"]
+
+[[entry]]
+term = "hooks"
+tags = ["agent"]
+weight = 0.5
+
+[[entry]]
+term = "plan mode"
+tags = ["agent"]
+
+[[entry]]
+term = "YOLO mode"
+variants = ["yolo mode"]
+tags = ["agent"]

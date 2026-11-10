@@ -1,0 +1,56 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/vca-core",
+    "crates/vca-pty",
+    "crates/vca-adapters",
+    "crates/vca-broker",
+    "crates/vca-speech",
+    "crates/vca-net",
+    "crates/vca-providers",
+    "crates/vca-cloud",
+    "crates/vca-server",
+    "crates/vca-cli",
+    "crates/vca-client",
+    "tools/vca-fake-agent",
+]
+# The Tauri shells are a separate workspace (apps/Cargo.toml).
+exclude = ["apps"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/JinsongRoh/Voice-Command-AI"
+authors = ["Voice Command AI contributors"]
+
+[workspace.dependencies]
+vca-core = { path = "crates/vca-core" }
+vca-pty = { path = "crates/vca-pty" }
+vca-adapters = { path = "crates/vca-adapters" }
+vca-broker = { path = "crates/vca-broker" }
+vca-speech = { path = "crates/vca-speech" }
+vca-net = { path = "crates/vca-net" }
+vca-providers = { path = "crates/vca-providers" }
+vca-cloud = { path = "crates/vca-cloud" }
+vca-client = { path = "crates/vca-client" }
+
+anyhow = "1"
+bytes = "1"
+futures = "0.3"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rmp-serde = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

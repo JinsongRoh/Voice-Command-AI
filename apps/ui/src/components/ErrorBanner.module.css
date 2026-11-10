@@ -1,0 +1,69 @@
+.banner {
+  margin: var(--space-1) var(--space-3) 0;
+  padding: var(--bar-pad) var(--space-1) var(--bar-pad) var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.message {
+  flex: 1;
+  min-width: 0;
+}
+.details {
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.close:hover {
+  background: rgb(0 0 0 / 6%);
+}
+.detail {
+  margin: 4px 0 2px;
+  max-height: 6em;
+  overflow-y: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Touch: the close button keeps its look and takes a 44 px tap. */
+.close {
+  position: relative;
+}
+@media (pointer: coarse) {
+  .close::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--hit-min);
+    height: var(--hit-min);
+    transform: translate(-50%, -50%);
+  }
+}

@@ -1,0 +1,264 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 900px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.title {
+  margin: 0;
+  font-size: 20px;
+}
+.machine {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+.subtitle {
+  margin: 0;
+  font-size: 15px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.profile,
+.delay {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.profile {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+}
+.notice {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger, #c0392b);
+}
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.entries,
+.items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.entry:first-child {
+  border-top: 0;
+}
+.entry[data-enabled='false'] .entryMain {
+  opacity: 0.6;
+}
+.pick {
+  margin-top: 3px;
+}
+.entryMain {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.entryTitle {
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.folder {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chip {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.chip[data-open='true'] {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+.entryActions {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.item:first-child {
+  border-top: 0;
+}
+.itemMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.itemTitle {
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.command {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.status {
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+.item[data-status='placed'] .status {
+  color: var(--accent-ink);
+}
+.item[data-status='failed'] .status {
+  color: var(--danger, #c0392b);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.delay {
+  max-width: 120px;
+}
+
+@media (min-width: 900px) {
+  .entry {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .entryActions {
+    grid-column: 3;
+    flex-wrap: nowrap;
+  }
+}
+
+/* Tabs: "Save & restore windows" and "Session order" are separate features. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-block: 4px 12px;
+  overflow-x: auto;
+}
+.tab {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .tab {
+    min-height: 44px;
+  }
+}
+.tabPanel {
+  display: grid;
+  gap: 12px;
+}
+.tabHint {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.tabHint > svg {
+  flex: none;
+  margin-top: 3px;
+}

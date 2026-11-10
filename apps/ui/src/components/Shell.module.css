@@ -1,0 +1,269 @@
+/* Remote shell pieces: code prompt, "Run in shell" sheet, badges, countdown. */
+
+/* ---- Authenticator code prompt ---- */
+.totp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.totpLead {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+}
+.totpInput {
+  width: 100%;
+  max-width: 15ch;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.35em;
+  text-align: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+/* Backup codes are 19 characters: smaller type, no wide tracking. */
+.backupInput {
+  max-width: 24ch;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+.totpHelp {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.totpAlt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 4px;
+}
+.linkButton {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--accent, inherit);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linkButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.totpMore summary {
+  cursor: pointer;
+  font-size: 14px;
+}
+.totpMore p {
+  margin-top: 6px;
+}
+.totpInput:focus {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--st-input);
+  border-radius: var(--radius-sm);
+  background: var(--st-input-bg);
+  color: var(--text);
+  font-size: 14px;
+}
+.notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--st-input);
+}
+.error {
+  margin: 4px 0 0;
+  color: var(--danger);
+}
+
+/* ---- Run in shell ---- */
+.run {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.command {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--term-bg);
+  color: var(--term-fg);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.risky {
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: rgb(255 127 137 / 22%);
+  color: #ffb3b9;
+  text-decoration: underline wavy #ff7f89;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.targets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.targets legend {
+  margin-bottom: 6px;
+  font-weight: var(--fw-semibold);
+}
+.target {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.target:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.target input {
+  margin-top: 3px;
+}
+.targetText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.targetName {
+  font-weight: var(--fw-semibold);
+}
+.targetMeta {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.newShell {
+  padding: 4px 0 0 30px;
+}
+.runTarget {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.runTarget svg {
+  flex: none;
+}
+.verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.reasons {
+  margin: 0;
+  padding-inline-start: 20px;
+  font-size: 14px;
+}
+.warn {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+.fineprint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---- Level badge ---- */
+.badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.badgeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge[data-level='safe'] {
+  background: var(--st-done-bg);
+  color: var(--st-done);
+}
+.badge[data-level='caution'] {
+  background: var(--st-input-bg);
+  color: var(--st-input);
+}
+.badge[data-level='dangerous'] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ---- Shell badge and countdown (cards, live header) ---- */
+.shellBadge {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.countdown {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.countdown[data-warn] {
+  color: var(--danger);
+  font-weight: var(--fw-semibold);
+}
+.compact {
+  font-size: 11px;
+}
+.shellBadge.compact {
+  padding: 0 4px;
+}

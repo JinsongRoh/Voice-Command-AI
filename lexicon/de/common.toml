@@ -1,0 +1,208 @@
+# German spoken forms of common developer terms.
+# Spoken variants only; categories and tags come from the English entries.
+# Format: see lexicon/README.md.
+language = "de"
+
+[[entry]]
+term = "JSON"
+variants = ["dschei son", "dschäison"]
+
+[[entry]]
+term = "GitHub"
+variants = ["git hab", "gitt hab"]
+
+[[entry]]
+term = "YAML"
+variants = ["jamel", "jammel"]
+
+[[entry]]
+term = "Python"
+variants = ["püton"]
+
+[[entry]]
+term = "JavaScript"
+variants = ["dschawa script", "java skript"]
+
+[[entry]]
+term = "TypeScript"
+variants = ["taip skript", "type skript"]
+
+[[entry]]
+term = "Docker"
+variants = ["docka"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["kuberneetes", "kubanetis"]
+
+[[entry]]
+term = "kubectl"
+variants = ["kube kontroll", "kjub kontroll", "kube ze te el"]
+
+[[entry]]
+term = "SQL"
+variants = ["es kuh el"]
+
+[[entry]]
+term = "MySQL"
+variants = ["mai es kuh el"]
+
+[[entry]]
+term = "PostgreSQL"
+variants = ["postgres kuh el"]
+
+[[entry]]
+term = "API"
+variants = ["a pe i"]
+
+[[entry]]
+term = "CLI"
+variants = ["ze el i"]
+
+[[entry]]
+term = "PR"
+variants = ["pe er"]
+
+[[entry]]
+term = "pull request"
+variants = ["pull rikwest", "pul request"]
+
+[[entry]]
+term = "git commit"
+variants = ["git kommit"]
+
+[[entry]]
+term = "git push"
+variants = ["git pusch"]
+
+[[entry]]
+term = "rebase"
+variants = ["ribeis"]
+
+[[entry]]
+term = "VS Code"
+variants = ["vau es code", "we es code"]
+
+[[entry]]
+term = "README"
+variants = ["ried mi"]
+
+[[entry]]
+term = "Claude Code"
+variants = ["klod code", "klaud code", "klaude code"]
+
+[[entry]]
+term = "Claude"
+variants = ["klaude"]
+
+[[entry]]
+term = "Gemini"
+variants = ["dschemini"]
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["dschemini ze el i", "dschemini cli"]
+
+[[entry]]
+term = "Codex"
+variants = ["kodex"]
+
+[[entry]]
+term = "Antigravity"
+variants = ["antigräwiti"]
+
+[[entry]]
+term = "ChatGPT"
+variants = ["tschät gpt", "chat ge pe te"]
+
+[[entry]]
+term = "OpenAI"
+variants = ["open ei ai"]
+
+[[entry]]
+term = "LLM"
+variants = ["el el em"]
+
+[[entry]]
+term = "MCP"
+variants = ["em ze pe"]
+
+[[entry]]
+term = "AWS"
+variants = ["a we es"]
+
+[[entry]]
+term = "CI/CD"
+variants = ["ze i ze de"]
+
+[[entry]]
+term = "HTML"
+variants = ["ha te em el"]
+
+[[entry]]
+term = "CSS"
+variants = ["ze es es"]
+
+[[entry]]
+term = "URL"
+variants = ["u er el"]
+
+[[entry]]
+term = "JWT"
+variants = ["jott we te"]
+
+[[entry]]
+term = "Node.js"
+variants = ["node jott es"]
+
+[[entry]]
+term = "Next.js"
+variants = ["next jott es"]
+
+[[entry]]
+term = "Vue.js"
+variants = ["vju jott es"]
+
+[[entry]]
+term = "npm"
+variants = ["en pe em"]
+
+[[entry]]
+term = "ssh"
+variants = ["es es ha"]
+
+[[entry]]
+term = "DNS"
+variants = ["de en es"]
+
+[[entry]]
+term = "PDF"
+variants = ["pe de ef"]
+
+[[entry]]
+term = "useEffect"
+variants = ["jus effekt", "juhs effekt"]
+
+[[entry]]
+term = "useState"
+variants = ["jus steit"]
+
+[[entry]]
+term = "localhost"
+variants = ["lokal host"]
+
+[[entry]]
+term = "Django"
+variants = ["dschango"]
+
+[[entry]]
+term = "nginx"
+variants = ["engine iks"]
+
+[[entry]]
+term = "Redis"
+variants = ["rediss"]
+
+[[entry]]
+term = "Tailwind CSS"
+variants = ["teilwind"]

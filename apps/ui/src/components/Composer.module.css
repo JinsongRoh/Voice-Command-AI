@@ -1,0 +1,1001 @@
+.composer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + var(--composer-inset-bottom, env(safe-area-inset-bottom)));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+/* "Draft replaced · Undo" after a quick prompt replaced a draft. */
+.undo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.expand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.expand:hover,
+.expand[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.templates {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.template {
+  flex: none;
+  min-height: var(--chip-h);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.template:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.corrections {
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-input);
+}
+/* Dictation topic from the server's optional LLM pass: quiet, one line. */
+.topic {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+/* The voice state (wake word, read-back): one quiet line above the box. */
+.voiceLine {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.mic {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 0;
+  /* Deep Navy plate with the signature cyan-to-blue symbol (the landing's look). */
+  background: var(--brand-navy);
+  color: var(--brand-cyan);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand-cyan) 30%, transparent),
+    0 6px 16px rgb(3 97 247 / 24%),
+    0 1px 3px rgb(16 27 53 / 18%);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    box-shadow 0.2s ease,
+    background-color 0.15s;
+}
+.mic:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--brand-cyan) 55%, transparent),
+    0 6px 16px rgb(3 97 247 / 28%),
+    0 1px 3px rgb(16 27 53 / 18%);
+}
+.mic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/*
+ * The brand symbol as the voice mark. Its motion is the style chosen in
+ * Settings › Voice (MicSymbol.tsx / MicSymbol.module.css): a light assembly
+ * when recording starts and at the send, or a stroke motion while recording.
+ * The plate, the recording ring, the still glow, the waiting glow and the
+ * send flare stay here, the same for every style.
+ * - idle: the static symbol with a soft, still glow;
+ * - sent: the flare below, plus the style's own send motion, then idle.
+ * Reduced motion: static (see the media query at the end).
+ */
+.micLogo {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 36px;
+  height: auto;
+  aspect-ratio: 1178 / 1073;
+  overflow: visible;
+}
+/* Still glow behind the symbol (no motion at rest). */
+.mic::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-cyan) 30%, transparent) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+/* Flare for the send motion. */
+.mic::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(0 207 232 / 45%), transparent 62%);
+  opacity: 0;
+  pointer-events: none;
+}
+.mic:disabled::before {
+  opacity: 0;
+}
+
+/* Recording: a steady cyan ring (the symbol's motion is in MicSymbol). */
+.recording,
+.recording:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 3px var(--brand-cyan),
+    0 8px 22px color-mix(in srgb, var(--brand-cyan) 35%, transparent);
+}
+.recording::before {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-cyan) 45%, transparent) 0%,
+    transparent 70%
+  );
+}
+/* Transcribing: the symbol rests; only the glow brightens while waiting. */
+.mic[data-phase='transcribing']::before {
+  animation: mic-wait 1.2s ease-in-out infinite alternate;
+}
+
+/* Sent: a flare around the button (the symbol's send motion is in MicSymbol). */
+.mic[data-sent]::after {
+  animation: mic-flare 0.9s ease-out both;
+}
+
+@keyframes mic-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+@keyframes mic-wait {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.status {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+}
+/* The dictate label: one line with an ellipsis (the button names it in full). */
+.phase {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+  font-weight: var(--fw-semibold);
+}
+.micText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Delivery of the last prompt as a small dot (sending, delivered, acknowledged). */
+.deliveryDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.deliveryDot[data-status='delivered'],
+.deliveryDot[data-status='acknowledged'] {
+  background: var(--st-done);
+}
+.deliveryDot[data-status='sending'] {
+  background: var(--accent);
+  animation: mic-wait 0.8s ease-in-out infinite alternate;
+}
+/* A short word next to the dot for a few seconds after each change. */
+.deliveryWord {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.deliveryWord[data-status='delivered'],
+.deliveryWord[data-status='acknowledged'] {
+  color: var(--st-done);
+}
+/* Recording indicator: five-stroke waveform + timer. */
+.live {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 10px 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.timer {
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+.cancel {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.cancel:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+/* Reduced motion: a static symbol; recording shows as the steady cyan ring. */
+@media (prefers-reduced-motion: reduce) {
+  .mic::before,
+  .mic::after,
+  .mic .micLogo,
+  .mic .micLogo path {
+    animation: none !important;
+  }
+}
+.delivery {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+/* Mic problems and hints: full width under the row, free to wrap. */
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.messages p {
+  margin: 0;
+}
+
+/*
+ * Send: a fixed width so the row never reflows around it. With uploads it
+ * becomes two lines (action, progress) over a thin progress bar.
+ */
+.send {
+  position: relative;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: 112px;
+  min-height: 48px;
+  padding: 0 12px;
+  overflow: hidden;
+}
+.send[data-state='uploading'],
+.send[data-state='queued'] {
+  width: 148px;
+  min-height: 56px;
+  padding: 6px 10px 8px;
+}
+.sendMain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sendMain svg {
+  flex: none;
+}
+.sendLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.send[data-state='uploading'] .sendLabel,
+.send[data-state='queued'] .sendLabel {
+  font-size: 13px;
+}
+.sendSub {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.88;
+}
+.sendBar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgb(255 255 255 / 22%);
+}
+.sendBar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--upload-progress, 0%);
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+/* Queued: the button cancels the waiting send; it reads as a secondary action. */
+.send[data-state='queued'] {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.send[data-state='queued']:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.send[data-state='queued'] .sendBar {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+/* Dictating: sending waits anyway, so the button steps back to its icon. */
+.send[data-slim] {
+  width: 48px;
+  padding: 0;
+}
+.send[data-slim] .sendLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sendBar::after,
+  .deliveryDot {
+    transition: none;
+    animation: none !important;
+  }
+}
+
+/* Phones: a tighter row so the label keeps room next to a two-line send. */
+@media (max-width: 440px) {
+  .row {
+    gap: var(--space-2);
+  }
+}
+@media (max-width: 379px) {
+  .mic {
+    width: 56px;
+    height: 56px;
+  }
+  .micLogo {
+    width: 32px;
+  }
+  .send[data-state='uploading'],
+  .send[data-state='queued'] {
+    width: 132px;
+  }
+}
+.delivery[data-status='delivered'],
+.delivery[data-status='acknowledged'] {
+  color: var(--st-done);
+}
+.delivery[data-status='queued'] {
+  color: var(--st-input);
+}
+.delivery[data-status='failed'],
+.error {
+  color: var(--danger);
+}
+/* Why a send did not go: stays until the text changes or it is closed. */
+.sendError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sendError :global(.icon-btn) {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-inline-start: auto;
+}
+.info {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-muted);
+}
+.info svg {
+  flex: none;
+  margin-top: 2px;
+}
+.keys {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.keys :global(.btn) {
+  flex: none;
+}
+.interrupt {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.flip {
+  transform: scaleX(-1);
+}
+
+/* Short phone screens: a smaller button and tighter spacing. */
+@media (max-width: 899px) and (max-height: 760px) {
+  .composer {
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: calc(8px + var(--composer-inset-bottom, env(safe-area-inset-bottom)));
+  }
+  .mic {
+    width: 54px;
+    height: 54px;
+  }
+  .micLogo {
+    width: 30px;
+  }
+}
+
+/* Key bar extras: Ctrl modifier, paste and saved snippets. */
+.ctrl {
+  font-family: var(--mono);
+  font-weight: var(--fw-semibold);
+}
+.ctrl[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.snippets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 30vh;
+  max-height: calc(var(--vvh, 100dvh) * 0.3);
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.snippetsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.snippetsTitle {
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.snippetsEmpty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.snippetList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.snippet {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.snippetText {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.snippetRemove {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+
+/* Short phone screens with text in the box: the quick prompts make room. */
+@media (max-width: 899px) and (max-height: 760px) {
+  .composer[data-has-text] .templates {
+    display: none;
+  }
+}
+
+/* Shell snippets in the quick prompt row: monospace, one line. */
+.snippetChip {
+  max-width: 22ch;
+  overflow: hidden;
+  font-family: var(--mono);
+  text-overflow: ellipsis;
+}
+
+/*
+ * Typing with the on-screen keyboard open (`data-keyboard-compact`): the
+ * text box, a one-line attachment summary and a slim send row. Quick
+ * prompts, the key bar, snippets and the large dictate button step aside
+ * until the keyboard closes; the keyboard already covers the home indicator.
+ */
+.compact {
+  gap: 6px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.compact .toolbar,
+.compact .keys,
+.compact .snippets {
+  display: none;
+}
+/* "To: session" strip, shown only while typing with the keyboard open. */
+.target {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.targetLabel::after {
+  content: ':';
+}
+.targetName {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact .corrections {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact .row {
+  gap: var(--space-2);
+}
+.compact .mic {
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-cyan) 30%, transparent);
+}
+.compact .micLogo {
+  width: 22px;
+}
+.compact .mic[data-phase='idle'] + .status .phase {
+  display: none;
+}
+.compact .status {
+  font-size: 12px;
+}
+.compact :global(.btn) {
+  min-height: 44px;
+}
+.compact .send[data-state='uploading'],
+.compact .send[data-state='queued'] {
+  min-height: 48px;
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+/* Touch screens: the expand button and the snippet rows grow to the compact
+   control height; quick prompts stay row chips (--chip-h), packed too close
+   for an extra hit area. */
+@media (pointer: coarse) {
+  .expand {
+    width: var(--control-h);
+    height: var(--control-h);
+  }
+  .snippetText {
+    min-height: var(--control-h);
+  }
+  .snippetRemove {
+    width: var(--control-h);
+    height: var(--control-h);
+  }
+}
+
+/* "@name": the message goes to another session; the chip names it. */
+.mentionChip {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 2px 2px 10px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 14px;
+}
+.mentionName {
+  overflow: hidden;
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mentionRemove {
+  width: 32px;
+  height: 32px;
+}
+.mentionRemove {
+  position: relative;
+}
+@media (pointer: coarse) {
+  .mentionRemove::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: var(--hit-min);
+    height: var(--hit-min);
+    transform: translate(-50%, -50%);
+  }
+}
+.mentionList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  max-height: 40vh;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.mentionOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.mentionOption[aria-selected='true'],
+.mentionOption:hover {
+  background: var(--surface-2);
+}
+.mentionWhere {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Phones (`layout="phone"`): two rows. The text box on top at full width
+ * (one line to start, about four at most); below it attach, the tools tray,
+ * dictate (centred) and send. The quick prompts, key bar, snippets,
+ * hands-free, conductor mode and expand open in a drawer above both rows.
+ */
+.composer[data-layout='phone'] {
+  position: relative;
+  gap: var(--space-1);
+  padding: calc(var(--bar-pad) + 2px) max(var(--space-2), env(safe-area-inset-right))
+    calc(var(--bar-pad) + 2px + var(--composer-inset-bottom, env(safe-area-inset-bottom)))
+    max(var(--space-2), env(safe-area-inset-left));
+}
+/* Row 1: the text box at full width. */
+.textRow {
+  min-width: 0;
+}
+/* One line to start (as tall as Send), about four lines at most, then it
+   scrolls inside. */
+.textRow textarea {
+  min-height: var(--control-primary-h);
+  max-height: min(calc(4 * 1.45em + 20px), var(--editor-max, 100dvh));
+}
+/* Row 2: [attach, tray] ... [dictate, centred] ... [cancel, send]. The two
+   outer columns are equal, so the dictate button sits in the visual centre. */
+.phoneRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.rowStart,
+.rowEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+/* Recording level and time beside the attach button: shrinks on narrow
+   phones, the time stays readable (the wave goes first). */
+.rowStart .live {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 2px 8px 2px 4px;
+}
+.rowStart .timer {
+  flex: none;
+}
+@media (max-width: 360px) {
+  .rowStart .live > :first-child {
+    display: none;
+  }
+}
+.rowEnd {
+  justify-content: flex-end;
+}
+/* Dictate is the large centre control; Send is primary; attach and the tray
+   are secondary (--control-h) with a taller invisible hit area. */
+.phoneRow .mic {
+  width: 56px;
+  height: 56px;
+}
+.phoneRow .micLogo {
+  width: 30px;
+}
+.phoneRow :global(.btn) {
+  min-height: var(--control-primary-h);
+}
+/* Never wider than its column (320 px phones): the dictate button stays clear. */
+.phoneRow .send[data-state='uploading'],
+.phoneRow .send[data-state='queued'] {
+  width: 128px;
+  max-width: 100%;
+}
+.phoneRow .send[data-slim] {
+  width: var(--control-primary-h);
+}
+/* Slim while uploading: the thin progress bar stays, the two lines go. */
+.send[data-slim] .sendSub {
+  display: none;
+}
+.trayButton {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.trayButton:hover,
+.trayButton[aria-expanded='true'] {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.trayButton[aria-expanded='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+/* The tools drawer: opens upward over the chat (the chat does not reflow). */
+.tray {
+  position: absolute;
+  z-index: 20;
+  inset-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+  bottom: calc(100% + var(--space-1));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: calc(var(--vvh, 100dvh) * 0.55);
+  padding: var(--space-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 16%);
+  animation: tray-in 0.16s ease-out;
+}
+@keyframes tray-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tray {
+    animation: none;
+  }
+}
+.tray .templates,
+.tray .keys {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.trayRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* The tray's rows are packed: no hit area reaching into the next row. */
+.tray :global(.btn)::after,
+.tray :global(.icon-btn)::after {
+  display: none;
+}
+/* With no hit area reaching out, touch screens get the full 44 px instead. */
+@media (pointer: coarse) {
+  .tray .template,
+  .tray :global(.btn),
+  .tray :global(.icon-btn) {
+    min-height: var(--hit-min);
+  }
+  .tray :global(.icon-btn) {
+    min-width: var(--hit-min);
+  }
+}
+/* The trays and row buttons keep a 44 px touch area (vertical only). */
+@media (pointer: coarse) {
+  .trayButton::after,
+  .phoneRow :global(.icon-btn)::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: var(--hit-min);
+    transform: translateY(-50%);
+  }
+}
+/* Status under the row only while it says something (recording, delivery);
+   otherwise it stays for screen readers only. */
+.phoneStatus {
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+}
+.phoneStatus .micText,
+.phoneStatus .deliveryDot {
+  display: none;
+}
+.phoneStatus:not(:has(.live, .deliveryWord, .delivery)) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Keyboard open: the same two rows, with the dictate button at 44 px. */
+.compact .phoneRow .mic {
+  width: var(--control-primary-h);
+  height: var(--control-primary-h);
+}
+.compact .phoneRow .micLogo {
+  width: 22px;
+}
+/* Reading mode: only a small dictate button floats over the chat. */
+.composer[data-reading] {
+  position: absolute;
+  z-index: 18;
+  inset-inline-end: max(12px, env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  padding: 0;
+  gap: 0;
+  border: 0;
+  background: transparent;
+}
+.composer[data-reading] > :not(.phoneRow),
+.composer[data-reading] .phoneRow > :not(.mic) {
+  display: none;
+}
+.composer[data-reading] .phoneRow {
+  display: flex;
+}
+.composer[data-reading] .phoneRow .mic {
+  width: 52px;
+  height: 52px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand-cyan) 40%, transparent),
+    0 8px 22px rgb(3 97 247 / 30%);
+}

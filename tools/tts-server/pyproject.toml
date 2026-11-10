@@ -1,0 +1,24 @@
+[project]
+name = "vca-tts-server"
+version = "0.1.0"
+description = "OpenAI-compatible text-to-speech server for Voice Command AI (MeloTTS or Supertonic backends; no weights included)"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.110", "uvicorn>=0.29"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+vca-tts-server = "vca_tts_server.__main__:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["vca_tts_server", "vca_tts_server.backends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

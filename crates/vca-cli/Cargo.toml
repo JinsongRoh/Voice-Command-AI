@@ -1,0 +1,34 @@
+[package]
+name = "vca-cli"
+description = "Voice Command AI command-line interface (vca)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap = { version = "4.6.7", features = ["derive"] }
+crossterm = "0.29.0"
+qrcode = { version = "0.14", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+vca-adapters.workspace = true
+vca-core.workspace = true
+vca-pty.workspace = true
+vca-net.workspace = true
+vca-server = { path = "../vca-server" }
+
+[dev-dependencies]
+# The `vca mcp` tests run a fake vcad on a real local socket.
+interprocess = { version = "2.4.7", features = ["tokio"] }
+tempfile = "3.27.0"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "vca"
+path = "src/main.rs"

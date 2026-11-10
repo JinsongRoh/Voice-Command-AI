@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Phone-only: scanning the pairing QR code with the camera (the scanned link only pre-fills the pairing form) and biometric / device passcode checks to unlock the app and before remote shell actions.",
+  "platforms": [
+    "iOS",
+    "android"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "barcode-scanner:default",
+    "biometric:default",
+    "notification:default"
+  ]
+}

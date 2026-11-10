@@ -1,0 +1,200 @@
+# French spoken forms of common developer terms.
+# Spoken variants only; categories and tags come from the English entries.
+# Format: see lexicon/README.md.
+language = "fr"
+
+[[entry]]
+term = "JSON"
+variants = ["ji son", "jison"]
+
+[[entry]]
+term = "GitHub"
+variants = ["guite heub", "git heub", "guitub"]
+
+[[entry]]
+term = "Git"
+variants = ["guite"]
+
+[[entry]]
+term = "YAML"
+variants = ["yamel", "yamle"]
+
+[[entry]]
+term = "JavaScript"
+variants = ["java scripte", "javascripte"]
+
+[[entry]]
+term = "TypeScript"
+variants = ["taïpe scripte", "type scripte"]
+
+[[entry]]
+term = "Docker"
+variants = ["dockeur", "doqueur"]
+
+[[entry]]
+term = "Kubernetes"
+variants = ["kubernetisse", "cubernetes"]
+
+[[entry]]
+term = "kubectl"
+variants = ["kube contrôle", "cube contrôle", "kube cé té elle"]
+
+[[entry]]
+term = "SQL"
+variants = ["esse cu elle"]
+
+[[entry]]
+term = "MySQL"
+variants = ["mai esse cu elle"]
+
+[[entry]]
+term = "PostgreSQL"
+variants = ["postgresse cu elle"]
+
+[[entry]]
+term = "API"
+variants = ["a pé i"]
+
+[[entry]]
+term = "CLI"
+variants = ["cé elle i"]
+
+[[entry]]
+term = "PR"
+variants = ["pé erre"]
+
+[[entry]]
+term = "pull request"
+variants = ["poule request", "poule riquouest"]
+
+[[entry]]
+term = "git commit"
+variants = ["guite commit"]
+
+[[entry]]
+term = "git push"
+variants = ["guite pouche"]
+
+[[entry]]
+term = "VS Code"
+variants = ["vé esse code"]
+
+[[entry]]
+term = "README"
+variants = ["ride mi"]
+
+[[entry]]
+term = "Claude Code"
+variants = ["clode code"]
+
+[[entry]]
+term = "Claude"
+variants = ["clode"]
+
+[[entry]]
+term = "Gemini"
+variants = ["jémini"]
+
+[[entry]]
+term = "Gemini CLI"
+variants = ["jémini cé elle i", "jémini cli"]
+
+[[entry]]
+term = "Codex"
+variants = ["codexe"]
+
+[[entry]]
+term = "Grok"
+variants = ["groque"]
+
+[[entry]]
+term = "Antigravity"
+variants = ["antigraviti"]
+
+[[entry]]
+term = "ChatGPT"
+variants = ["chat j'ai pété", "tchat gpt", "chat gé pé té"]
+
+[[entry]]
+term = "OpenAI"
+variants = ["open aïe aïe", "open a i"]
+
+[[entry]]
+term = "LLM"
+variants = ["elle elle emme"]
+
+[[entry]]
+term = "MCP"
+variants = ["emme cé pé"]
+
+[[entry]]
+term = "AWS"
+variants = ["a double vé esse"]
+
+[[entry]]
+term = "CI/CD"
+variants = ["cé i cé dé"]
+
+[[entry]]
+term = "HTML"
+variants = ["ache té emme elle"]
+
+[[entry]]
+term = "CSS"
+variants = ["cé esse esse"]
+
+[[entry]]
+term = "URL"
+variants = ["u erre elle"]
+
+[[entry]]
+term = "Node.js"
+variants = ["node ji esse"]
+
+[[entry]]
+term = "Next.js"
+variants = ["next ji esse"]
+
+[[entry]]
+term = "npm"
+variants = ["enne pé emme"]
+
+[[entry]]
+term = "ssh"
+variants = ["esse esse ache"]
+
+[[entry]]
+term = "DNS"
+variants = ["dé enne esse"]
+
+[[entry]]
+term = "PDF"
+variants = ["pé dé effe"]
+
+[[entry]]
+term = "useEffect"
+variants = ["youz effecte", "iouze effect"]
+
+[[entry]]
+term = "useState"
+variants = ["youz stéte"]
+
+[[entry]]
+term = "localhost"
+variants = ["locale host"]
+
+[[entry]]
+term = "nginx"
+variants = ["engine ixe"]
+
+[[entry]]
+term = "Redis"
+variants = ["rédisse"]
+
+[[entry]]
+term = "WebSocket"
+variants = ["ouèbe socket"]
+
+[[entry]]
+term = "Tailwind CSS"
+variants = ["tèlouinde"]

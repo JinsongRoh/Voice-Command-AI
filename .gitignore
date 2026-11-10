@@ -1,0 +1,30 @@
+/target
+node_modules/
+dist/
+*.log
+.DS_Store
+.claude/worktrees/
+/apps/target
+/docs/Voice Command AI(VCA)_Brand_Definition/
+# The vcad sidecar, built by apps/desktop/scripts/build-vcad.mjs
+/apps/desktop/src-tauri/binaries/
+
+# VCA per-project data (attachments, notes) in any folder
+.vca/
+
+# Python bytecode
+__pycache__/
+.gstack/
+
+# Secrets and signing material: never commit
+.env
+.env.*
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist

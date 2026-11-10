@@ -1,0 +1,61 @@
+.toggle {
+  flex: none;
+}
+.search {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 420px;
+  height: 36px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+.search:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+.icon {
+  flex: none;
+  color: var(--text-muted);
+}
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.input::-webkit-search-cancel-button {
+  display: none;
+}
+.count {
+  flex: none;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.nav {
+  flex: none;
+  width: 30px;
+  height: 30px;
+}
+
+/* Phones: the open field covers the tabs row instead of squeezing it. */
+@media (max-width: 899px) {
+  .search {
+    position: absolute;
+    z-index: 2;
+    inset: 4px 12px;
+    max-width: none;
+    height: auto;
+  }
+}
