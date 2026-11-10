@@ -775,7 +775,12 @@ mod tests {
 
     #[test]
     fn names_cut_short_by_linux_still_match() {
-        assert!(name_is("my-long-agent-n", "my-long-agent-name"));
+        // Only Linux cuts names; elsewhere a short name is another program.
+        assert_eq!(
+            name_is("my-long-agent-n", "my-long-agent-name"),
+            cfg!(target_os = "linux")
+        );
+        assert!(name_is("my-long-agent-name", "my-long-agent-name"));
         assert!(!name_is("my-long-agent", "my-long-agent-name"));
         assert!(!name_is("other-long-name", "my-long-agent-name"));
         if cfg!(target_os = "linux") {
