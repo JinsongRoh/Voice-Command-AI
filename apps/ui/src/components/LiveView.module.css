@@ -319,7 +319,7 @@
  */
 .live[data-chrome='phone'] {
   --bar-h: calc(var(--control-h) + 2 * var(--bar-pad));
-  --chrome-h: calc(var(--bar-h) + env(safe-area-inset-top));
+  --chrome-h: calc(var(--bar-h) + var(--safe-top, env(safe-area-inset-top)));
   overflow: hidden;
 }
 /* The notch / status bar strip stays put; the bar slides under it. */
@@ -329,7 +329,7 @@
   z-index: 17;
   inset-inline: 0;
   top: 0;
-  height: env(safe-area-inset-top);
+  height: var(--safe-top, env(safe-area-inset-top));
   background: var(--surface);
   pointer-events: none;
 }
@@ -347,7 +347,7 @@
   display: none;
 }
 .live[data-chrome='phone']:has([data-keyboard-compact]) .content {
-  --chat-inset-top: env(safe-area-inset-top);
+  --chat-inset-top: var(--safe-top, env(safe-area-inset-top));
   padding-top: 0;
 }
 .topChrome {
@@ -357,7 +357,7 @@
   top: 0;
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--safe-top, env(safe-area-inset-top));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
@@ -552,7 +552,7 @@
 .exitReading {
   position: absolute;
   z-index: 18;
-  top: calc(env(safe-area-inset-top) + 8px);
+  top: calc(var(--safe-top, env(safe-area-inset-top)) + 8px);
   inset-inline-end: max(8px, env(safe-area-inset-right));
   display: inline-flex;
   align-items: center;

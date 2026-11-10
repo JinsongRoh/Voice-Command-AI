@@ -7,6 +7,12 @@
   width: 100%;
   overflow: hidden;
 }
+/* Demo: the banner on top takes the notch inset; the header and the phone
+   session bar below it do not add it again. */
+.app[data-demo] {
+  --safe-top: 0px;
+  --demo-banner-h: 36px;
+}
 /* The setup screen has no header to take the notch / status bar inset. */
 .setup {
   padding-top: env(safe-area-inset-top);

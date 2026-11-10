@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
+import { DemoEntry } from '../demo/DemoBanner';
 import { useI18n } from '../i18n/context';
 import { NativeError } from '../native/bridge';
 import { useNative, type NativeServices } from '../native/context';
@@ -39,6 +40,7 @@ export function PairingView({
   onConnectPhone,
   enrollRetryMs,
   lead,
+  onTryDemo,
 }: {
   onPaired?: (machineId: string) => void;
   /** Optional lead text (e.g. when no machine is paired yet). */
@@ -49,12 +51,16 @@ export function PairingView({
   enrollRetryMs?: number;
   /** Shown first, under the logo (desktop setup: this PC's own server). */
   lead?: ReactNode;
+  /** First run: "Try the demo" right under the logo (no computer needed). */
+  onTryDemo?: () => void;
 }) {
   const native = useNative();
   const { t } = useI18n();
   return (
     <div className={styles.screen}>
       <PairingHero />
+      {/* Before everything else, so it shows without scrolling on a phone. */}
+      {onTryDemo && <DemoEntry onTry={onTryDemo} />}
       {lead}
       {onConnectPhone && <ConnectPhoneCard onOpen={onConnectPhone} />}
       {native ? (

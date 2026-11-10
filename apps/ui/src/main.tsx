@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
+import { createDemoMachines, recoverDemoStorage } from './demo/demoMode';
 import { diag, installLifecycleDiag, setDiagEnabled } from './diag/log';
 import { APP_VERSION } from './state/core';
 import { trackVisualViewport } from './hooks/visualViewport';
@@ -13,47 +14,23 @@ import { isNative } from './native/bridge';
 import { NativeApp } from './native/NativeApp';
 import { listenForPairLinks, PairLinks } from './native/pairLinks';
 import { MachineRegistry } from './native/registry';
-import { MOCK_PROJECT_DIRS } from './protocol/mockData';
-import { mockRestoreLocal } from './protocol/mockRestore';
-import { MockTransport } from './protocol/mockTransport';
 import { createMediaRecorder } from './speech/recorder';
 import { createMockTranscriber } from './speech/transcribe';
 import { loadSettings } from './state/settings';
-import type { Machine } from './state/store';
+
+// The app was closed during the demo: put local storage back as it was
+// before, first of all (the demo never survives a restart).
+recoverDemoStorage();
 
 // Before anything can record: the person may have turned the log off.
 setDiagEnabled(loadSettings().diagnostics);
 
 // In the browser (dev, demos) the app runs against simulated servers; inside
 // the Tauri shell machines and speech come from the native side.
-function mockMachine(
-  id: string,
-  name: string,
-  connectivity: string,
-  profile: 'workstation' | 'build_server',
-): Machine {
-  const transport = new MockTransport({ profile });
-  return {
-    id,
-    name,
-    connectivity,
-    transport,
-    projectDirs: MOCK_PROJECT_DIRS[profile],
-    simulate: {
-      drop: (ms, lose) => transport.simulateDrop(ms, lose),
-      ...(profile === 'workstation' ? { restoreLocal: mockRestoreLocal() } : {}),
-    },
-  };
-}
-
 function mockApp() {
-  const machines: Machine[] = [
-    mockMachine('workstation', 'workstation (mock)', 'DNSPilot', 'workstation'),
-    mockMachine('build-server', 'build-server (mock)', 'Tailscale', 'build_server'),
-  ];
   return (
     <App
-      machines={machines}
+      machines={createDemoMachines()}
       speech={{
         transcribe: createMockTranscriber(),
         createRecorder: createMediaRecorder,

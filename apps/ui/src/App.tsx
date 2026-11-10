@@ -28,6 +28,8 @@ import { TasksWatcher } from './components/TasksView';
 import { Toasts } from './components/Toasts';
 import { UpdateNotifier } from './components/UpdateSettings';
 import { WindowsPanel } from './components/WindowsPanel';
+import { DemoProvider, useDemo, type DemoControls } from './demo/context';
+import { DemoBanner, DemoUnavailable } from './demo/DemoBanner';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import type { AppLockVerifier } from './native/appLock';
 import { I18nProvider, useI18n } from './i18n/context';
@@ -79,6 +81,7 @@ function Shell() {
   const link = useLinkStatus(machine);
   const wide = useMediaQuery('(min-width: 900px)');
   const native = useNative();
+  const demo = useDemo();
   // A pending pairing link (it opened the app) starts on the pairing form.
   const [view, setView] = useState<View>(() =>
     native?.pairLinks?.hasPending ? 'pairing' : 'sessions',
@@ -217,6 +220,13 @@ function Shell() {
         <ConnectPhoneView host={native.host} onBack={() => setView('settings')} />
       </div>
     );
+  else if (view === 'pairing' && demo)
+    // The demo's computers are simulated: pairing needs a real one.
+    main = (
+      <div className={styles.page}>
+        <DemoUnavailable demo={demo} body={t('demo.unavailablePairing')} />
+      </div>
+    );
   else if (view === 'pairing')
     main = (
       <div className={styles.page}>
@@ -291,10 +301,16 @@ function Shell() {
   }
 
   return (
-    <div className={styles.app} data-phone-session={phoneSession || undefined}>
+    <div
+      className={styles.app}
+      data-phone-session={phoneSession || undefined}
+      data-demo={demo ? '' : undefined}
+    >
       <a className="skip-link" href="#main">
         {t('app.skipToContent')}
       </a>
+      {/* Above everything, on every screen: this is sample data. */}
+      {demo && <DemoBanner demo={demo} />}
       {!phoneSession && (
         <Header
           onManageMachines={() => setManageMachines(true)}
@@ -424,18 +440,18 @@ function Localized({ speech, appLock }: { speech: SpeechConfig; appLock: AppLock
 }
 
 /** Shown in native mode while no machine is paired: only the pairing screen. */
-function Setup({ settings }: { settings?: Settings }) {
+function Setup({ settings, onTryDemo }: { settings?: Settings; onTryDemo?: () => void }) {
   const [initial] = useState(() => settings ?? loadSettings());
   return (
     <I18nProvider locale={initial.language}>
       <StepUpProvider>
-        <SetupContent />
+        <SetupContent onTryDemo={onTryDemo} />
       </StepUpProvider>
     </I18nProvider>
   );
 }
 
-function SetupContent() {
+function SetupContent({ onTryDemo }: { onTryDemo?: () => void }) {
   const { t } = useI18n();
   const native = useNative();
   // Desktop: run the server on this PC and connect a phone to it.
@@ -450,6 +466,7 @@ function SetupContent() {
             <PairingView
               intro={t('pairing.noMachines')}
               onConnectPhone={native?.host ? () => setConnect(true) : undefined}
+              onTryDemo={onTryDemo}
               // Desktop: this PC's own server first; pairing is for another computer.
               lead={native?.host ? <LocalServerCard host={native.host} /> : undefined}
             />
@@ -475,6 +492,13 @@ export interface AppProps {
    * nothing to protect and is not locked; creating pairing codes is gated.
    */
   appLock?: AppLockVerifier | null;
+  /** Offered on the first-run pairing screen: "Try the demo". */
+  onTryDemo?: () => void;
+  /**
+   * Running the demo (simulated machines): the Demo banner shows, settings
+   * are not saved and pairing is replaced by a note.
+   */
+  demo?: DemoControls;
 }
 
 export function App({
@@ -484,16 +508,25 @@ export function App({
   native,
   initialMachineId,
   appLock = null,
+  onTryDemo,
+  demo,
 }: AppProps) {
   return (
     <NativeProvider value={native ?? null}>
-      {machines.length === 0 ? (
-        <Setup settings={settings} />
-      ) : (
-        <AppProvider machines={machines} settings={settings} initialMachineId={initialMachineId}>
-          <Localized speech={speech} appLock={appLock} />
-        </AppProvider>
-      )}
+      <DemoProvider value={demo ?? null}>
+        {machines.length === 0 ? (
+          <Setup settings={settings} onTryDemo={onTryDemo} />
+        ) : (
+          <AppProvider
+            machines={machines}
+            settings={settings}
+            initialMachineId={initialMachineId}
+            persistSettings={!demo}
+          >
+            <Localized speech={speech} appLock={appLock} />
+          </AppProvider>
+        )}
+      </DemoProvider>
     </NativeProvider>
   );
 }

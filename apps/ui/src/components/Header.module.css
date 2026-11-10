@@ -12,9 +12,9 @@
    * bar, so its content overflowed onto the screen below (the session detail
    * header on phones).
    */
-  height: calc(var(--header-h) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) max(var(--space-3), env(safe-area-inset-right)) 0
-    max(var(--space-2), env(safe-area-inset-left));
+  height: calc(var(--header-h) + var(--safe-top, env(safe-area-inset-top)));
+  padding: var(--safe-top, env(safe-area-inset-top)) max(var(--space-3), env(safe-area-inset-right))
+    0 max(var(--space-2), env(safe-area-inset-left));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }

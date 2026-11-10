@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { useDemo } from '../demo/context';
 import { useI18n } from '../i18n/context';
 import type { MessageKey } from '../i18n/i18n';
 import { toNativeError } from '../native/bridge';
@@ -117,7 +118,9 @@ export function SecurityStatusList({ status }: { status: SecurityStatus }) {
 /** Where the security settings live when this is not the PC app. */
 export function SecurityHint() {
   const { t } = useI18n();
-  return <p className="muted">{t('security.hint')}</p>;
+  // The demo has no PC to open the app on.
+  const demo = useDemo();
+  return <p className="muted">{demo ? t('demo.unavailableSecurity') : t('security.hint')}</p>;
 }
 
 function Loading({ error, onRetry }: { error: unknown; onRetry: () => void }) {

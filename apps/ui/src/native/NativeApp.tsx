@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { App, type SpeechConfig } from '../App';
+import { clearAllDrafts } from '../components/composerDrafts';
+import type { DemoControls } from '../demo/context';
+import { startDemo, stopDemo, type DemoSession } from '../demo/demoMode';
+import type { MockTransportOptions } from '../protocol/mockTransport';
+import { loadSettings, type Settings } from '../state/settings';
 import type { AppLockVerifier } from './appLock';
-import type { Settings } from '../state/settings';
 import { bridge } from './bridge';
 import type { NativeServices } from './context';
 import { hostBridge, isDesktopPlatform, type HostServices } from './host';
@@ -23,6 +27,7 @@ export function NativeApp({
   qrScanner = defaultQrScanner,
   host: hostOverride,
   appLock = null,
+  demoTransport,
 }: {
   registry: MachineRegistry;
   /**
@@ -38,8 +43,45 @@ export function NativeApp({
   host?: HostServices | null;
   /** The app lock (main.tsx passes the device sign-in); absent: no lock. */
   appLock?: AppLockVerifier | null;
+  /** Options of the demo's simulated machines (tests: no latency or ticks). */
+  demoTransport?: MockTransportOptions;
 }) {
   const { loaded, machines } = useMachineRegistry(registry);
+  // Demo mode ("Try the demo" on the pairing screen): simulated machines
+  // only. The registry's machines are not handed to the app meanwhile, so no
+  // real transport connects, and none of the native services are offered.
+  // Kept in memory only: a restart opens the pairing screen again.
+  const [demo, setDemo] = useState<DemoSession | null>(null);
+  const demoRef = useRef<DemoSession | null>(null);
+  const enterDemo = useCallback(() => {
+    if (demoRef.current) return;
+    const session = startDemo(settings ?? loadSettings(), demoTransport);
+    demoRef.current = session;
+    setDemo(session);
+  }, [settings, demoTransport]);
+  const demoControls = useMemo<DemoControls>(
+    () => ({
+      exit: () => {
+        const session = demoRef.current;
+        if (!session) return;
+        demoRef.current = null;
+        setDemo(null);
+        stopDemo(session, clearAllDrafts);
+        // A server started on this PC meanwhile shows up now.
+        void registry.refresh();
+      },
+    }),
+    [registry],
+  );
+  // Ending the app inside the demo (unmount) leaves nothing behind either.
+  useEffect(
+    () => () => {
+      const session = demoRef.current;
+      demoRef.current = null;
+      if (session) stopDemo(session, clearAllDrafts);
+    },
+    [],
+  );
   const [pairLinks] = useState(() => links ?? new PairLinks());
   const ownsLinks = !links;
   useEffect(() => {
@@ -73,9 +115,10 @@ export function NativeApp({
   const host = hostOverride !== undefined ? hostOverride : desktop ? hostBridge : null;
   // This PC appears as a machine once its server is reachable.
   useEffect(() => {
-    if (!desktop) return;
+    // Nothing real is loaded during the demo.
+    if (!desktop || demo) return;
     return listenForHostChanges(() => void registry.refresh());
-  }, [desktop, registry]);
+  }, [desktop, registry, demo]);
   const native = useMemo<NativeServices>(
     () => ({
       pair: (uri, deviceName, totp) => registry.pair(uri, deviceName, totp),
@@ -95,6 +138,17 @@ export function NativeApp({
   );
   // Avoid flashing the pairing screen before the stored machines are known.
   if (!loaded) return null;
+  if (demo) {
+    return (
+      <App
+        key="demo"
+        machines={demo.machines}
+        speech={demo.speech}
+        settings={demo.settings}
+        demo={demoControls}
+      />
+    );
+  }
   return (
     <App
       machines={machines}
@@ -103,6 +157,8 @@ export function NativeApp({
       settings={settings}
       native={native}
       appLock={appLock}
+      // Only while nothing is paired: the first-run screen.
+      onTryDemo={machines.length === 0 ? enterDemo : undefined}
     />
   );
 }
