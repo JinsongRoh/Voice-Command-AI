@@ -27,7 +27,7 @@ export function Header({
   onManageMachines?: () => void;
   /** "Add computer…": opens the pairing flow. */
   onAddMachine?: () => void;
-  /** Opens 지휘소 (on a tab): the header's Command Center control. */
+  /** Opens the Command Center (on a tab): the header's Command Center control. */
   onOpenCommand?: (tab?: CommandTab) => void;
 } = {}) {
   const { t } = useI18n();
@@ -69,7 +69,7 @@ export function Header({
           </button>
         )}
         <SpeakingIndicator />
-        {/* 지휘소: status, talk to the conductor, hands-free, pause and kill switch. */}
+        {/* Command Center: status, talk to the conductor, hands-free, pause and kill switch. */}
         <CommandControl onOpen={onOpenCommand} />
         {tight ? (
           <OverflowMenu label={t('header.more')}>
@@ -142,7 +142,7 @@ function MachineSelect({
 /**
  * The app header's controls as a column, for the "more" menu of the session
  * top bar on phones (where the app header steps aside for the chat): the
- * computer, the connection (with Reconnect), 지휘소, spoken alerts and the
+ * computer, the connection (with Reconnect), the Command Center, spoken alerts and the
  * briefing.
  */
 export function HeaderMenuItems({

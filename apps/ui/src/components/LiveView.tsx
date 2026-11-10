@@ -126,7 +126,7 @@ const MODE_ICONS: Record<Mode, IconName> = {
 /**
  * The phone layout of a session (max-width 899px): one slim top bar instead
  * of the app header, the view switch and the session actions; the app's own
- * controls (computer, connection, 지휘소, spoken alerts) are in its "more"
+ * controls (computer, connection, Command Center, spoken alerts) are in its "more"
  * menu. Desktop never passes this.
  */
 export interface PhoneChrome {
@@ -148,7 +148,7 @@ export interface PhoneChrome {
 
 /**
  * A shell tab of the caller's own in place of the session Shell tab:
- * 지휘소's remote shell (PowerShell on Windows) in a folder picked there.
+ * the Command Center's remote shell (PowerShell on Windows) in a folder picked there.
  * Its content has its own folder control and input row.
  */
 export interface FolderShellTab {
@@ -169,7 +169,7 @@ export function LiveView({
   onBack?: () => void;
   /** Phones: the top bar layout (see `PhoneChrome`). */
   chrome?: PhoneChrome;
-  /** 지휘소: its shell tab (see `FolderShellTab`); only where shells are allowed. */
+  /** Command Center: its shell tab (see `FolderShellTab`); only where shells are allowed. */
   folderShell?: FolderShellTab;
 }) {
   const { t } = useI18n();
@@ -177,19 +177,19 @@ export function LiveView({
   const view = useAppState((s) => s.views[session.id]);
   const decision = useAppState((s) => s.decisions[session.id]);
   const sent = useAppState((s) => s.sent[session.id]);
-  // "할 일로 추가" on agent messages (servers with a to-do list).
+  // "Add to to-do" on agent messages (servers with a to-do list).
   const addTask = useAddTaskFromMessage(session.id);
   // Shells have no chat transcript: they open on the terminal.
   const pauseWhyId = useId();
   const restartWhyId = useId();
   const stopWhyId = useId();
   const switchHintId = useId();
-  // 지휘소's "터미널 보기" opens the session on its terminal too.
+  // The Command Center's "Show terminal" opens the session on its terminal too.
   const [mode, setMode] = useState<Mode>(() =>
     isShellSession(session) || wantsTerminal(session.id) ? 'terminal' : 'chat',
   );
   useEffect(() => clearTerminalWish(session.id), [session.id]);
-  // A to-do's "원본 대화 보기": the chat, at the source message.
+  // A to-do's "View source conversation": the chat, at the source message.
   const anchor = useChatAnchor(session.id, view);
   const [anchorToken, setAnchorToken] = useState<number | null>(null);
   if (anchor.pending && anchor.pending.token !== anchorToken) {

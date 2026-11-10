@@ -266,7 +266,7 @@
   font-weight: var(--fw-medium);
   line-height: 14px;
 }
-/* "지휘": the conductor's own session. */
+/* "Conductor": the conductor's own session. */
 .conductor {
   flex: none;
   padding: 0 5px;

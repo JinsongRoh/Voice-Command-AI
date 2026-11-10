@@ -102,7 +102,7 @@ export function SettingsView({
   onPair: () => void;
   /** Desktop: opens "Connect a phone". */
   onConnectPhone?: () => void;
-  /** Opens 지휘소 (the conductor). */
+  /** Opens the Command Center (the conductor). */
   onOpenCommand?: () => void;
 }) {
   const { t } = useI18n();
@@ -691,8 +691,8 @@ export function SettingsView({
       ),
     },
     {
-      // 지휘소 (Command Center): the conductor is set up on the PC itself
-      // (agent, wake-ups, caps, auto-allow); use is in 지휘소 and the header.
+      // Command Center: the conductor is set up on the PC itself (agent,
+      // wake-ups, caps, auto-allow); use is in the Command Center and the header.
       id: 'set-conductor',
       title: 'settings.conductor',
       keywords: [

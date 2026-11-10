@@ -210,7 +210,8 @@ const KO_ADMIN: &str = "설정을 바꾸려면 관리자 권한이 필요합니�
 #[test]
 fn korean_admin_powershell_with_code_block() {
     let found = extract(KO_ADMIN);
-    // The explanation line ("... 관리자 권한이 필요합니다") asks nothing.
+    // The explanation line ("... 관리자 권한이 필요합니다", ... needs administrator
+    // rights) asks nothing.
     assert_eq!(found.len(), 1, "{found:#?}");
     let run = &found[0];
     assert_eq!(run.title, "관리자 PowerShell에서 다음 명령을 실행해 주세요");
@@ -220,7 +221,7 @@ fn korean_admin_powershell_with_code_block() {
     );
     assert_eq!(run.shell, TaskShell::Powershell);
     assert!(run.needs_admin);
-    // "완료되면 알려 주세요" closes the message: not a task.
+    // "완료되면 알려 주세요" (let me know when done) closes the message: not a task.
     assert!(found.iter().all(|c| !c.title.contains("완료되면")));
 }
 
@@ -636,7 +637,7 @@ async fn manual_alert_and_explicit_tasks_point_at_their_source() {
         20,
         "Sign in to the console first.",
     );
-    // "할 일로 추가" on a message.
+    // "Add to to-do" on a message.
     let task = f
         .tasks
         .create(

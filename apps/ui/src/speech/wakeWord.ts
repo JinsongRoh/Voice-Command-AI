@@ -49,8 +49,9 @@
  *   are not dictated); "보코보코" only on its own ("보코보코 맞았어" is content);
  * - split by the recognizer ("보 코", "보, 코"): the syllables are joined;
  * - other hearings of a short call: a two-syllable word one jamo away from
- *   "보코" (ㅂ/ㅃ/ㅍ + ㅗ/ㅓ/ㅜ, then 코/꼬/고/컬/크) wakes only when it is the
- *   whole utterance and the speech was short (`RadioOptions.speechMs`).
+ *   "보코" ("ㅂ"/"ㅃ"/"ㅍ" + "ㅗ"/"ㅓ"/"ㅜ", then "코"/"꼬"/"고"/"컬"/"크") wakes
+ *   only when it is the whole utterance and the speech was short
+ *   (`RadioOptions.speechMs`).
  * Intonation (a sing-song or rising call) is not modelled: it only matters
  * through what the recognizer writes, which these forms cover.
  */
@@ -148,8 +149,9 @@ const NEAR_VOWELS = new Set(['ㅗ', 'ㅓ', 'ㅜ']);
 const NEAR_SECOND = new Set(['코', '꼬', '고', '컬', '크']);
 
 /**
- * A two-syllable Korean word that is probably a misheard "보코": ㅂ/ㅃ/ㅍ with
- * ㅗ/ㅓ/ㅜ, then 코/꼬/고/컬/크, at most one jamo away ("포코", "부코", "보크").
+ * A two-syllable Korean word that is probably a misheard "보코": "ㅂ"/"ㅃ"/"ㅍ"
+ * with "ㅗ"/"ㅓ"/"ㅜ", then "코"/"꼬"/"고"/"컬"/"크", at most one jamo away
+ * ("포코", "부코", "보크").
  * Only used for a short utterance said on its own.
  */
 export function isNearWake(word: string): boolean {

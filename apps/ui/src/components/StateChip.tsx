@@ -5,7 +5,7 @@ import styles from './StateChip.module.css';
 
 /**
  * Colored chip with text (color is never the only signal). A menu only the
- * terminal answers reads "터미널에서 선택 필요" instead of a bare "입력 대기".
+ * terminal answers reads "Choose in the terminal" instead of a bare "Waiting for input".
  */
 export function StateChip({
   state,

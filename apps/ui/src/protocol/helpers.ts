@@ -21,8 +21,9 @@ export function awaitsDecision(session: SessionInfo): boolean {
 }
 
 /**
- * Whether the session needs the person ("확인 필요"). The conductor's own
- * session only for a decision: its turn-ends and input waits live in 지휘소.
+ * Whether the session needs the person ("Needs attention"). The conductor's
+ * own session only for a decision: its turn-ends and input waits live in the
+ * Command Center.
  */
 export function sessionNeedsAttention(session: SessionInfo): boolean {
   return session.conductor ? awaitsDecision(session) : needsAttention(session.state);

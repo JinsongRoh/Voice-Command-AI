@@ -9,7 +9,7 @@ import styles from './Attachments.module.css';
 export interface AttachmentTrayProps {
   items: AttachmentItem[];
   /**
-   * One line instead of the chips ("사진 5장 첨부됨 · 올리는 중 3/5"): typing
+   * One line instead of the chips ("Photos attached: 5 · uploading 3/5"): typing
    * with the on-screen keyboard open leaves no room for thumbnails.
    */
   summary?: boolean;

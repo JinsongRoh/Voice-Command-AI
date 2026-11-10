@@ -1,7 +1,7 @@
 /**
  * Hangul jamo helpers for fuzzy matching of short spoken words (the wake
  * word "보코", the answers "보내" / "취소", session names). Comparing jamo
- * instead of whole syllables makes "보네" one step from "보내" (ㅔ for ㅐ)
+ * instead of whole syllables makes "보네" one step from "보내" ("ㅔ" for "ㅐ")
  * rather than a different syllable.
  */
 
@@ -52,7 +52,7 @@ export function composeSyllable(j: SyllableJamo): string | null {
 
 /**
  * The text as a jamo sequence: Hangul syllables are split ("보코" ->
- * ㅂㅗㅋㅗ), other characters are kept as they are. A silent initial ㅇ is
+ * "ㅂㅗㅋㅗ"), other characters are kept as they are. A silent initial "ㅇ" is
  * kept so syllable counts stay comparable.
  */
 export function toJamo(text: string): string[] {
@@ -101,7 +101,7 @@ export function collapseStretch(text: string): string {
   for (const ch of chars) {
     const j = syllableJamo(ch);
     const prev = out.length > 0 ? syllableJamo(out[out.length - 1]!) : null;
-    // "오" after "...ㅗ" (an initial ㅇ, the same vowel, no final consonant).
+    // "오" after "...ㅗ" (an initial "ㅇ", the same vowel, no final consonant).
     if (j && prev && j.initial === 'ㅇ' && !j.final && !prev.final && j.vowel === prev.vowel) {
       continue;
     }

@@ -1,5 +1,5 @@
 /**
- * TypeScript mirror of `vca-core/src/task.rs`: the human task inbox ("할 일")
+ * TypeScript mirror of `vca-core/src/task.rs`: the human task inbox ("To-do")
  * kept by each PC's server and shared by every device.
  */
 import type { DangerLevel, SessionId, UnixMillis } from './types';
@@ -137,13 +137,13 @@ export type TaskClientMsg =
   | { type: 'task_create'; draft: TaskDraft }
   /** Check off, snooze, edit, move (command scope); answered with `task_saved`. */
   | { type: 'task_update'; task_id: string; change: TaskChange }
-  /** "결과 보내기" (command scope); `preview` only composes. Answered with `task_result_sent`. */
+  /** "Send result" (command scope); `preview` only composes. Answered with `task_result_sent`. */
   | { type: 'task_send_result'; task_id: string; result: TaskResultDraft; preview: boolean }
   /** Administrator PowerShell on the PC: the PC's own app only. Answered with `ok`. */
   | { type: 'task_open_admin_shell'; task_id: string }
   /** Markdown or CSV (view scope); answered with `task_exported`. */
   | { type: 'task_export'; format: TaskExportFormat; session_id: SessionId | null }
-  /** "오늘 할 일" line (view scope); answered with `briefing`. */
+  /** "Today's tasks" line (view scope); answered with `briefing`. */
   | { type: 'task_digest'; language: string | null }
   /** Settings: the PC's own app only. Answered with `tasks`. */
   | { type: 'task_configure'; settings: TaskSettings };

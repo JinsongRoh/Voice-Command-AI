@@ -1,5 +1,5 @@
 /**
- * The status briefing ("현황 듣기"): the PC describes its sessions in a few
+ * The status briefing ("Listen to status"): the PC describes its sessions in a few
  * sentences (fixed templates, no LLM), the text is shown in a toast and
  * read aloud with the spoken-alert voice.
  */

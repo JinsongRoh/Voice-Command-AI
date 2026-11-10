@@ -39,7 +39,7 @@ import {
 import { captureAnswer, speakAndWait } from './handsFreeIO';
 import { recordVoiceAnswer } from './voiceAudit';
 
-/** How long "보냄" / "취소됨" stay on screen. */
+/** How long "Sent" / "Cancelled" stay on screen. */
 export const RESULT_MS = 3000;
 /** Poll interval while the composer is dictating (decisions wait for it). */
 const MIC_BUSY_POLL_MS = 300;

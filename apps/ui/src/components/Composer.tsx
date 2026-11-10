@@ -157,7 +157,7 @@ export function Composer({
   const speech = useSpeech();
   const briefing = useBriefing();
   const { settings } = useSettings();
-  // "지휘 모드": a shortcut to 지휘소 while the PC has a conductor.
+  // "Conductor mode": a shortcut to the Command Center while the PC has a conductor.
   const conductorOn = !!useConductor()?.settings.enabled;
   const delivery = useAppState((s) => s.delivery[session.id]);
   // An unsent draft survives switching to another session and back.
@@ -356,7 +356,8 @@ export function Composer({
     (force?: boolean, expected?: string, openAtPress?: boolean) => Promise<boolean>
   >(async () => false);
   /** Hands-free read-back of a finished dictation. */
-  // Read back to the session by the name the user gave it ("Orbit Platform 세션에 …").
+  // Read back to the session by the name the user gave it
+  // ("Orbit Platform 세션에 …" (to Orbit Platform …)).
   const spokenLang = voiceLang(settings.language);
   const spokenName = useAppState((s) =>
     sessionLabel(spokenSessionName(session, s.sessions, workOrder(s), spokenLang), spokenLang),
@@ -442,7 +443,7 @@ export function Composer({
     return result;
   };
 
-  /** `from`: the text to dictate after (hands-free "다시" passes the restored one). */
+  /** `from`: the text to dictate after (hands-free "다시" (again) passes the restored one). */
   const startRecording = (from?: { text: string; corrections: TranscriptCorrection[] }) => {
     if (phaseRef.current !== 'idle' || !enabled) return;
     diag('composer.dictate.start', {
@@ -528,7 +529,7 @@ export function Composer({
       );
   };
 
-  /** The latest `startRecording` (hands-free "다시" starts a new dictation). */
+  /** The latest `startRecording` (hands-free "다시" (again) starts a new dictation). */
   const startRef = useRef(startRecording);
   /** The text box as last rendered (hands-free sends only what is on screen). */
   const shownRef = useRef(text);
@@ -538,8 +539,8 @@ export function Composer({
   const sendBlockRef = useRef<SendBlock | null>(null);
   const sendingRef = useRef(false);
   /**
-   * Hands-free: "삼번 세션에 … 보낼까요?", then send, cancel, dictate again or
-   * (no clear answer) leave the text in the box unsent. The text is never
+   * Hands-free: "삼번 세션에 … 보낼까요?" (send … to session 3?), then send,
+   * cancel, dictate again or (no clear answer) leave the text in the box unsent. The text is never
    * cleared here: only a successful send empties the box.
    */
   const confirmHandsFree = async (value: string) => {
@@ -589,7 +590,7 @@ export function Composer({
   useEffect(() => {
     uploadingRef.current = attach.busy;
   });
-  /** Hands-free v2: "보코 … 오버" (see speech/vocoFlow.ts). */
+  /** Hands-free v2: "보코 … 오버" (Voco … over) (see speech/vocoFlow.ts). */
   const voco = useVoco({
     session,
     // Attachments (present or uploading) never hold the wake word back: a
@@ -706,8 +707,9 @@ export function Composer({
     }
     if (result.error) reportDictationError(result.error, result.state, result.failed);
     setPhaseBoth('idle');
-    // A dictation into an empty box that is exactly a briefing phrase ("현황
-    // 알려줘", "status") runs the briefing instead; the toast can still send it.
+    // A dictation into an empty box that is exactly a briefing phrase
+    // ("현황 알려줘" (tell me the status), "status") runs the briefing instead;
+    // the toast can still send it.
     if (
       !result.tooShort &&
       !result.error &&
@@ -1197,7 +1199,7 @@ export function Composer({
       : 0;
   /** Voco is doing something (not only waiting for its name). */
   const vocoActive = !!voco && (voco.phase !== 'waiting' || !!voco.result || !!voco.hearing);
-  // Phones keep the at-rest screen to one composer row: the idle "대기" chip
+  // Phones keep the at-rest screen to one composer row: the idle "Waiting" chip
   // moves into the tools tray, next to the hands-free switch; a live state
   // (awake, countdown, hearing, a result, the read-back) still shows here.
   const showVoiceLine = !!readBack.status || (!!voco && (vocoActive || (!compact && !phoneRow)));
@@ -1246,7 +1248,7 @@ export function Composer({
     <>
       <HandsFreeToggle />
       {phoneRow && !showVoiceLine && voco && <VocoStatus view={voco} />}
-      {/* Phones reach 지휘소 from the top bar's "more" menu (its control). */}
+      {/* Phones reach the Command Center from the top bar's "more" menu (its control). */}
       {conductorOn && !session.conductor && !phoneRow && (
         <button
           type="button"
@@ -1712,7 +1714,7 @@ export function Composer({
       )}
       {/* The voice state (wake word, read-back) on its own quiet line, never
           squeezed into the action row. Typing with the keyboard open hides
-          the idle "대기" chip; a live state still shows. */}
+          the idle "Waiting" chip; a live state still shows. */}
       {showVoiceLine && (
         <div className={styles.voiceLine} data-testid="composer-voice-line">
           <HandsFreeStatus status={readBack.status} />

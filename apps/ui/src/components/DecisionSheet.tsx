@@ -33,7 +33,7 @@ export function DecisionSheet({
   session: SessionInfo;
   decision: Decision | undefined;
   /**
-   * Shown in a list (지휘소 › Approvals): never read aloud or answered by
+   * Shown in a list (Command Center › Approvals): never read aloud or answered by
    * voice there, and alerts do not move the focus to it. The answers are the
    * same as on the session screen.
    */

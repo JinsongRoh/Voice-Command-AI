@@ -9,6 +9,17 @@ Character limits are given in brackets; counts were checked when this draft
 was written. Do not name third-party agent or tunnel products in the listing:
 it invites trademark rejections and dates quickly.
 
+## Languages
+
+- **App Store Connect:** Primary language: English (U.S.). App languages:
+  English, Korean, Japanese, Spanish.
+- **Google Play:** Primary language: English (U.S.) – en-US. App languages:
+  English, Korean, Japanese, Spanish.
+
+English is the default and primary language: this file is the source copy, and
+[listing.ko.md](listing.ko.md) is its Korean localization. The app itself
+follows the device language among these four and falls back to English.
+
 ## Names
 
 | Field | Text | Count / limit |

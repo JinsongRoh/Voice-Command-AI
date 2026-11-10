@@ -1,8 +1,8 @@
 /**
- * "원본 대화 보기" of a to-do: the session view opens on its chat, pages in
- * earlier history until the source message is loaded, then scrolls to it
- * and highlights it. The request lives outside the store (like the
- * 지휘소's terminal wish) so that it reaches a session view that is already
+ * "View source conversation" of a to-do: the session view opens on its
+ * chat, pages in earlier history until the source message is loaded, then
+ * scrolls to it and highlights it. The request lives outside the store (like
+ * the Command Center's terminal wish) so that it reaches a session view that is already
  * open as well as one that mounts afterwards.
  */
 import { useSyncExternalStore } from 'react';

@@ -146,7 +146,7 @@ fn sino(mut n: u64) -> String {
                 }
             }
             if group == 1 && part == 1 {
-                words.clear(); // "만", not "일만"
+                words.clear(); // "만" (10,000), not "일만" (one 10,000)
             }
             words.push_str(BIG_UNITS.get(group).copied().unwrap_or(""));
             out.push(words);
@@ -570,7 +570,7 @@ fn tidy_commas(c: &[char]) -> Vec<char> {
         if at(c, j) != Some(',') {
             return None;
         }
-        // The sentence end and one space ("요?, Yes" -> "요? Yes").
+        // The sentence end and one space ("요?, Yes" -> "요? Yes", Korean polite ending).
         out.extend_from_slice(&c[i..j]);
         out.push(' ');
         Some(skip_ws(c, j + 1))

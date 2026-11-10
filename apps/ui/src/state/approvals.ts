@@ -22,7 +22,7 @@ export interface ApprovalAlert {
   at: UnixMillis;
   /** Inferred without agent hooks: answered only in the agent's terminal. */
   inferred?: boolean;
-  /** The conductor's own session ("지휘 세션"). */
+  /** The conductor's own session ("Conductor session"). */
   conductor?: boolean;
 }
 

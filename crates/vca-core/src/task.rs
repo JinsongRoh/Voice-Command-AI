@@ -1,4 +1,4 @@
-//! The human task inbox ("할 일"): things agents asked the person to do
+//! The human task inbox ("To-do"): things agents asked the person to do
 //! (run a command in an administrator shell, sign in somewhere, approve
 //! something in a console, provide a value, review), kept by the server of
 //! each PC so every device sees the same list.
@@ -203,7 +203,7 @@ pub struct TaskDraft {
     pub blocking: bool,
     pub priority: Option<TaskPriority>,
     pub due: Option<UnixMillis>,
-    /// The chat message it was made from ("할 일로 추가").
+    /// The chat message it was made from ("Add to to-do").
     pub message_seq: Option<u64>,
     /// Without `message_seq`: anchor the task to the session's newest agent
     /// message (a task made from an alert).
@@ -242,13 +242,13 @@ pub enum TaskChange {
     },
     /// Moves the task to `position` among the active tasks (0 = first).
     Move { position: u32 },
-    /// Stores pasted command output ("출력 붙여넣기") for the result.
+    /// Stores pasted command output ("Paste output") for the result.
     Output { output: String },
     /// "Still needed": clears the stale and agent-moved-on marks.
     StillNeeded,
 }
 
-/// The result to send to the requesting session ("결과 보내기").
+/// The result to send to the requesting session ("Send result").
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TaskResultDraft {

@@ -3,7 +3,8 @@
 //! The router is language-agnostic; all words come from data tables
 //! (`src/intent/lang/<lang>.toml`, embedded at build time, plus any extra
 //! tables added at runtime). Tables of every language are active at once,
-//! so mixed-language utterances ("세션 2 pause 해줘", "pausa la session 3")
+//! so mixed-language utterances ("세션 2 pause 해줘" (pause session 2),
+//! "pausa la session 3")
 //! work without language detection.
 //!
 //! Method: the utterance is normalized and scanned for known lexemes
@@ -378,7 +379,7 @@ impl IntentRouter {
 
     /// A Hangul lexeme followed directly by more Hangul only counts when
     /// what follows is a particle or verb ending listed as a filler
-    /// ("세션으로", "재시작해줘"), so "네" (yes) does not match inside
+    /// ("세션으로" (to the session), "재시작해줘" (please restart)), so "네" (yes) does not match inside
     /// "네트워크" (network).
     fn hangul_tail_ok(&self, after: &str, phrase: &str) -> bool {
         let last_is_hangul = phrase

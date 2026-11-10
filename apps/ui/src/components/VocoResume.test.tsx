@@ -236,7 +236,7 @@ describe('Voco with attachments', () => {
     await waitFor(() => expect(screen.getByTestId('voco-status')).toHaveTextContent('Listening…'));
     await say('b');
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('이 사진들 비교해'));
-    // A plain "전송해" after other words counts once the user stays silent.
+    // A plain "전송해" (send it) after other words counts once the user stays silent.
     await timers.advance(TRAILING_SEND_SILENCE_MS);
     await timers.advance(UNDO_MS);
     // Queued: nothing went out, the chip says so and Voco listens again.

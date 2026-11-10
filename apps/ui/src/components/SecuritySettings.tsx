@@ -158,7 +158,7 @@ export function SecurityOverview({ services }: { services: SecurityServices }) {
 }
 
 function Overview({ services }: { services: SecurityServices }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const stepUp = useStepUp();
   const { status, error, refresh, set } = useSecurityStatus(services);
   const [panel, setPanel] = useState<'totp' | 'confirmCodes' | null>(null);
@@ -232,7 +232,7 @@ function Overview({ services }: { services: SecurityServices }) {
         <p className={styles.inline} role="status">
           <span className="muted">
             {t('security.activeUntil', {
-              time: new Date(status.step_up.expires_at).toLocaleTimeString([], {
+              time: new Date(status.step_up.expires_at).toLocaleTimeString(locale, {
                 hour: '2-digit',
                 minute: '2-digit',
               }),

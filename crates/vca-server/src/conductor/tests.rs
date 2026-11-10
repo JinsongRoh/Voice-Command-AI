@@ -1304,7 +1304,7 @@ async fn builtin_loop_calls_a_tool_then_answers() {
         content["untrusted_output"]["sessions"][0]["session_id"],
         "aaa"
     );
-    // The reply was pushed for the 지휘소 chat and spoken replies.
+    // The reply was pushed for the Command Center chat and spoken replies.
     let mut got_reply = false;
     while let Ok(msg) = notices.try_recv() {
         got_reply |= matches!(msg, ServerMsg::ConductorReply { ref text, .. } if text == "One session: api.");

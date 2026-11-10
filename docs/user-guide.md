@@ -267,7 +267,7 @@ To configure by hand instead, point `vcad` at an OpenAI-compatible speech-to-tex
 ```toml
 [speech]
 engine = "openai"
-language = "ko"
+language = "en"
 
 [speech.openai]
 base_url = "https://stt.example.com/v1"   # your Whisper server, or https://api.openai.com/v1
@@ -364,7 +364,7 @@ Profiles without a key are shown greyed out in the app with the `vca speech logi
 
 ```toml
 [speech]
-language = "ko"
+language = "en"
 default_engine = "whisper-local"
 default_llm = "local-llm"
 

@@ -28,9 +28,9 @@ function targetable(s: SessionInfo, state: ConductorState): boolean {
 }
 
 /**
- * Settings › 지휘소 (Command Center): setup only (the opt-in, the agent or
+ * Settings › Command Center: setup only (the opt-in, the agent or
  * LLM, wake-ups, the hourly cap and auto-allow). The desktop app of the PC
- * only; day-to-day use is in 지휘소 and the header control.
+ * only; day-to-day use is in the Command Center and the header control.
  */
 export function ConductorSettings({ onOpenCommand }: { onOpenCommand?: () => void }) {
   const { t } = useI18n();
@@ -204,7 +204,7 @@ export function ConductorSettings({ onOpenCommand }: { onOpenCommand?: () => voi
 }
 
 /**
- * 자동 허용: sends to these sessions skip the confirmation until the time
+ * Auto-allow: sends to these sessions skip the confirmation until the time
  * runs out. Set on the PC (step-up); phones see the list.
  */
 function AllowlistPanel({ state, local }: { state: ConductorState; local: boolean }) {

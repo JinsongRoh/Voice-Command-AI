@@ -90,7 +90,8 @@ impl Lang {
 }
 
 /// Sino-Korean reading of 0..=9999 ("영", "삼", "십이", "이천백"): numbered
-/// items are read this way ("삼번 세션"), not with native numbers ("세 번").
+/// items are read this way ("삼번 세션", session three), not with native
+/// numbers ("세 번").
 pub fn sino_korean(n: u32) -> String {
     const DIGITS: [&str; 10] = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
     const UNITS: [&str; 4] = ["", "십", "백", "천"];
@@ -112,7 +113,7 @@ pub fn sino_korean(n: u32) -> String {
             continue;
         }
         let unit = UNITS[len - 1 - i];
-        // 십, 백, 천 are read without a leading 일.
+        // "십", "백", "천" (10, 100, 1000) are read without a leading "일" (one).
         if d != 1 || unit.is_empty() {
             out.push_str(DIGITS[d]);
         }

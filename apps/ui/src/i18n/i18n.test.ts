@@ -60,6 +60,21 @@ describe('i18n', () => {
     });
   });
 
+  // Korean belongs in ko.json only: a stray Korean example or label in another
+  // language is a copy-paste slip.
+  it('has no Hangul in the en, ja and es strings', () => {
+    const hangul = /\p{Script=Hangul}/u;
+    const withHangul = (dict: Record<string, string>) =>
+      Object.entries(dict)
+        .filter(([, value]) => hangul.test(value))
+        .map(([key]) => key);
+    expect({ en: withHangul(en), ja: withHangul(ja), es: withHangul(es) }).toEqual({
+      en: [],
+      ja: [],
+      es: [],
+    });
+  });
+
   it('detects locales from BCP 47 tags', () => {
     expect(detectLocale(['ko-KR'])).toBe('ko');
     expect(detectLocale(['fr', 'es-MX'])).toBe('es');

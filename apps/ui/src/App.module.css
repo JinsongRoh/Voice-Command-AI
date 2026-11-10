@@ -33,7 +33,7 @@
   max-width: 1200px;
   margin: 0 auto;
 }
-/* 지휘소: the tabs on top, the conversation (a session view) fills the rest. */
+/* Command Center: the tabs on top, the conversation (a session view) fills the rest. */
 .command {
   display: flex;
   flex-direction: column;

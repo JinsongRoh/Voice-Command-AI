@@ -21,7 +21,7 @@ import { useInboxCount } from './useInbox';
 import styles from './CommandCenter.module.css';
 
 /**
- * 지휘소 (Command Center): a direct conversation with the conductor (its
+ * Command Center: a direct conversation with the conductor (its
  * session in the normal chat view, composer and voice), the Approvals inbox,
  * the conductor's log. For admin devices the conversation also has a remote
  * shell (PowerShell on Windows) in a project folder, next to its Chat and
@@ -40,7 +40,7 @@ export function CommandCenterView({
   /** Opens a work session (on its terminal with `terminal`). */
   onOpenSession?: (sessionId: string, terminal: boolean) => void;
   onOpenSettings?: () => void;
-  /** Opens the to-do list ("알림 · 할 일" › 할 일). */
+  /** Opens the to-do list ("Alerts" › "To-do"). */
   onOpenTasks?: () => void;
 }) {
   const { t } = useI18n();

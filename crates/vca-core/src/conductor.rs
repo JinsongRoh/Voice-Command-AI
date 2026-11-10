@@ -126,7 +126,7 @@ pub struct ConductorSettings {
     pub agent: ConductorAgent,
     /// The `[[speech.llms]]` profile of the built-in conductor.
     pub builtin_llm: Option<String>,
-    /// "지휘 세션에 알림 전달": batched turn-end, error and decision
+    /// "Pass other events to the conductor": batched turn-end, error and decision
     /// summaries are typed into the conductor. Off by default.
     pub wake_events: bool,
     /// Hard cap on conductor actions (sends, interrupts, new sessions,

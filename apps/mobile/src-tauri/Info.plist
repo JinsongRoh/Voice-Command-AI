@@ -2,6 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- English is the development language; the app ships in English, Korean,
+       Japanese and Spanish. Listing them lets iOS pick the device language
+       for the WebView (navigator.languages) and for system UI such as the
+       share sheet and permission alerts. The translated permission texts
+       live in ios-l10n/<lang>.lproj/InfoPlist.strings. -->
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>ko</string>
+    <string>ja</string>
+    <string>es</string>
+  </array>
   <!-- The microphone is open while you dictate (tap the mic button) and,
        while the app is open, when hands-free mode or the "Voco" wake word is
        on (it listens for the wake word and your spoken commands). Audio goes

@@ -184,7 +184,7 @@ with the commands above.
 ```toml
 mode = "relay"                      # or "smtp"
 sender_name = "Voice Command AI"
-language = "ko"
+language = "en"
 recipients = []
 allowed_recipient_domains = ["example.com"]  # owner addresses must match
 

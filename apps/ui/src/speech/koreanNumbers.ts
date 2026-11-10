@@ -3,8 +3,8 @@
  *
  * TTS engines read "3번" with native Korean numbers ("세 번", three times),
  * but a numbered item such as "3번 세션" is read with Sino-Korean numbers
- * ("삼번 세션"). Ordinals with 번째 keep the native reading ("세 번째"), so
- * only a plain 번 after digits is rewritten.
+ * ("삼번 세션"). Ordinals with "번째" keep the native reading ("세 번째"),
+ * so only a plain "번" after digits is rewritten.
  */
 
 const DIGITS = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
@@ -19,7 +19,7 @@ export function sinoKorean(n: number): string {
   digits.forEach((d, i) => {
     const unit = UNITS[digits.length - 1 - i] ?? '';
     if (d === 0) return;
-    // 십, 백, 천 are read without a leading 일.
+    // "십", "백", "천" (10, 100, 1000) are read without a leading "일" (one).
     out += (d === 1 && unit ? '' : DIGITS[d]) + unit;
   });
   return out;

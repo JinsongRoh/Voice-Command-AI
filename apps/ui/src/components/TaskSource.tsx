@@ -1,6 +1,6 @@
 /**
- * Where a to-do came from: "원본 대화 보기" (the session's chat, scrolled to
- * the source message), "앞뒤 메시지 보기" (a sheet with the message and a few
+ * Where a to-do came from: "View source conversation" (the session's chat,
+ * scrolled to the source message), "Messages around it" (a sheet with the message and a few
  * around it, from the timeline API), the stored excerpt when the session or
  * the message is gone, and the copy buttons of a task.
  */
@@ -27,10 +27,10 @@ import styles from './TaskSource.module.css';
 
 /** Events fetched for the sheet (tool calls and state changes sit between messages). */
 const CONTEXT_EVENTS = 60;
-/** Pages "원본 대화 보기" may load while looking for the message. */
+/** Pages "View source conversation" may load while looking for the message. */
 const MAX_ANCHOR_PAGES = 80;
 
-/** Copies text and confirms with a toast ("복사했습니다"). */
+/** Copies text and confirms with a toast ("Copied"). */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useCopyWithToast(): (text: string) => Promise<boolean> {
   const { t } = useI18n();
@@ -101,7 +101,7 @@ function Excerpt({ excerpt }: { excerpt: string | null | undefined }) {
 }
 
 /**
- * "앞뒤 메시지 보기": the source message and a few around it. With `missing`
+ * "Messages around it": the source message and a few around it. With `missing`
  * (the chat could not find it) only the stored excerpt is shown.
  */
 export function TaskSourceSheet({
@@ -116,7 +116,7 @@ export function TaskSourceSheet({
   seq: number | null;
   excerpt: string | null | undefined;
   missing?: boolean;
-  /** "채팅에서 열기" (absent: no button). */
+  /** "Open in chat" (absent: no button). */
   onOpenChat?: () => void;
   onClose: () => void;
 }) {
@@ -208,8 +208,8 @@ function useSourceText(task: HumanTask): string | null {
 }
 
 /**
- * The source and copy buttons of an open task: "원본 대화 보기", "앞뒤
- * 메시지 보기", "할 일 복사" and "원본 메시지 복사".
+ * The source and copy buttons of an open task: "View source conversation",
+ * "Messages around it", "Copy task" and "Copy source message".
  */
 export function TaskSourceActions({ task }: { task: HumanTask }) {
   const { t } = useI18n();
@@ -274,7 +274,7 @@ export function TaskSourceActions({ task }: { task: HumanTask }) {
 }
 
 /**
- * The session view's side of "원본 대화 보기": pages in earlier history until
+ * The session view's side of "View source conversation": pages in earlier history until
  * the source message is loaded, then returns its seq to highlight; when it
  * cannot be found, `missing` holds the request (its excerpt is shown).
  */

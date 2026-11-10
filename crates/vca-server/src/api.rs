@@ -192,7 +192,7 @@ struct Inner {
     discovery: OnceLock<crate::discovery::Discovery>,
     /// The conductor (opt-in per PC).
     conductor: OnceLock<crate::conductor::Conductor>,
-    /// The human task inbox ("할 일").
+    /// The human task inbox ("To-do").
     tasks: OnceLock<crate::tasks::Tasks>,
     /// The pronunciation dictionary of spoken alerts.
     pronunciations: OnceLock<Arc<crate::pronunciations::Pronunciations>>,

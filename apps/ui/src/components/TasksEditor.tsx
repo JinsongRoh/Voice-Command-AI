@@ -34,7 +34,7 @@ export interface TaskPrefill {
 }
 
 /**
- * "새 할 일", "할 일로 추가" (with `prefill`) or editing a task (`task`).
+ * "New task", "Add to to-do" (with `prefill`) or editing a task (`task`).
  * Nothing in it runs: a command is only stored, classified and shown.
  */
 export function TaskEditorDialog({
@@ -221,7 +221,7 @@ export function TaskEditorDialog({
 }
 
 /**
- * "할 일로 추가" on a chat message: `open(text, seq)` shows the editor filled
+ * "Add to to-do" on a chat message: `open(text, seq)` shows the editor filled
  * from the message. `open` is undefined when the PC's server has no task list.
  */
 // eslint-disable-next-line react-refresh/only-export-components

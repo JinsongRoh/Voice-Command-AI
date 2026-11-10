@@ -1,7 +1,8 @@
 /**
  * Hands-free mode controls: the composer toggle, the Settings switch, the
  * one-time "command text is read aloud" note and the visual state chips
- * (듣는 중 / 확인 대기 / 보냄 / 취소됨 / 보내지 않음, and the spoken-decision
+ * (Listening / Waiting for confirmation / Sent / Cancelled / Not sent, and
+ * the spoken-decision
  * states).
  */
 import { useI18n } from '../i18n/context';
@@ -15,7 +16,7 @@ import { Icon } from './Icon';
 import styles from './HandsFree.module.css';
 
 /**
- * The one-time note "명령 내용이 소리로 읽힙니다": shown while hands-free
+ * The one-time note "Command text will be read aloud.": shown while hands-free
  * mode is on until it is acknowledged once (on this device).
  */
 export function HandsFreeNote() {
@@ -90,7 +91,7 @@ export function HandsFreeSettings() {
   );
 }
 
-/** Settings of the wake word flow ("보코 … 오버"). */
+/** Settings of the wake word flow ("보코 … 오버" (Voco … over)). */
 function VocoSettings() {
   const { t } = useI18n();
   const { settings, updateSettings } = useSettings();
@@ -225,7 +226,7 @@ export function HandsFreeStatus({ status }: { status: SendStatus | null }) {
   );
 }
 
-/** The wake word flow in the composer: 대기, 듣는 중…, the send countdown, the result. */
+/** The wake word flow in the composer: waiting, listening, the send countdown, the result. */
 export function VocoStatus({ view }: { view: VocoView | null }) {
   const { t } = useI18n();
   if (!view) return null;

@@ -130,7 +130,7 @@ describe('reducer', () => {
     const ids = () => visibleSessions(s).map((x) => x.id);
     expect(s.order).toContain('cd');
     expect(ids()).not.toContain('cd');
-    // Even a decision of its own does not make it a card: 지휘소 and the
+    // Even a decision of its own does not make it a card: the Command Center and the
     // Approvals inbox show it.
     s = server(s, {
       type: 'session_updated',

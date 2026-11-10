@@ -376,7 +376,7 @@ describe('Command Center › Approvals', () => {
       'Recommendation: Allow it: dist is generated.',
     );
     expect(within(item).getByTestId('escalation-request')).toHaveTextContent('Allow Bash command?');
-    // The 지휘소 menu counts it.
+    // The Command Center menu counts it.
     expect(nav().getByTestId('conductor-badge')).toHaveTextContent('1');
     // The same answers as on the session screen.
     await userEvent.click(within(item).getByRole('button', { name: 'Answer' }));

@@ -234,7 +234,7 @@ describe('alerts in the app state', () => {
     let state = apply(initialState, conductor({ state: { type: 'awaiting_input' } }));
     expect(alertCount(state)).toBe(0);
     expect(alertsAndTasksCount(state)).toBe(0);
-    // A permission decision: in the list and the badges, as "지휘 세션".
+    // A permission decision: in the list and the badges, as "Conductor session".
     state = apply(state, { ...waiting('cd', 'd9'), display_name: 'Conductor', conductor: true });
     expect(alertCount(state)).toBe(1);
     expect(alertsAndTasksCount(state)).toBe(1);

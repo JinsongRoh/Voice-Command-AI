@@ -3,13 +3,13 @@ import { shellChoices, type MachineOs } from '../../protocol/shell';
 import type { SessionInfo } from '../../protocol/types';
 import { sameFolder } from '../ShellTab';
 
-/** 지휘소's shell: PowerShell on Windows, the machine's default shell elsewhere. */
+/** The Command Center's shell: PowerShell on Windows, the machine's default shell elsewhere. */
 export function commandShellName(os: MachineOs | null): string {
   return os === 'windows' && shellChoices(os).includes('powershell') ? 'powershell' : 'default';
 }
 
 /**
- * Folders 지휘소's shell never opens in: the conductor's own working folder
+ * Folders the Command Center's shell never opens in: the conductor's own working folder
  * (vcad's data folder, with the conductor's token and MCP config).
  */
 export function conductorFolders(
@@ -31,7 +31,7 @@ export function isExcludedFolder(folder: string, excluded: readonly string[]): b
 }
 
 /**
- * The folder 지휘소's shell starts in: the server's most recent project
+ * The folder the Command Center's shell starts in: the server's most recent project
  * folder, else the project folder of the most recently active local
  * session. Never one of `excluded`; `null` when nothing fits.
  */

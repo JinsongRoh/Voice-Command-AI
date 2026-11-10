@@ -51,7 +51,7 @@ const PATHS = {
   paste: 'M9 3h6v3H9zM9 4.5H6V21h12V4.5h-3',
   bookmark: 'M7 4h10v17l-5-4-5 4z',
   shield: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z',
-  /** The conductor (지휘소): one node directing three. */
+  /** The conductor (Command Center): one node directing three. */
   conductor:
     'M12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM19 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM6.7 6.3l3.6 3.2M17.3 6.3l-3.6 3.2M12 13v5',
   // Spoken briefing.

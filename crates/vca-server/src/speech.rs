@@ -886,7 +886,7 @@ impl Speech {
         );
         let mut transcript = result.map_err(speech_error)?;
         // Drop low-confidence segments that are only a known Whisper
-        // hallucination ("감사합니다.", "Thanks for watching!").
+        // hallucination ("감사합니다." (thank you), "Thanks for watching!").
         vca_speech::cleanup::strip_hallucinated_segments(&mut transcript);
         let detected = transcript.language.clone().or(language);
         let raw_text = vca_speech::cleanup::collapse_repeats(transcript.text.trim());

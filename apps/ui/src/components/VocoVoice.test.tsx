@@ -20,7 +20,7 @@ class FakeUtterance {
 }
 
 /**
- * The "네" after the wake word uses the voice the user chose, like every
+ * The "네" ("Yes?") after the wake word uses the voice the user chose, like every
  * other prompt: with a PC engine chosen it is the PC voice, never the
  * phone's own.
  */

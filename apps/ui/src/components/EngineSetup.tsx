@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
 
 import { useI18n } from '../i18n/context';
-import type { MessageKey } from '../i18n/i18n';
+import type { MessageKey, TranslateFn } from '../i18n/i18n';
 import { toNativeError } from '../native/bridge';
 import { isStepUpCanceled } from '../native/security';
 import { useStepUp } from './StepUpPrompt';
@@ -52,6 +52,13 @@ interface Draft {
 }
 
 const DRAFT_TEST = 'draft';
+
+/** A profile's engine kind from the server; a kind this app has no label for shows as-is. */
+function kindLabel(t: TranslateFn, kind: string): string {
+  const key = `engines.kind.${kind}`;
+  const label = t(key as MessageKey);
+  return label === key ? kind : label;
+}
 
 function testKey(kind: EngineType, id: string) {
   return `${kind}:${id}`;
@@ -427,9 +434,7 @@ function EngineList({
                   {entry.default && <span className={styles.chip}>{t('engines.default')}</span>}
                 </span>
                 <span className="muted">
-                  {[t(`engines.kind.${p.kind}` as MessageKey), p.base_url, p.model]
-                    .filter(Boolean)
-                    .join(' · ')}
+                  {[kindLabel(t, p.kind), p.base_url, p.model].filter(Boolean).join(' · ')}
                 </span>
                 <span className="muted">
                   {entry.key === 'stored'

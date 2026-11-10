@@ -10,7 +10,7 @@ import styles from './TasksView.module.css';
 export type InboxTab = 'alerts' | 'tasks';
 
 /**
- * The "알림 · 할 일" menu: approvals and questions waiting in sessions on
+ * The "Alerts" menu (alerts and to-dos): approvals and questions waiting in sessions on
  * one tab, the to-do list from agents on the other.
  */
 export function AlertsAndTasksView({

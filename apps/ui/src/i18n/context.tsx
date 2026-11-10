@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 
 import {
   formatBytes,
@@ -31,6 +31,11 @@ const I18nContext = createContext<I18n>(make('en'));
 
 export function I18nProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const value = useMemo(() => make(locale), [locale]);
+  // The page language follows the UI language (screen readers, hyphenation,
+  // CJK font selection), on every screen including pairing.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 

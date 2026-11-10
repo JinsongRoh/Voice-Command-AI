@@ -393,7 +393,7 @@ export function useVoco(composer: VocoComposer): VocoView | null {
     };
   }, [active, sessionId, hooks, actions]);
 
-  // The result ("보냄", "취소됨") stays for a moment; "queued" until the send goes.
+  // The result ("Sent", "Cancelled") stays for a moment; "queued" until the send goes.
   const result = view?.result;
   useEffect(() => {
     if (!result || result === 'queued') return;

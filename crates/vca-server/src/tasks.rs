@@ -1,4 +1,4 @@
-//! The human task inbox ("할 일"): what agents asked the person to do, kept
+//! The human task inbox ("To-do"): what agents asked the person to do, kept
 //! per PC in `<data>/tasks.json` so every device sees the same list.
 //!
 //! Tasks come from three sources:
@@ -8,7 +8,7 @@
 //!    message is scanned with fixed patterns ([`extract`]) and, when the
 //!    person opted in, with the configured LLM profile (secrets redacted
 //!    first). Duplicates (same session, same command or title) are skipped.
-//! 3. **Manual**: "새 할 일" or "할 일로 추가" on a chat message.
+//! 3. **Manual**: "New task" or "Add to to-do" on a chat message.
 //!
 //! Safety rules:
 //!
@@ -859,7 +859,7 @@ impl Tasks {
         })
     }
 
-    /// A manual task ("새 할 일", "할 일로 추가").
+    /// A manual task ("New task", "Add to to-do").
     pub fn create(&self, actor: &Actor, draft: TaskDraft) -> Result<HumanTask, Error> {
         if let Some(sid) = &draft.session_id {
             if self.inner.mgr.get(sid).is_none() {
@@ -1075,7 +1075,7 @@ impl Tasks {
         Ok(task)
     }
 
-    /// The message "결과 보내기" types into the requesting session.
+    /// The message "Send result" types into the requesting session.
     pub fn compose_result(task: &HumanTask, result: &TaskResultDraft) -> String {
         let mut parts = vec![format!(
             "Result of the task you asked me to do: \"{}\"",
@@ -1099,7 +1099,7 @@ impl Tasks {
         parts.join("\n\n")
     }
 
-    /// "결과 보내기": types the result into the session that asked and marks
+    /// "Send result": types the result into the session that asked and marks
     /// the task done. With `preview`, only composes the message.
     pub async fn send_result(
         &self,
@@ -1254,7 +1254,7 @@ impl Tasks {
         }
     }
 
-    /// "오늘 할 일": counts only, fixed templates.
+    /// "Today's tasks": counts only, fixed templates.
     pub fn digest(&self, language: Option<&str>) -> String {
         let now = self.now();
         let st = lock(&self.inner.state);

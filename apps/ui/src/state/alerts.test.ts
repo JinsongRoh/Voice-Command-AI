@@ -75,7 +75,7 @@ describe('alertsFor', () => {
         { type: 'session_updated', session: localSession({ conductor: true, ...patch }) },
         t,
       );
-    // Turn-ends and input waits are its replies (they reach 지휘소).
+    // Turn-ends and input waits are its replies (they reach the Command Center).
     expect(update({ state: { type: 'idle' } })).toEqual([]);
     expect(update({ state: { type: 'awaiting_input' } })).toEqual([]);
     expect(update({ state: { type: 'exited', code: 0 } })).toEqual([]);

@@ -15,7 +15,7 @@ import { Modal } from './Modal';
 import styles from './TasksView.module.css';
 
 /**
- * "결과 보내기": the result (text, pasted output and files through the
+ * "Send result": the result (text, pasted output and files through the
  * normal attachment upload) goes to the session that asked, as a message,
  * after a preview; the task is checked off on success.
  */

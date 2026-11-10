@@ -134,6 +134,20 @@ describe('EngineSetup', () => {
     );
   });
 
+  it('shows an engine kind it has no label for by its plain name, never a raw key', async () => {
+    const services = fakeServices();
+    const setup = initial();
+    setup.stt.push(
+      entry({ id: 'future', kind: 'future_cloud' as EngineForm['kind'], model: 'm1' }),
+    );
+    services.get.mockResolvedValue(setup);
+    await renderSetup(services);
+    const row = screen.getByTestId('engine-stt-future');
+    expect(row).toHaveTextContent('future_cloud · m1');
+    expect(row).not.toHaveTextContent('engines.kind');
+    expect(screen.getByTestId('engine-stt-whisper')).toHaveTextContent('OpenAI-compatible server');
+  });
+
   it('offers plain http only for a private address, and sends the choice', async () => {
     const services = await renderSetup();
     await userEvent.click(screen.getByRole('button', { name: 'Add: Transcript correction (LLM)' }));

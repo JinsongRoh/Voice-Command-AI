@@ -1,4 +1,4 @@
-/* The header's 지휘소 control: status + count, talk, hands-free, stop menu. */
+/* The header's Command Center control: status + count, talk, hands-free, stop menu. */
 .control {
   position: relative;
   display: inline-flex;

@@ -85,7 +85,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* "지휘 세션": a decision of the conductor's own session. */
+/* "Conductor session": a decision of the conductor's own session. */
 .conductor {
   margin-left: 6px;
   padding: 0 6px;

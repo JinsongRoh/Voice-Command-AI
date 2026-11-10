@@ -1,8 +1,8 @@
 //! Instruction grants: the person's own instruction to the conductor
 //! approves the sends it asks for.
 //!
-//! When the owner types "3번 세션에 빌드 상태 확인하라고 하고 알려줘" in the
-//! Command Center, the conductor's send to session 3 is what the person
+//! When the owner types "3번 세션에 빌드 상태 확인하라고 하고 알려줘" (tell
+//! session 3 to check the build status and report back) in the Command Center, the conductor's send to session 3 is what the person
 //! just asked for; asking them to approve it again is a second approval of
 //! their own words. So an instruction from an owner-level client opens an
 //! [`InstructionGrant`] for that conductor turn: it lasts until the turn
@@ -11,8 +11,8 @@
 //!
 //! - its target is a session the instruction names ([`named_targets`]): by
 //!   display name, by card number ("3번 세션", "session 3"), or every
-//!   session when the instruction clearly says so ("모든 세션", "all
-//!   sessions"); a name several sessions share names none of them;
+//!   session when the instruction clearly says so ("모든 세션" (all
+//!   sessions), "all sessions"); a name several sessions share names none of them;
 //! - its text passes the auto-send screen ([`screen_send`], design 6.2): at
 //!   most [`SCREEN_MAX_CHARS`] characters, nothing [`redact`] would hide,
 //!   no command line `shell::danger` rates `Caution` or worse, no link the
@@ -114,7 +114,8 @@ fn fold(text: &str) -> String {
 
 /// Phrases that clearly mean every session (folded).
 const ALL_PHRASES: &[&str] = &[
-    // A bare "전체" is not enough: "3번 세션에 전체 테스트 돌리라고 해".
+    // A bare "전체" (all) is not enough: "3번 세션에 전체 테스트 돌리라고 해"
+    // (have session 3 run all tests).
     "모든 세션",
     "모든세션",
     "전체 세션",
@@ -140,7 +141,8 @@ const ALL_PHRASES: &[&str] = &[
     "cada sesion",
 ];
 
-/// Words that make "all sessions" an exception list ("모든 세션 말고 …").
+/// Words that make "all sessions" an exception list ("모든 세션 말고 …", all
+/// sessions except …).
 const EXCEPT_WORDS: &[&str] = &[
     "말고",
     "빼고",
@@ -158,11 +160,13 @@ const EXCEPT_WORDS: &[&str] = &[
 ];
 
 /// "To everyone" (folded): it names no session, so it means every session
-/// only when the instruction names no session either ("1번 세션에서 팀원
-/// 모두에게 보낼 공지 작성해" is about session 1).
+/// only when the instruction names no session either:
+/// "1번 세션에서 팀원 모두에게 보낼 공지 작성해" (in session 1, write a notice
+/// for the whole team) is about session 1.
 const EVERYONE_PHRASES: &[&str] = &["전체에게", "전체한테", "모두에게", "모두한테"];
 
-/// Words that tell a session to be left alone ("2번 세션은 건드리지 마").
+/// Words that tell a session to be left alone ("2번 세션은 건드리지 마",
+/// leave session 2 alone).
 /// With them, "all sessions" is not all, and an instruction naming several
 /// sessions names none of them for sure: which one was excluded is not
 /// read here.
@@ -237,8 +241,8 @@ fn find_all<'a>(hay: &'a str, needle: &'a str) -> impl Iterator<Item = usize> + 
     hay.match_indices(needle).map(|(i, _)| i)
 }
 
-/// What may follow a card number ("세션 3에게", "session 3,"): not a
-/// digit and not a counter ("세션 3개").
+/// What may follow a card number ("세션 3에게" (to session 3), "session 3,"):
+/// not a digit and not a counter ("세션 3개", three sessions).
 fn number_ends(rest: &str) -> bool {
     match rest.chars().next() {
         None => true,
@@ -290,7 +294,8 @@ pub fn names_number(instruction: &str, n: u32) -> bool {
             return true;
         }
     }
-    // Spoken numbers ("삼번 세션"); not 2, as "이번 세션" means "this session".
+    // Spoken numbers ("삼번 세션", session three); not 2, as "이번 세션" means
+    // "this session".
     if n != 2 && n < 100 {
         let word = sino_korean(n);
         for suffix in ["번 세션", "번세션"] {
@@ -336,7 +341,8 @@ pub fn named_targets(instruction: &str, candidates: &[Candidate<'_>]) -> (bool, 
     if says_all_with(instruction, !named.is_empty()) {
         return (true, candidates.iter().map(|c| c.id.clone()).collect());
     }
-    // "2번 세션은 건드리지 말고 1번 세션만": one of them is excluded, and
+    // "2번 세션은 건드리지 말고 1번 세션만" (not session 2, only session 1):
+    // one of them is excluded, and
     // which one is not read here, so neither is approved.
     let text = fold(instruction);
     if named.len() > 1 && (has_any(&text, EXCEPT_WORDS) || has_any(&text, NEGATION_WORDS)) {
@@ -548,7 +554,7 @@ mod tests {
         assert!(every);
         assert_eq!(out.len(), 5);
         assert!(named("ask all sessions to commit").0);
-        // A bare "전체" or an exception list is not "all".
+        // A bare "전체" (all) or an exception list is not "all".
         assert!(!named("3번 세션에 전체 테스트 돌리라고 해").0);
         assert!(!named("모든 세션 말고 1번 세션만").0);
     }

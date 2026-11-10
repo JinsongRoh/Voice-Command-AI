@@ -120,7 +120,7 @@
   }
 }
 
-/* Wake word settings ("보코 … 오버"), under the hands-free switch. */
+/* Wake word settings ("보코 … 오버" (Voco … over)), under the hands-free switch. */
 .voco {
   display: flex;
   flex-direction: column;

@@ -22,13 +22,13 @@ const NEEDS: Record<string, MessageKey> = {
 };
 
 /**
- * Sends the conductor wants to make, each waiting for the person: "지휘
- * 세션이 X 세션에 다음을 보내려 합니다: …" with Allow / Deny. Shown at the
- * top of 지휘소 and in Alerts; nothing when none waits.
+ * Sends the conductor wants to make, each waiting for the person: "The
+ * conductor wants to send this to X: …" with Allow / Deny. Shown at the top
+ * of the Command Center and in Alerts; nothing when none waits.
  *
- * With `sessionWait` (지휘소), what the conductor's own session waits on
+ * With `sessionWait` (Command Center), what the conductor's own session waits on
  * comes first: its first-run "trust this folder" question or a permission
- * decision. Alerts lists such a decision itself, as "지휘 세션".
+ * decision. Alerts lists such a decision itself, as "Conductor session".
  */
 export function ConductorRequests({
   heading = false,

@@ -354,7 +354,7 @@ export interface Actions {
   hideObserved(target: { sessionId?: SessionId; pid?: number }): Promise<ScanReport>;
   unhideObserved(target: { pid?: number; all?: boolean }): Promise<ScanReport>;
   /**
-   * A human task request ("할 일"). The answer also goes into the store
+   * A human task request ("To-do"). The answer also goes into the store
    * (`tasks`, `task_saved`, `task_result_sent`); errors reject with `RequestError`.
    */
   task(body: TaskClientMsg): Promise<ServerMsg>;
@@ -606,7 +606,7 @@ export function AppProvider({
     [alertVoice, synthesize, serverVoiceFor],
   );
 
-  // Fixed prompts ("네", "보냈습니다.", ...) of hands-free mode are
+  // Fixed prompts ("네" (yes?), "보냈습니다." (sent.), ...) of hands-free mode are
   // synthesized ahead in the PC voice: when the app connects and when the
   // engine, speaker or language changes, or hands-free mode is turned on.
   // At most once a minute per choice, one phrase at a time.

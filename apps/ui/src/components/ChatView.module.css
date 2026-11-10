@@ -619,7 +619,7 @@ button.activityHead:hover {
   color: var(--text-muted, inherit);
   font-size: 0.85em;
 }
-/* A to-do's source message ("원본 대화 보기"). */
+/* A to-do's source message ("View source conversation"). */
 .msg[data-anchor='true'] {
   border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px var(--accent-soft);

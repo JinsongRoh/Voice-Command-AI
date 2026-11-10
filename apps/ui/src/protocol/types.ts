@@ -113,7 +113,7 @@ export interface SessionInfo {
   subagents?: number;
   /**
    * True for the conductor's own session: its turn-ends, unread counts and
-   * notifications are not alerts (its replies reach 지휘소); its permission
+   * notifications are not alerts (its replies reach the Command Center); its permission
    * decisions still are. Left out when false, and by older servers.
    */
   conductor?: boolean;
@@ -601,7 +601,7 @@ export type ClientMsg =
   | { type: 'conductor_get' }
   /** Setup and the opt-in: the desktop app of the PC only (`forbidden` elsewhere). */
   | { type: 'conductor_configure'; settings: ConductorSettings }
-  /** "지휘 세션 시작": the PC only. */
+  /** "Start conductor": the PC only. */
   | { type: 'conductor_start' }
   /**
    * Stops it; `kill` also revokes its tools (command scope). The kill switch
@@ -624,7 +624,7 @@ export type ClientMsg =
   | { type: 'conductor_allow_session'; session_id: SessionId; minutes: number }
   /** An instruction for the conductor (command scope); the reply comes as `conductor_reply`. */
   | { type: 'conductor_ask'; text: string }
-  // "신뢰하고 시작": Enter on the conductor terminal's "trust this folder" question.
+  // "Trust and start": Enter on the conductor terminal's "trust this folder" question.
   | { type: 'conductor_trust_folder' }
   // The human task inbox (only when `welcome.features` has `human_tasks`); see tasks.ts.
   | TaskClientMsg

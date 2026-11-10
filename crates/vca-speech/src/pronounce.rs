@@ -424,7 +424,7 @@ pub fn has_latin(text: &str) -> bool {
 }
 
 /// True for a short lower-case token without vowels, read letter by letter
-/// in Korean ("npm" -> 엔피엠, "ts" -> 티에스).
+/// in Korean ("npm" -> "엔피엠", "ts" -> "티에스").
 fn consonant_acronym(token: &str) -> bool {
     (1..=MAX_ACRONYM).contains(&token.len())
         && token
@@ -454,8 +454,8 @@ fn word_reading(word: &str) -> Option<String> {
 }
 
 /// Korean text for a multilingual voice: the Latin words whose reading the
-/// rules know become Hangul (acronyms are spelled, "VCA" -> 브이씨에이,
-/// "npm" -> 엔피엠; common parts come from the table, "Code" -> 코드).
+/// rules know become Hangul (acronyms are spelled, "VCA" -> "브이씨에이",
+/// "npm" -> "엔피엠"; common parts come from the table, "Code" -> "코드").
 /// Other words stay as written. Applied after the dictionary, so Korean
 /// text keeps fewer Latin letters that could make an engine read it in
 /// another language.

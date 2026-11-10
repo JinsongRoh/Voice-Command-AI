@@ -985,7 +985,7 @@ impl Conductor {
         Ok(())
     }
 
-    /// "신뢰하고 시작": presses Enter on the conductor session's first-run
+    /// "Trust and start": presses Enter on the conductor session's first-run
     /// "trust this folder" question, only while that question is on screen
     /// with the cursor on "Yes". Nothing under the user's agent config is
     /// written: the person answers the agent's own question.

@@ -1,7 +1,8 @@
 /**
- * The conductor (지휘 세션) as the app sees it: the server's state, kept in a
- * tiny external store fed by `conductor` pushes, and a request bus that lets
- * the composer's "지휘 모드" shortcut open the 지휘소 view.
+ * The conductor (conductor session) as the app sees it: the server's state,
+ * kept in a tiny external store fed by `conductor` pushes, and a request bus
+ * that lets the composer's "Conductor mode" shortcut open the Command Center
+ * view.
  */
 import {
   CONDUCTOR_PROBLEM_HOOKS_MISSING,
@@ -47,7 +48,7 @@ export function createConductorStore(): ConductorStore {
   };
 }
 
-/** Conductor requests waiting for the person (the 지휘소 badge). */
+/** Conductor requests waiting for the person (the Command Center badge). */
 export function pendingCount(state: ConductorState | null): number {
   return state?.pending.length ?? 0;
 }
@@ -122,8 +123,8 @@ export const STATUS_KEYS: Record<
 
 /**
  * What the conductor's own session waits on, for the cards at the top of
- * 지휘소: Claude Code's first-run "trust this folder" question, or a
- * permission decision (also in Alerts as "지휘 세션"). `null`: nothing.
+ * the Command Center: Claude Code's first-run "trust this folder" question,
+ * or a permission decision (also in Alerts as "Conductor session"). `null`: nothing.
  */
 export function conductorSessionWait(
   state: ConductorState | null,
@@ -140,7 +141,7 @@ export function conductorSessionWait(
 
 let terminalWish: string | null = null;
 
-/** The session view opens `sessionId` on its terminal tab (지휘소's "터미널 보기"). */
+/** The session view opens `sessionId` on its terminal tab (the Command Center's "Show terminal"). */
 export function requestTerminal(sessionId: string): void {
   terminalWish = sessionId;
 }
@@ -155,7 +156,7 @@ export function clearTerminalWish(sessionId: string): void {
 
 const viewListeners = new Set<() => void>();
 
-/** Asks the app to show the 지휘소 view (the composer's "지휘 모드"). */
+/** Asks the app to show the Command Center view (the composer's "Conductor mode"). */
 export function requestConductorView(): void {
   for (const l of viewListeners) l();
 }

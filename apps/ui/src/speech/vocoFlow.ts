@@ -1,11 +1,11 @@
 /**
  * The Voco wake flow of hands-free mode (v2):
  *
- * 1. 대기 (`waiting`): the microphone is open (`vocoListener.ts`) but only a
+ * 1. Waiting (`waiting`): the microphone is open (`vocoListener.ts`) but only a
  *    short head of each utterance (`WAKE_HEAD_MS`) is transcribed, to look
  *    for the wake word. Without it, nothing is kept, shown or sent.
  * 2. "보코" (or a mishearing such as "보컬", isolated, see `wakeWord.ts`): a
- *    chime, a short "네" and 듣는 중 (`awake`). What follows is dictated into
+ *    chime, a short "네" (yes) and Listening (`awake`). What follows is dictated into
  *    the composer, one utterance at a time, without the wake word.
  * 3. The message ends with a send phrase ("…, 보내줘 오버", "…, 오버",
  *    "…, 전송해"): the phrase is removed, "로저, Orbit 플랫폼 세션에 전송합니다" is said and
@@ -32,7 +32,7 @@
  *
  * Sessions are named in replies by the name the user gave them, not by
  * their card number (see `sessionNames.ts`).
- * 5. No speech for `IDLE_MS` after the last words: back to 대기, quietly
+ * 5. No speech for `IDLE_MS` after the last words: back to Waiting, quietly
  *    (the text stays in the box).
  *
  * With the read-back option the old confirmation ("…보낼까요?") replaces the
@@ -61,7 +61,7 @@ export const WAKE_HEAD_MS = 2000;
 export const STALE_WAKE_MS = 4000;
 /** Utterances shorter than this are call-like and always checked. */
 export const CALL_LIKE_MS = 1500;
-/** Silence after the wake word (or the last words) before going back to 대기. */
+/** Silence after the wake word (or the last words) before going back to Waiting. */
 export const IDLE_MS = 8000;
 /** Silence after a command-form ending before the scheduled send starts. */
 export const SCHEDULE_SILENCE_MS = 2500;
@@ -90,11 +90,11 @@ export type VocoResult = 'sent' | 'cancelled' | 'kept' | 'queued' | 'missed';
 
 export interface VocoView {
   phase: VocoPhase;
-  /** 대기 and speech is coming in now (the chip shows it hears). */
+  /** Waiting and speech is coming in now (the chip shows it hears). */
   hearing?: boolean;
   /** Seconds left in `countdown` / `undo`. */
   seconds?: number;
-  /** How the last message ended (shown briefly while back in 대기). */
+  /** How the last message ended (shown briefly while back in Waiting). */
   result?: VocoResult;
 }
 
@@ -142,7 +142,7 @@ export interface VocoDeps {
   send(text: string): Promise<boolean>;
   /**
    * A send now waits for uploads (the composer's queued send): the flow goes
-   * back to 대기 at once and keeps listening while it waits.
+   * back to Waiting at once and keeps listening while it waits.
    */
   queued?(): boolean;
   /** Drops the send that waits for uploads. */
@@ -282,7 +282,7 @@ export function parseSpokenNumber(word: string): number | null {
 
 const NUM = '(\\d{1,3}|[일이삼사오육칠팔구십]{1,3}|[a-z]+)';
 const SESSION_PATTERNS = [
-  // 3번 세션, 3번 세션으로, 삼번 세션으로 이동, 3번으로 가
+  // "3번 세션", "3번 세션으로", "삼번 세션으로 이동", "3번으로 가" (go to session 3)
   new RegExp(
     `^${NUM}\\s*번\\s*(?:세션)?\\s*(?:으로|로)?\\s*(?:가|가줘|가자|이동|이동해|이동해줘|전환|전환해|전환해줘|바꿔|바꿔줘)?$`,
     'u',
@@ -397,10 +397,11 @@ const KO_NOT_COMMANDS = new Set([
   '내해',
 ]);
 /**
- * Korean endings that leave a sentence open: particles (을/를/이/가/은/는/
- * 에/에게/한테/으로/로/와/과/도/만) and connectives (고/서/는데/지만/면/
- * 니까/려고/도록/거나…). A message whose last word ends like this is never
- * sent by itself, whatever else matched.
+ * Korean endings that leave a sentence open: particles ("을", "를", "이",
+ * "가", "은", "는", "에", "에게", "한테", "으로", "로", "와", "과", "도", "만")
+ * and connectives ("고", "서", "는데", "지만", "면", "니까", "려고", "도록",
+ * "거나", …). A message whose last word ends like this is never sent by
+ * itself, whatever else matched.
  */
 const KO_OPEN_ENDINGS = [
   '을',
@@ -742,7 +743,7 @@ export class VocoFlow {
     this.d.setText(joinText(this.d.text(), text));
   }
 
-  /** (Re)starts the 대기 and scheduled-send timers after the last words. */
+  /** (Re)starts the Waiting and scheduled-send timers after the last words. */
   private arm() {
     if (this.disposed || this.phase !== 'awake' || this.speaking || this.pending > 0) return;
     this.clearWaitTimers();

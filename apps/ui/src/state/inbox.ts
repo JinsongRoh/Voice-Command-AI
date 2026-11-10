@@ -46,7 +46,7 @@ export interface InboxItem {
   /** What is asked (first line); may be empty. */
   text: string;
   at: UnixMillis;
-  /** About the conductor's own session ("지휘 세션"). */
+  /** About the conductor's own session ("Conductor session"). */
   conductor?: boolean;
   /** A decision inferred without agent hooks: answered in the terminal only. */
   inferred?: boolean;

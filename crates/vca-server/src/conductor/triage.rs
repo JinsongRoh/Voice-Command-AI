@@ -1,9 +1,10 @@
 //! Decision triage: which of another session's permission decisions the
 //! conductor may answer on its own, and the rules that decide it.
 //!
-//! The person's decision ("다른 세션의 결재·알림은 먼저 지휘소 에이전트가
-//! 받아 허용 규칙 안에서 처리하고, 대표님 판단이 필요한 것만 요약해 결재함에
-//! 올린다") is implemented with these safety rules:
+//! The person's decision ("the Command Center agent receives the approvals
+//! and alerts of other sessions first, handles them within the allowed
+//! rules, and puts only what needs the owner's judgment, summarized, in
+//! the approvals inbox") is implemented with these safety rules:
 //!
 //! - **No rule, no answer.** [`ConductorSettings::decision_rules`] is empty
 //!   by default, and is set only in the desktop app on the PC (the

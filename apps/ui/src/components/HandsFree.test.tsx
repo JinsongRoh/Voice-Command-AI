@@ -181,7 +181,7 @@ describe('hands-free composer', () => {
     expect(screen.getByRole('textbox')).toHaveValue('commit the changes');
   });
 
-  // Regression: "보내" after the read-back was cancelled instead of sent.
+  // Regression: "보내" (send) after the read-back was cancelled instead of sent.
   it('sends on "보내" in Korean, also after a silent first answer', async () => {
     const io = fakeVoice([null, '어, 보내.']);
     const { transport } = renderComposer(

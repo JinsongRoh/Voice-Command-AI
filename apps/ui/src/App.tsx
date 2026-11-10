@@ -91,19 +91,19 @@ function Shell() {
   const [phoneList, setPhoneList] = useState(false);
   const [manageMachines, setManageMachines] = useState(false);
   const selected = useAppState((s) => (s.selectedId ? s.sessions[s.selectedId] : undefined));
-  // "알림 · 할 일": pending decisions plus open blocking tasks.
+  // "Alerts" (alerts and to-dos): pending decisions plus open blocking tasks.
   const alerts = useAppState(alertsAndTasksCount);
   const [inboxTab, setInboxTab] = useState<InboxTab | undefined>(undefined);
   const [commandTab, setCommandTab] = useState<CommandTab>('conversation');
-  // Conductor requests waiting for the person: the 지휘소 badge.
+  // Conductor requests waiting for the person: the Command Center badge.
   // ... plus what the conductor's own session waits on (trust, a decision).
   const conductorState = useConductor();
-  // The same count as 지휘소's approvals inbox: only what the conductor raised.
+  // The same count as the Command Center's approvals inbox: only what the conductor raised.
   const conductorPending = useInboxCount();
   // An alert opened its session, from anywhere (toast, OS notification,
   // automatic switch): show it.
   const jumpToken = useAppState((s) => s.jump?.token ?? null);
-  // The conductor's own session has no card: it opens in 지휘소.
+  // The conductor's own session has no card: it opens in the Command Center.
   const jumpToConductor = useAppState((s) => !!s.jump && !!s.sessions[s.jump.sessionId]?.conductor);
   const [shownJump, setShownJump] = useState<number | null>(null);
   if (jumpToken !== shownJump) {
@@ -126,7 +126,7 @@ function Shell() {
   useEffect(trackTyping, []);
   // Files dropped outside a session pane must not open in the webview.
   useEffect(() => installFileDropGuard(), []);
-  // The composer's "지휘 모드" shortcut.
+  // The composer's "Conductor mode" shortcut.
   useEffect(
     () =>
       onConductorViewRequest(() => {
@@ -150,7 +150,7 @@ function Shell() {
     setCommandTab(tab);
     setView('conductor');
   };
-  // The conductor's session lives in 지휘소, never on the session screen.
+  // The conductor's session lives in the Command Center, never on the session screen.
   const shown = selected && !selected.conductor ? selected : undefined;
 
   let main;
@@ -267,7 +267,7 @@ function Shell() {
             session={shown}
             chrome={{
               onBack: () => setPhoneList(true),
-              // The bottom menu (with 지휘소's badge) is hidden here: the
+              // The bottom menu (with the Command Center badge) is hidden here: the
               // conductor's requests, listed under Alerts too, count on "more".
               alerts: alerts + pendingCount(conductorState),
               onOpenAlerts: () => {
@@ -403,15 +403,14 @@ function Shell() {
   );
 }
 
-/** Applies theme and language to the document root. */
+/** Applies the theme to the document root (`I18nProvider` sets its `lang`). */
 function DocumentSettings() {
   const { settings } = useSettings();
   useEffect(() => {
     const root = document.documentElement;
     if (settings.theme === 'system') delete root.dataset.theme;
     else root.dataset.theme = settings.theme;
-    root.lang = settings.language;
-  }, [settings.theme, settings.language]);
+  }, [settings.theme]);
   return null;
 }
 

@@ -1,4 +1,4 @@
-/* 지휘소 (Command Center): page shell, tabs, conversation, inbox and log. */
+/* Command Center: page shell, tabs, conversation, inbox and log. */
 .view {
   display: flex;
   flex-direction: column;

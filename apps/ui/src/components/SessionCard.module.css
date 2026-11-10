@@ -157,7 +157,7 @@
   border: 1px solid var(--border);
   text-transform: none;
 }
-/* "지휘": the conductor's own session. */
+/* "Conductor": the conductor's own session. */
 .conductor {
   color: var(--accent);
   border: 1px solid currentColor;

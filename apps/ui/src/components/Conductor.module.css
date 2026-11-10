@@ -1,4 +1,4 @@
-/* 지휘소 (Command), conductor requests and the conductor settings. */
+/* Command Center ("Command" in the menu), conductor requests and the conductor settings. */
 .view {
   display: flex;
   flex-direction: column;

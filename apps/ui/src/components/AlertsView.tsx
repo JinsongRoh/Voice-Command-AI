@@ -77,7 +77,7 @@ export function AlertsView() {
   const alerts = newestFirst(book);
   const sessions = useAppState((s) => s.sessions);
   const bringToFront = useBringToFront();
-  // "할 일로 만들기": an alert becomes a task only when the person converts it.
+  // "Add {name}'s request to the to-do list": an alert becomes a task only when the person converts it.
   const canConvert = useAppState((s) => s.serverFeatures.includes(FEATURE_HUMAN_TASKS));
   const [converting, setConverting] = useState<(typeof alerts)[number] | null>(null);
   const [osState, setOsState] = useState<OsNotificationState>(osNotificationState);

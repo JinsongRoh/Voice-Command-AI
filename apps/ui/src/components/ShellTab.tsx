@@ -75,7 +75,7 @@ export function ShellTab({ session, fitWidth }: { session: SessionInfo; fitWidth
 }
 
 /**
- * A remote shell in `folder` (the session Shell tab, 지휘소's shell tab):
+ * A remote shell in `folder` (the session Shell tab, the Command Center's shell tab):
  * the folder's open shell, or a start screen that opens `shellName` there
  * through the usual flow.
  */

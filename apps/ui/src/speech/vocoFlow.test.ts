@@ -424,7 +424,7 @@ describe('a long dictation with thinking pauses (2026-11-02 report)', () => {
       expect(t.flow.state).toBe('awake');
     }
     await t.timers.advance(IDLE_MS);
-    // Back to 대기 quietly: the text stays in the box, nothing was sent.
+    // Back to Waiting quietly: the text stays in the box, nothing was sent.
     expect(t.flow.state).toBe('waiting');
     expect(t.box()).toBe(CUT);
     expect(t.sent).toEqual([]);

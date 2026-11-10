@@ -99,12 +99,12 @@ export interface Settings {
   /** The one-time note "command text is read aloud" was acknowledged. */
   handsFreeNoteSeen: boolean;
   /**
-   * Hands-free read-back says the whole text before "보낼까요?" (default off:
+   * Hands-free read-back says the whole text before "보낼까요?" (send it?) (default off:
    * only the target session and the first few words).
    */
   handsFreeFullReadBack: boolean;
   /**
-   * Hands-free listens for the wake word "보코" / "Voco" (default on; only
+   * Hands-free listens for the wake word "보코" (Voco) / "Voco" (default on; only
    * while hands-free mode is on). See `speech/vocoFlow.ts`.
    */
   vocoWake: boolean;
@@ -114,7 +114,8 @@ export interface Settings {
   vocoSendPhrases: string;
   /**
    * After a send phrase: `undo` sends after a 3 s window in which "취소"
-   * recalls it; `readback` asks "…보낼까요?" first (the older behaviour).
+   * (cancel) recalls it; `readback` asks "…보낼까요?" (send it?) first (the
+   * older behaviour).
    */
   vocoConfirm: VocoConfirm;
   /** Schedule the send when a message ends in a command form and silence follows. */

@@ -1,6 +1,6 @@
 /**
  * Moving cards in the session order. The order covers every session; a
- * filtered list ("확인 필요", "로컬", ...) shows a part of it, so a move is
+ * filtered list ("Needs attention", "Local", ...) shows a part of it, so a move is
  * always relative to another card and the hidden cards keep their places.
  */
 import type { SessionId } from '../protocol/types';

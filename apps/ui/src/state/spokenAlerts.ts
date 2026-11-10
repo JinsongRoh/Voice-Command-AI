@@ -1,9 +1,9 @@
 /**
  * What a spoken alert says. A completion names the session by the name the
  * user gave it (its card number only without one) and, when there is a safe
- * one, the topic of its work ("Orbit Platform 세션, 로그인 버그 수정 작업이
- * 끝났습니다"); an error adds a short generic reason ("Orbit Platform
- * 세션에서 오류가 발생했습니다: 권한 문제"). Neither ever reads a
+ * one, the topic of its work ("Orbit Platform, fix the login bug,
+ * finished."); an error adds a short generic reason ("Orbit Platform hit an
+ * error: permission problem."). Neither ever reads a
  * command, a path or code: the topic comes from the session's title and is
  * dropped when it looks technical, and error reasons are fixed words.
  */
@@ -36,7 +36,7 @@ export function spokenTopic(
 }
 
 /**
- * "Orbit Platform 세션, 로그인 버그 수정 작업이 끝났습니다." in the listener's
+ * "Orbit Platform, fix the login bug, finished." in the listener's
  * language: by the session's spoken name (`name`, see speech/sessionNames.ts)
  * when there is one, else by its card number.
  */
@@ -76,7 +76,7 @@ export function errorReason(t: Translate, state: SessionState): string | null {
   return found ? t(found[0]) : null;
 }
 
-/** "Orbit Platform 세션에서 오류가 발생했습니다: 권한 문제" (by name, else by number). */
+/** "Orbit Platform hit an error: permission problem." (by name, else by number). */
 export function errorLine(
   t: Translate,
   number: number | null,

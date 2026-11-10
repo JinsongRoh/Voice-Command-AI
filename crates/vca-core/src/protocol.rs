@@ -560,7 +560,7 @@ pub enum ClientMsg {
     ConductorConfigure {
         settings: ConductorSettings,
     },
-    /// Starts the conductor ("지휘 세션 시작"). This PC only. Answered with
+    /// Starts the conductor ("Start conductor"). This PC only. Answered with
     /// [`ServerMsg::Conductor`].
     ConductorStart,
     /// Stops the conductor; with `kill`, also revokes its tool access, denies
@@ -619,7 +619,7 @@ pub enum ClientMsg {
     /// Every task and the task settings. View scope. Answered with
     /// [`ServerMsg::Tasks`], which is also pushed (`id = 0`) on changes.
     TaskList,
-    /// A manual task ("새 할 일", "할 일로 추가"). Command scope. Answered
+    /// A manual task ("New task", "Add to to-do"). Command scope. Answered
     /// with [`ServerMsg::TaskSaved`].
     TaskCreate {
         draft: TaskDraft,
@@ -630,7 +630,7 @@ pub enum ClientMsg {
         task_id: String,
         change: TaskChange,
     },
-    /// "결과 보내기": types the result into the requesting session like a
+    /// "Send result": types the result into the requesting session like a
     /// message and marks the task done; with `preview`, only composes it.
     /// Command scope. Answered with [`ServerMsg::TaskResultSent`].
     TaskSendResult {
@@ -1359,7 +1359,7 @@ pub enum ServerMsg {
     Conductor {
         state: Box<ConductorState>,
     },
-    /// A reply of the conductor (pushed, `id = 0`), for the 지휘소 chat and
+    /// A reply of the conductor (pushed, `id = 0`), for the Command Center chat and
     /// spoken replies. Redacted and at most a few hundred characters.
     ConductorReply {
         text: String,

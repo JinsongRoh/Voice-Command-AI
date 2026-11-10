@@ -107,7 +107,7 @@ export interface ChatViewProps {
   searchIndex?: number;
   /** Reports the number of matches whenever it changes. */
   onSearchCount?: (count: number) => void;
-  /** "할 일로 추가" on agent messages (absent: no button). */
+  /** "Add to to-do" on agent messages (absent: no button). */
   onAddTask?: (text: string, seq: number) => void;
   /** A to-do's source message: scrolled to, focused and highlighted. */
   highlightSeq?: number | null;

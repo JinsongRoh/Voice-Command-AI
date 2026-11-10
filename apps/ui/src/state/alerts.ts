@@ -79,8 +79,8 @@ export function alertsFor(
     const category = categoryForTransition(before.state, msg.session.state);
     if (!category) return [];
     // The conductor's own session alerts only for decisions and errors: its
-    // turn-ends and input waits are its replies, which reach 지휘소
-    // (`conductor_reply`).
+    // turn-ends and input waits are its replies, which reach the Command
+    // Center (`conductor_reply`).
     if (
       (msg.session.conductor || before.conductor) &&
       category !== 'decision' &&

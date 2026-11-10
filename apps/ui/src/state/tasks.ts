@@ -1,7 +1,7 @@
 /**
  * The human task inbox on the client: the PC's list as the server pushes it
  * (`tasks`, `task_saved`, `task_result_sent`), filters, the combined badge of
- * the "알림 · 할 일" menu and the generic spoken reminder lines.
+ * the "Alerts" menu (alerts and to-dos) and the generic spoken reminder lines.
  *
  * Reminders are read aloud with generic lines only (the session number or
  * a count): task titles come from agents and may hold commands or paths, so
@@ -186,7 +186,7 @@ export function markDigestRead(
   }
 }
 
-/** A short code block-safe excerpt of a chat message for "할 일로 추가". */
+/** A short code block-safe excerpt of a chat message for "Add to to-do". */
 export function titleFromMessage(text: string, max = 120): string {
   const line =
     text

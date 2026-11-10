@@ -965,7 +965,7 @@ function TunnelClients({
   tunnelId: number;
   onChanged: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [clients, setClients] = useState<DnsPilotAppClient[] | null>(null);
   const [invites, setInvites] = useState<DnsPilotInvite[]>([]);
@@ -1068,7 +1068,7 @@ function TunnelClients({
                   {i.expiresAt && (
                     <span className="muted">
                       {t('dnspilot.inviteExpires', {
-                        time: new Date(i.expiresAt).toLocaleString(),
+                        time: new Date(i.expiresAt).toLocaleString(locale),
                       })}
                     </span>
                   )}

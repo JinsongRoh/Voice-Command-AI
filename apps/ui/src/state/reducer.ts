@@ -139,7 +139,7 @@ export interface AppState {
   restore: RestoreOverview | null;
   /** The screen layout tab; `null` until it asked. */
   arrange: ArrangeOverview | null;
-  /** The PC's human task list ("할 일"); `null` until the first `tasks`. */
+  /** The PC's human task list ("To-do"); `null` until the first `tasks`. */
   tasks: TaskBook | null;
   /**
    * Ended sessions the person removed from the list on a server without
@@ -783,8 +783,8 @@ export function matchesFilter(session: SessionInfo, filter: DeckFilter): boolean
 }
 
 /**
- * A work session: every session except the conductor's own (지휘 세션),
- * which lives in 지휘소 and never shows as a card.
+ * A work session: every session except the conductor's own (the conductor
+ * session), which lives in the Command Center and never shows as a card.
  */
 export function isWorkSession(session: SessionInfo | undefined): session is SessionInfo {
   return !!session && !session.conductor;
@@ -798,9 +798,9 @@ let workMemo: {
 
 /**
  * The card order without the conductor's session: what the deck, the
- * phone carousel, the order panel and every session number ("3번 세션",
- * "보코, 3번") count. Stable while nothing in it changes, so it can be a
- * `useAppState` selector.
+ * phone carousel, the order panel and every session number ("3번 세션"
+ * (session 3), "보코, 3번" (Voco, number 3)) count. Stable while nothing in
+ * it changes, so it can be a `useAppState` selector.
  */
 export function workOrder(state: Pick<AppState, 'order' | 'sessions'>): SessionId[] {
   if (workMemo && workMemo.order === state.order && workMemo.sessions === state.sessions) {
@@ -849,7 +849,7 @@ export function alertCount(state: AppState): number {
   return state.alerts.active.length;
 }
 
-/** The "알림 · 할 일" badge: pending decisions plus open blocking tasks. */
+/** The "Alerts" (alerts and to-dos) badge: pending decisions plus open blocking tasks. */
 export function alertsAndTasksCount(state: AppState): number {
   return state.alerts.active.length + blockingOpen(state.tasks).length;
 }

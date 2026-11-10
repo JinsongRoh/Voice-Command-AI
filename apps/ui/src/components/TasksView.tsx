@@ -122,7 +122,7 @@ function TaskRow({
   last: boolean;
   position: number;
 }) {
-  const { t, relative } = useI18n();
+  const { t, relative, locale } = useI18n();
   const actions = useActions();
   const run = useTaskAction();
   const [open, setOpen] = useState(false);
@@ -198,7 +198,9 @@ function TaskRow({
             {snoozed && task.snoozed_until !== null && (
               <span className={styles.tag} data-kind="snoozed">
                 <Icon name="clock" size={12} />{' '}
-                {t('tasks.snoozedUntil', { time: new Date(task.snoozed_until).toLocaleString() })}
+                {t('tasks.snoozedUntil', {
+                  time: new Date(task.snoozed_until).toLocaleString(locale),
+                })}
               </span>
             )}
           </span>
@@ -472,7 +474,7 @@ function TaskSettingsPanel({ settings }: { settings: TaskSettings }) {
   );
 }
 
-/** The "할 일" tab: the PC's to-do list from agents. */
+/** The "To-do" tab: the PC's to-do list from agents. */
 export function TasksView() {
   const { t, locale } = useI18n();
   const actions = useActions();

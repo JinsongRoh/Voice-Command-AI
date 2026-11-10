@@ -5,7 +5,8 @@
 //!
 //! - [`prompt_words`]: the words to put in the vocabulary prompt of
 //!   prompt-style speech engines (Whisper, OpenAI-compatible APIs), so a
-//!   short "보코" is not heard as "보고" or "버코". The same words are in the
+//!   short "보코" (Voco) is not heard as "보고" (report) or "버코". The same
+//!   words are in the
 //!   base lexicon (`lexicon/<lang>/voice.toml`) for phrase-boosting engines.
 //! - [`speakable`]: rewrites the words for a text-to-speech voice of the
 //!   language, so a Korean voice says "보코" and "로저" instead of spelling
@@ -20,9 +21,10 @@ use crate::stt::base_language;
 
 /// Prompt words per language (ISO 639-1), most important first. Korean
 /// lists the vocative "보코야" too: a quick "보코" is often written "보컬"
-/// (vocal), and showing the engine the 보코 spelling twice tips it towards
+/// (vocal), and showing the engine the "보코" spelling twice tips it towards
 /// it. "보컬" itself is never a lexicon variant of "보코": it is a real word
-/// that dictation must keep ("보컬 트레이닝 앱"); the UI accepts an isolated
+/// that dictation must keep ("보컬 트레이닝 앱", vocal training app); the UI
+/// accepts an isolated
 /// "보컬" as the wake word instead (`apps/ui/src/speech/wakeWord.ts`).
 const PROMPT_WORDS: &[(&str, &[&str])] = &[
     ("ko", &["보코", "보코야", "보내줘 오버", "오버", "로저"]),

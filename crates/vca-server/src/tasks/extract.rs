@@ -7,7 +7,7 @@
 //! administrator", ...). A fenced code block right after it becomes the
 //! task's command; list items after a line ending in a colon become its
 //! steps; URLs in it are kept. Closing lines ("let me know if ...",
-//! "궁금한 점이 있으면 알려 주세요") and offers ("would you like me to
+//! "궁금한 점이 있으면 알려 주세요", ask me if anything is unclear) and offers ("would you like me to
 //! ...?") are not requests.
 
 use vca_core::task::{TASK_MAX_COMMAND_CHARS, TASK_MAX_STEPS_CHARS, TaskShell};

@@ -9,11 +9,11 @@
 //! without a prompt, so prompts are not inferred from a quiet process tree
 //! there (see [`crate::observed_watch`]).
 //!
-//! # Questions ("질문" alerts)
+//! # Questions ("Question" alerts)
 //!
 //! An agent often ends its turn by asking the person something in plain
-//! text ("어떻게 할까요?", "Should I push?") instead of a form or a
-//! permission prompt. When a turn ends (the `Stop` hook with its
+//! text ("어떻게 할까요?" (how should I go on?), "Should I push?") instead
+//! of a form or a permission prompt. When a turn ends (the `Stop` hook with its
 //! `last_assistant_message`, or the transcript's `turn_duration` record
 //! after the final assistant message) and that message asks, the session
 //! gets [`SessionInfo::question`](vca_core::SessionInfo::question): the
@@ -28,9 +28,10 @@
 //!    [`REQUEST_PHRASES`] (Korean, English, Japanese, Spanish; matched
 //!    case-insensitively), or starts with "Which ".
 //! 2. Anywhere in the message, a line names decisions left to the person
-//!    ([`DECISION_CUES`], e.g. "대표님이 정하실 것 3가지" or "Decisions for
-//!    you") and does not deny it ("승인은 필요 없습니다"). Long reports often
-//!    put that list in the middle and end with a status line.
+//!    ([`DECISION_CUES`], e.g. "대표님이 정하실 것 3가지" (3 things for you
+//!    to decide) or "Decisions for you") and does not deny it
+//!    ("승인은 필요 없습니다", no approval needed). Long reports often put
+//!    that list in the middle and end with a status line.
 //!
 //! Limits: at most one question per turn and session; none for the
 //! conductor's own session, remote shells, or a session that already waits
@@ -190,7 +191,8 @@ pub(crate) const DECISION_CUES: &[&str] = &[
     "necesito tu decisión",
 ];
 
-/// Words that turn a decision cue into its denial ("승인은 필요 없습니다").
+/// Words that turn a decision cue into its denial ("승인은 필요 없습니다",
+/// no approval needed).
 const CUE_DENIALS: &[&str] = &[
     "필요 없",
     "필요없",
@@ -438,7 +440,8 @@ pub fn question_excerpt(message: &str) -> Option<String> {
     let paragraphs = paragraphs(&text);
     let last = paragraphs.last()?;
     let mut scope = vec![last.as_str()];
-    // "어떻게 할까요?\n\n1. A\n2. B": the options follow the question.
+    // "어떻게 할까요?\n\n1. A\n2. B" (how should I go on? 1. A 2. B): the
+    // options follow the question.
     if is_option_list(last) && paragraphs.len() > 1 {
         scope.insert(0, paragraphs[paragraphs.len() - 2].as_str());
     }
@@ -450,8 +453,8 @@ pub fn question_excerpt(message: &str) -> Option<String> {
 }
 
 /// A line naming decisions left to the person, anywhere in `text`, with the
-/// first item of the list under it: "대표님이 정하실 것 3가지: PC C 오늘
-/// 밤 측정 시작".
+/// first item of the list under it: "대표님이 정하실 것 3가지: PC C 오늘 밤 측정 시작"
+/// (3 things for you to decide: start the PC C measurement tonight).
 fn decision_list(text: &str) -> Option<String> {
     let lines: Vec<&str> = text.lines().collect();
     for (i, line) in lines.iter().enumerate() {

@@ -142,7 +142,7 @@ const EXPLICIT_CANCEL = [
 /** "A or B": an utterance offering both answers decides nothing. */
 const CHOICE_WORDS = ['또는', '아니면', '혹은', 'or', 'または', 'か', 'o'];
 
-/** Hangul answer words for the jamo near-match ("보넨" -> 보내, "취쏘" -> 취소). */
+/** Hangul answer words for the jamo near-match ("보넨" -> "보내" (send), "취쏘" -> "취소" (cancel)). */
 const FUZZY_SEND = [
   '보내',
   '보낸',
@@ -408,9 +408,10 @@ export const ANSWER_PROMPTS: Record<VoiceLang, string> = {
 export type DecisionAnswer = 'allow' | 'deny' | 'stop' | 'unclear';
 
 /**
- * The answer to "허용할까요?": only 허용 / 거절 (and their equivalents) answer;
- * a cancel word stops listening without answering. "응" or "yes" is NOT an
- * approval: a decision needs the explicit word.
+ * The answer to "허용할까요?" (allow?): only "허용" (allow) / "거절" (deny),
+ * and their equivalents, answer; a cancel word stops listening without
+ * answering. "응" or "yes" is NOT an approval: a decision needs the explicit
+ * word.
  */
 export function classifyDecisionAnswer(heard: string): DecisionAnswer {
   const word = normalizeAnswer(heard);
@@ -576,10 +577,10 @@ export const PHRASES: Record<
   },
 };
 
-/** Final consonant of the Sino-Korean reading of each digit (영, 일, 삼, 육, 칠, 팔 have one). */
+/** Final consonant of the Sino-Korean reading of each digit ("영", "일", "삼", "육", "칠", "팔" have one). */
 const DIGIT_BATCHIM = [true, true, false, true, false, false, true, true, true, false];
 
-/** Korean subject particle after `word`: 이 after a final consonant, else 가. */
+/** Korean subject particle after `word`: "이" after a final consonant, else "가". */
 export function subjectParticle(word: string): '이' | '가' {
   const last = Array.from(word.trim()).pop() ?? '';
   const code = last.codePointAt(0) ?? 0;
@@ -719,8 +720,8 @@ export interface VoiceIO {
 }
 
 /**
- * Visual states of a read-back (확인 대기 / 듣는 중 / 보냄 / 취소됨 / 보내지
- * 않음: the text stays in the box).
+ * Visual states of a read-back (Waiting for confirmation / Listening / Sent /
+ * Cancelled / Not sent: the text stays in the box).
  */
 export type SendStatus = 'confirming' | 'listening' | 'sent' | 'cancelled' | 'kept';
 
@@ -825,7 +826,7 @@ export interface SpokenDecisionOptions {
 }
 
 /**
- * Reads a pending decision and takes a spoken 허용 / 거절 for `safe`
+ * Reads a pending decision and takes a spoken "허용" / "거절" for `safe`
  * commands with plain yes / no options. `caution`, `dangerous`, unknown
  * classification, no command or other options: "check the screen", and no
  * voice answer is taken at all. The answer is only sent while the pending

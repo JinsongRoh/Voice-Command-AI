@@ -220,7 +220,7 @@ pub fn is_repetition_hallucination(text: &str) -> bool {
 // Known hallucination phrases
 // ---------------------------------------------------------------------------
 
-/// Stock phrases Whisper invents on silence or noise ("감사합니다.",
+/// Stock phrases Whisper invents on silence or noise ("감사합니다." (thank you),
 /// "Thank you.", "ご視聴ありがとうございました"). Shared with the UI
 /// (`apps/ui/src/speech/hallucinations.ts`) and the reference STT server.
 const PHRASES_JSON: &str = include_str!("../../../apps/ui/src/speech/hallucinationPhrases.json");

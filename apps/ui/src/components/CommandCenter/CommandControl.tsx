@@ -43,11 +43,11 @@ type TalkPhase = 'idle' | 'starting' | 'recording' | 'transcribing';
 const WIDE_QUERY = '(min-width: 640px)';
 
 /**
- * The header's 지휘소 control, on every page while the PC has a conductor
- * that is turned on: its status and what waits on the person (opens 지휘소),
- * "talk to the conductor" (the transcript lands in its box for review),
- * hands-free ("보코 … 오버") and the stop menu: pause and resume, stop
- * (start again on the PC) and the kill switch (긴급 차단). Servers with
+ * The header's Command Center control, on every page while the PC has a
+ * conductor that is turned on: its status and what waits on the person (opens
+ * the Command Center), "talk to the conductor" (the transcript lands in its
+ * box for review), hands-free ("보코 … 오버" (Voco … over)) and the stop menu:
+ * pause and resume, stop (start again on the PC) and the kill switch. Servers with
  * `command_center` pause with `cc_pause` (nothing wakes the conductor, any
  * device may resume); older ones pause by stopping. The kill switch asks
  * for confirmation and a step-up: the PC's local verification

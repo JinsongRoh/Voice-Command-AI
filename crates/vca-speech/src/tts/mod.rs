@@ -67,7 +67,7 @@ pub struct SynthesisRequest {
     pub speed: Option<f32>,
     /// Language of the text (BCP-47, e.g. `ko-KR`). Multilingual engines
     /// need it: left to guess, they may read Korean mixed with Latin words
-    /// ("npm run build 실패") in another language's sounds.
+    /// ("npm run build 실패" (npm run build failed)) in another language's sounds.
     pub language: Option<String>,
 }
 

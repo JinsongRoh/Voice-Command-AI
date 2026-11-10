@@ -2,7 +2,21 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- English is the development language; the app ships in English, Korean,
+       Japanese and Spanish, so macOS system UI follows the user's language. -->
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>ko</string>
+    <string>ja</string>
+    <string>es</string>
+  </array>
+  <!-- The microphone is open while you dictate (tap the mic button) and,
+       while the app is open, when hands-free mode or the "Voco" wake word is
+       on. Audio goes to the speech-to-text engine the user set up. -->
   <key>NSMicrophoneUsageDescription</key>
-  <string>Voice Command AI records your voice only while you hold the talk button, to turn it into a prompt.</string>
+  <string>Voice Command AI uses the microphone when you dictate, and while hands-free mode or the Voco wake word is on and the app is open, to turn your speech into text with the speech recognition engine you set up.</string>
 </dict>
 </plist>

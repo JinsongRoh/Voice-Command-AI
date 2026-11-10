@@ -21,7 +21,7 @@ import styles from './CommandCenter.module.css';
 const PHONE_QUERY = '(max-width: 899px)';
 
 /**
- * The shell tab of 지휘소's conversation (next to Chat and Terminal): a
+ * The shell tab of the Command Center's conversation (next to Chat and Terminal): a
  * remote shell (PowerShell on Windows) in a project folder, through the
  * same flow as a session's Shell tab (biometrics on phones, the
  * authenticator code, the server's step-up and time limits).
@@ -35,7 +35,7 @@ export function CommandShell({
   onFolder,
 }: {
   conductorSessionId: string | null | undefined;
-  /** The folder picked here (kept by 지휘소 across tabs and views); `null`: the default. */
+  /** The folder picked here (kept by the Command Center across tabs and views); `null`: the default. */
   folder: string | null;
   onFolder: (folder: string) => void;
 }) {

@@ -1910,7 +1910,7 @@
   "pron.termHint": "Latin letters and digits, e.g. SkyHarbor. \"Sky Harbor\" and \"sky-harbor\" count as the same name.",
   "pron.invalidTerm": "Write the name in Latin letters and digits.",
   "pron.spoken": "Say it as",
-  "pron.spokenPlaceholder": "e.g. 스카이하버",
+  "pron.spokenPlaceholder": "e.g. Sky Harbor",
   "pron.preview": "Preview",
   "pron.previewOf": "Preview {term}",
   "pron.edit": "Edit",
