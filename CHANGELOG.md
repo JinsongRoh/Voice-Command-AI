@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - unreleased
 
-The first public release. The desktop app for Windows (NSIS installer signed by MetaVu Co., Ltd.), macOS (Developer ID signed and notarized) and Linux (AppImage, `.deb`, `.rpm`) on GitHub Releases, with in-app updates; the iPhone app on the App Store and the Android app on Google Play.
+The first public release. The desktop app for Windows (NSIS installer signed by MetaVu Co., Ltd.), macOS (Developer ID signed and notarized) on GitHub Releases, with in-app updates (Linux packages come in a later version); the iPhone app on the App Store and the Android app on Google Play.
 
 ### Added
 

@@ -239,7 +239,7 @@
     "dl.intro": "에이전트가 실행되는 PC에 데스크톱 앱을 설치하세요. VCA 서버와 vca 명령어가 함께 들어 있고, GitHub Releases에서 스스로 업데이트합니다. 직접 누르기 전에는 아무것도 설치하지 않습니다. 그다음 설정 → 휴대폰 연결에서 휴대폰을 페어링하세요.",
     "dl.win": "설치 파일(-setup.exe), MetaVu Co., Ltd. 서명",
     "dl.mac": "디스크 이미지(.dmg), 서명 및 공증 완료",
-    "dl.linux": "AppImage, .deb, .rpm (x86_64, ARM64)",
+    "dl.linux": "다음 버전에서 제공합니다. 그전까지는 소스에서 빌드해 주세요.",
     "dl.cta": "GitHub Releases에서 다운로드",
     "footer.privacyLink": "개인정보 처리방침",
     "footer.support": "지원"
@@ -472,7 +472,7 @@
     "dl.intro": "エージェントが動くPCにデスクトップアプリをインストールしてください。VCAサーバーとvcaコマンドが含まれ、GitHub Releasesから自動で更新されます。クリックするまで何もインストールされません。その後、「設定 → スマートフォンを接続」からスマートフォンをペアリングします。",
     "dl.win": "インストーラー（-setup.exe）、MetaVu Co., Ltd.の署名付き",
     "dl.mac": "ディスクイメージ（.dmg）、署名・公証済み",
-    "dl.linux": "AppImage、.deb、.rpm（x86_64・ARM64）",
+    "dl.linux": "今後のバージョンで提供予定です。それまではソースからビルドしてください。",
     "dl.cta": "GitHub Releasesからダウンロード",
     "footer.privacyLink": "プライバシーポリシー",
     "footer.support": "サポート"
@@ -705,7 +705,7 @@
     "dl.intro": "Instala la app de escritorio en el PC donde se ejecutan tus agentes. Incluye el servidor de VCA y el comando vca, y se actualiza sola desde GitHub Releases; no se instala nada hasta que haces clic. Después, empareja el teléfono desde Ajustes → Conectar un teléfono.",
     "dl.win": "Instalador (-setup.exe), firmado por MetaVu Co., Ltd.",
     "dl.mac": "Imagen de disco (.dmg), firmada y notarizada.",
-    "dl.linux": "AppImage, .deb o .rpm, para x86_64 y ARM64.",
+    "dl.linux": "Llegará en una próxima versión. Mientras tanto, compílala desde el código fuente.",
     "dl.cta": "Descargar desde GitHub Releases",
     "footer.privacyLink": "Privacidad",
     "footer.support": "Soporte"
@@ -938,7 +938,7 @@
     "dl.intro": "在运行智能体的电脑上安装桌面应用。它包含 VCA 服务器和 vca 命令，并从 GitHub Releases 自动更新；在你点击之前不会安装任何东西。然后在应用的 Settings → Connect a phone 中配对手机。",
     "dl.win": "安装程序（-setup.exe），由 MetaVu Co., Ltd. 签名",
     "dl.mac": "磁盘映像（.dmg），已签名并公证",
-    "dl.linux": "AppImage、.deb 或 .rpm，支持 x86_64 和 ARM64",
+    "dl.linux": "将在后续版本中提供。在此之前，请从源代码构建。",
     "dl.cta": "从 GitHub Releases 下载",
     "footer.privacyLink": "隐私政策",
     "footer.support": "支持"
@@ -1171,7 +1171,7 @@
     "dl.intro": "Установите настольное приложение на ПК, где работают ваши агенты. В него входят сервер VCA и команда vca, а обновляется оно само из GitHub Releases; ничего не устанавливается, пока вы не нажмёте кнопку. Затем подключите телефон в разделе Settings → Connect a phone.",
     "dl.win": "Установщик (-setup.exe), подписан MetaVu Co., Ltd.",
     "dl.mac": "Образ диска (.dmg), подписан и нотаризован.",
-    "dl.linux": "AppImage, .deb или .rpm для x86_64 и ARM64.",
+    "dl.linux": "Появится в одной из следующих версий. А пока соберите приложение из исходного кода.",
     "dl.cta": "Скачать из GitHub Releases",
     "footer.privacyLink": "Конфиденциальность",
     "footer.support": "Поддержка"

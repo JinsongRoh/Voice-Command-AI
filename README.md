@@ -13,7 +13,7 @@
 
 Voice Command AI (VCA) is an open-source, cross-platform tool. It lets you watch, command and orchestrate AI coding agents running on your development machine. Supported agents include Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, Grok and more. You can reach them from anywhere, without fighting for keyboard focus and without letting runaway builds bring your machine down.
 
-> **Status:** Version 0.1.0, the first public release (November 2026). The desktop app for Windows, macOS and Linux is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) and updates itself; the iPhone and Android apps are coming to the App Store and Google Play. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
+> **Status:** Version 0.1.0, the first public release (November 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) and updates itself; the iPhone and Android apps are coming to the App Store and Google Play. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
 
 ---
 
@@ -33,7 +33,7 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 |---|---|---|
 | Windows | [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest): `*_x64-setup.exe` | Signed by MetaVu Co., Ltd. Includes the server. |
 | macOS | [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest): `.dmg` (Apple silicon or Intel) | Developer ID signed and notarized. Includes the server. |
-| Linux | [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest): AppImage, `.deb`, `.rpm` (x86_64, ARM64) | Includes the server. |
+| Linux | Coming in a later version. Until then, [build from source](docs/user-guide.md). | The server also runs on Linux when built from source. |
 | iPhone | App Store: *coming soon* | iOS 15 or later. |
 | Android | Google Play: *coming soon* | Android 8.0 or later. |
 

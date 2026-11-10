@@ -2,7 +2,7 @@
 
 This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside your network.
 
-> **Status (version 0.1.0, November 2026):** This is VCA's first public release. The desktop app for Windows, macOS and Linux is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest); the iPhone and Android apps are coming to the App Store and Google Play. You can also build everything from source. Items marked *coming soon* are not available yet.
+> **Status (version 0.1.0, November 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases] (Linux comes in a later version; build it from source until then)(https://github.com/JinsongRoh/Voice-Command-AI/releases/latest); the iPhone and Android apps are coming to the App Store and Google Play. You can also build everything from source. Items marked *coming soon* are not available yet.
 
 ## 1. What you get
 
@@ -29,7 +29,7 @@ Download the `.dmg` for your Mac (`aarch64` for Apple silicon, `x64` for Intel),
 
 ### Linux
 
-Builds are offered for x86_64 and ARM64:
+Linux packages (AppImage, `.deb`, `.rpm`) come in a later version. Until then, build the app from source (section 4). Once they are released:
 
 - **AppImage:** make it executable (`chmod +x Voice*.AppImage`) and run it. It updates itself.
 - **`.deb`** (Debian, Ubuntu): `sudo apt install ./Voice*.deb`. **`.rpm`** (Fedora, openSUSE): `sudo dnf install ./Voice*.rpm`. The in-app updater installs a newer package of the same type and asks for your password.
