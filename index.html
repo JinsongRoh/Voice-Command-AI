@@ -6,26 +6,33 @@
 <script>
   // Set the document language before first paint so the right font and copy are chosen early.
   (function () {
-    var lang = "en";
+    var langs = ["en", "ko", "ja", "es", "zh", "ru"], lang = "en";
     try {
       var q = new URLSearchParams(location.search).get("lang");
       var saved = null;
       try { saved = localStorage.getItem("vca-lang"); } catch (e) {}
-      if (q === "ko" || q === "en") lang = q;
-      else if (saved === "ko" || saved === "en") lang = saved;
-      else if ((navigator.language || "").toLowerCase().indexOf("ko") === 0) lang = "ko";
+      var full = (navigator.language || "").toLowerCase(), nav = full.slice(0, 2);
+      // Chinese copy is Simplified: Traditional locales (TW, HK, MO, Hant) keep English.
+      if (nav === "zh" && /-(tw|hk|mo|hant)/.test(full)) nav = "en";
+      if (langs.indexOf(q) > -1) lang = q;
+      else if (langs.indexOf(saved) > -1) lang = saved;
+      else if (langs.indexOf(nav) > -1) lang = nav;
     } catch (e) {}
-    document.documentElement.lang = lang;
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
     document.documentElement.className += " js";
   })();
 </script>
 <title data-i18n="meta.title">Voice Command AI · Your voice. Every agent. One command center.</title>
-<meta name="description" data-i18n-attr="content:meta.desc" content="Open-source, pre-release tool to watch and command the AI coding agents on your machine from your phone, by voice. Claude Code, Codex, Gemini CLI and more. End-to-end encrypted, MIT licensed.">
+<meta name="description" data-i18n-attr="content:meta.desc" content="Open-source tool to watch and command the AI coding agents on your machine from your phone, by voice. Claude Code, Codex, Gemini CLI and more. End-to-end encrypted, MIT licensed.">
 <meta name="theme-color" content="#101B35">
 <meta name="color-scheme" content="light">
 <link rel="canonical" href="https://vca.metavu.io/">
 <link rel="alternate" hreflang="en" href="https://vca.metavu.io/">
 <link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko">
+<link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja">
+<link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es">
+<link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh">
+<link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru">
 <link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -36,16 +43,20 @@
 <meta property="og:site_name" content="Voice Command AI">
 <meta property="og:url" content="https://vca.metavu.io/">
 <meta property="og:title" data-i18n-attr="content:meta.ogTitle" content="Voice Command AI: Your voice. Every agent. One command center.">
-<meta property="og:description" data-i18n-attr="content:meta.ogDesc" content="Control every AI coding agent on your machine from your phone, with your voice. Open source, pre-release.">
+<meta property="og:description" data-i18n-attr="content:meta.ogDesc" content="Control every AI coding agent on your machine from your phone, with your voice. Open source, MIT licensed.">
 <meta property="og:image" content="https://vca.metavu.io/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Voice Command AI logo on a deep navy background with the slogan Your voice. Every agent. One command center.">
-<meta property="og:locale" data-i18n-attr="content:meta.locale" content="en_US">
-<meta property="og:locale:alternate" data-i18n-attr="content:meta.localeAlt" content="ko_KR">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:locale:alternate" content="ru_RU">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" data-i18n-attr="content:meta.ogTitle" content="Voice Command AI: Your voice. Every agent. One command center.">
-<meta name="twitter:description" data-i18n-attr="content:meta.ogDesc" content="Control every AI coding agent on your machine from your phone, with your voice. Open source, pre-release.">
+<meta name="twitter:description" data-i18n-attr="content:meta.ogDesc" content="Control every AI coding agent on your machine from your phone, with your voice. Open source, MIT licensed.">
 <meta name="twitter:image" content="https://vca.metavu.io/assets/og.png">
 </head>
 <body>
@@ -81,6 +92,15 @@
     <symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19.5h20"/></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
     <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0z"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="5" height="5" rx="1.2"/><path d="M4.8 7l1.2 1.2L7.6 6"/><rect x="3.5" y="14.5" width="5" height="5" rx="1.2"/><path d="M11.5 7h9M11.5 17h9"/></symbol>
+    <symbol id="i-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/><rect x="9" y="9.5" width="7" height="5.5" rx="1"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><circle cx="16" cy="13" r="2"/><path d="M16 15v2"/></symbol>
+    <symbol id="i-push" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3" width="11" height="18" rx="2.5"/><path d="M8.5 18h3"/><circle cx="18.5" cy="6" r="2.5"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M3 12h18"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/></symbol>
+    <symbol id="i-spell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-11 4 11M4.5 13h5"/><path d="M14 13.5l2.5 2.5L21 10.5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
     <symbol id="i-github" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
   </defs>
 </svg>
@@ -97,15 +117,31 @@
         <li><a href="#why" data-i18n="nav.why">Why VCA</a></li>
         <li><a href="#features" data-i18n="nav.features">Features</a></li>
         <li><a href="#how" data-i18n="nav.how">How it works</a></li>
-        <li><a href="#measured" data-i18n="nav.measured">Measured</a></li>
+        <li><a href="#download" data-i18n="nav.download">Download</a></li>
         <li><a href="#open-source" data-i18n="nav.oss">Open source</a></li>
       </ul>
     </nav>
     <div class="header-actions">
       <div class="lang-toggle" role="group" aria-label="Language" data-i18n-attr="aria-label:lang.label">
-        <button type="button" data-lang="en" aria-pressed="true" lang="en">EN</button>
-        <button type="button" data-lang="ko" aria-pressed="false" lang="ko">한국어</button>
+        <button type="button" data-lang="en" aria-pressed="true" lang="en" title="English"><span aria-hidden="true">EN</span><span class="visually-hidden">English</span></button>
+        <button type="button" data-lang="ko" aria-pressed="false" lang="ko" title="한국어"><span aria-hidden="true">KO</span><span class="visually-hidden">한국어</span></button>
+        <button type="button" data-lang="ja" aria-pressed="false" lang="ja" title="日本語"><span aria-hidden="true">JA</span><span class="visually-hidden">日本語</span></button>
+        <button type="button" data-lang="es" aria-pressed="false" lang="es" title="Español"><span aria-hidden="true">ES</span><span class="visually-hidden">Español</span></button>
+        <button type="button" data-lang="zh" aria-pressed="false" lang="zh-CN" title="简体中文">中文</button>
+        <button type="button" data-lang="ru" aria-pressed="false" lang="ru" title="Русский"><span aria-hidden="true">RU</span><span class="visually-hidden">Русский</span></button>
       </div>
+      <label class="lang-select">
+        <span class="visually-hidden" data-i18n="lang.label">Language</span>
+        <svg aria-hidden="true"><use href="#i-globe"/></svg>
+        <select>
+          <option value="en" lang="en">English</option>
+          <option value="ko" lang="ko">한국어</option>
+          <option value="ja" lang="ja">日本語</option>
+          <option value="es" lang="es">Español</option>
+          <option value="zh" lang="zh-CN">简体中文</option>
+          <option value="ru" lang="ru">Русский</option>
+        </select>
+      </label>
       <a class="gh-link" href="https://github.com/JinsongRoh/Voice-Command-AI" aria-label="Voice Command AI on GitHub" data-i18n-attr="aria-label:gh.aria">
         <svg aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span>
       </a>
@@ -129,13 +165,13 @@
           </g>
         </svg>
       </div>
-      <p class="badge"><span class="badge-dot" aria-hidden="true"></span><span data-i18n="hero.badge">Pre-release · M0 complete, October 2026</span></p>
+      <p class="badge"><span class="badge-dot" aria-hidden="true"></span><span data-i18n="hero.badge">Version 0.1.0 · First public release</span></p>
       <h1 id="hero-title" data-i18n="hero.title"><span class="line">Your voice.</span> <span class="line">Every agent.</span> <span class="line">One command center.</span></h1>
       <p class="hero-lead" data-i18n="hero.lead">Control every AI coding agent on your machine from your phone, with your voice.</p>
       <p class="hero-sub" data-i18n="hero.sub">A lightweight server on your machine owns every agent session. Your phone shows them as cards, and each command reaches the right session without stealing window focus.</p>
       <div class="hero-ctas">
         <a class="btn btn-primary" href="https://github.com/JinsongRoh/Voice-Command-AI"><svg aria-hidden="true"><use href="#i-github"/></svg><span data-i18n="cta.github">View on GitHub</span><svg class="btn-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-        <a class="btn btn-ghost" href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/docs/user-guide.md"><svg aria-hidden="true"><use href="#i-book"/></svg><span data-i18n="cta.guide">User guide</span></a>
+        <a class="btn btn-ghost" href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/user-guide.md"><svg aria-hidden="true"><use href="#i-book"/></svg><span data-i18n="cta.guide">User guide</span></a>
       </div>
       <ul class="hero-meta">
         <li><svg aria-hidden="true"><use href="#i-scale"/></svg><span data-i18n="hero.meta1">MIT licensed</span></li>
@@ -226,14 +262,14 @@
     <div class="container">
       <div class="section-head">
         <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
-        <h2 id="features-title" data-i18n="feat.title">What works in the pre-release today</h2>
-        <p data-i18n="feat.intro">Built from source and running end to end. Items marked “Coming soon” are not available yet.</p>
+        <h2 id="features-title" data-i18n="feat.title">What VCA does today</h2>
+        <p data-i18n="feat.intro">Everything below is in version 0.1.0, except the item marked “Coming soon”.</p>
       </div>
       <ul class="features">
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-cards"/></svg></span>
           <h3 data-i18n="f1.t">Session cards</h3>
-          <p data-i18n="f1.d">Every agent session on your machine as a live card: project, agent, status and alerts at a glance.</p>
+          <p data-i18n="f1.d">Every agent session on your machine as a live card: project, agent, status and alerts at a glance. Import AI CLI sessions that are already open, or start one in a folder you pick. Sub-agent counts are arriving on the cards now.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-mic"/></svg></span>
@@ -248,55 +284,134 @@
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-chat"/></svg></span>
           <h3 data-i18n="f4.t">Live view</h3>
-          <p data-i18n="f4.d">Follow any session as a readable chat view or the raw terminal, and keep the conversation going from there.</p>
+          <p data-i18n="f4.d">Follow any session as a readable chat or the raw terminal and keep the conversation going. Search the chat, read markdown tables, and scroll back through history that loads page by page.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-bell"/></svg></span>
-          <h3 data-i18n="f5.t">Alerts</h3>
-          <p data-i18n="f5.d">Know when a session finishes, needs input or asks for a decision, and answer with one tap.</p>
+          <h3 data-i18n="f5.t">Alerts, exact when you want</h3>
+          <p data-i18n="f5.d">A separate Alerts menu with a count badge lists every session waiting on a decision or input. Optional agent hooks, installed from Settings, make approval alerts exact. Answer with one tap.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-speaker"/></svg></span>
+          <h3 data-i18n="f6.t">Spoken alerts in your voice engine</h3>
+          <p data-i18n="f6.d">Hear alerts through your own OpenAI-compatible TTS engine, such as the reference server for MeloTTS or Supertonic. One voice at a time, a quick on/off, and the device voice as a fallback.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-list"/></svg></span>
+          <h3 data-i18n="f7.t">A to-do list from your agents</h3>
+          <p data-i18n="f7.d">When an agent needs you to sign in, approve or run something, the request lands in one list. Check it off and send the result back. Commands never run for you: admin tasks open an elevated shell only through your OS prompt.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-restore"/></svg></span>
+          <h3 data-i18n="f8.t">Windows back after a restart</h3>
+          <p data-i18n="f8.d">After a reboot or a power cut, VCA reopens your AI CLI windows in the same place and the same conversation. Windows, macOS, Linux and tmux.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-key"/></svg></span>
+          <h3 data-i18n="f9.t">Remote shell, locked down</h3>
+          <p data-i18n="f9.d">When an agent is stuck, open a shell on your PC from the phone. Only admin-permission devices can, each shell needs Face ID or biometrics plus a fresh authenticator code, and it closes itself after a time limit.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-phone"/></svg></span>
+          <h3 data-i18n="f10.t">Made for the phone</h3>
+          <p data-i18n="f10.d">Swipe through sessions in a carousel, attach photos, files or a quick sketch, and pick a light, dark or pure black theme. On a desktop, Enter sends.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-gauge"/></svg></span>
-          <h3 data-i18n="f6.t">Resource broker</h3>
-          <p data-i18n="f6.d">CPU, memory, disk and network per session. Heavy jobs are admitted, queued, throttled or paused by your policies.</p>
-        </li>
-        <li class="feature">
-          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-monitor"/></svg></span>
-          <h3 data-i18n="f7.t">Multiple machines</h3>
-          <p data-i18n="f7.d">Pair your home, office and server machines with one app.</p>
+          <h3 data-i18n="f11.t">Resource broker</h3>
+          <p data-i18n="f11.d">CPU, memory, disk and network per session. Heavy jobs are admitted, queued, throttled or paused by your policies.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-shield"/></svg></span>
-          <h3 data-i18n="f8.t">Pairing and encryption</h3>
-          <p data-i18n="f8.d">One-time pairing links, TOTP two-factor sign-in, short-lived tokens, Noise end-to-end encryption, an audit log and a kill switch.</p>
+          <h3 data-i18n="f12.t">Pairing and encryption</h3>
+          <p data-i18n="f12.d">One-time pairing links, TOTP two-factor sign-in, short-lived tokens, Noise end-to-end encryption, an audit log and a kill switch.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-network"/></svg></span>
-          <h3 data-i18n="f9.t">Your choice of connection</h3>
-          <p data-i18n="f9.d">Direct LAN, Tailscale, Cloudflare Tunnel or your own provider. The server listens only on localhost until you pick one.</p>
+          <h3 data-i18n="f13.t">Your machines, your connection</h3>
+          <p data-i18n="f13.d">Pair your home, office and server machines with one app. Reach them over direct LAN, Tailscale, Cloudflare Tunnel, DNSPilot or your own provider. The server listens only on localhost until you pick one.</p>
         </li>
         <li class="feature">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-wave"/></svg></span>
-          <h3 data-i18n="f10.t">Pluggable speech-to-text</h3>
-          <p data-i18n="f10.d">Any OpenAI-compatible speech server, such as a Whisper server you run yourself, or OpenAI and Google Cloud.</p>
+          <h3 data-i18n="f14.t">Bring your own engines</h3>
+          <p data-i18n="f14.d">Speech-to-text (a Whisper server, for example), a correction LLM and text-to-speech are yours to choose, local or in your own cloud account. VCA ships no speech servers and no model weights.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-grid"/></svg></span>
+          <h3 data-i18n="f16.t">Screen layout</h3>
+          <p data-i18n="f16.d">Line up the terminal windows already open on your PC, monitor by monitor, in a grid of 1, 2, 4, 6, 8 or 10 cells or your own rows and columns. Auto fill, save layouts and apply them again, and undo the last move.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-lock"/></svg></span>
+          <h3 data-i18n="f17.t">App lock</h3>
+          <p data-i18n="f17.d">The apps open locked and unlock with the device’s own sign-in: Windows Hello, Touch ID, Face ID, fingerprint or passcode. While locked, no session content shows and nothing can be sent. They lock again after 1 to 60 minutes without use.</p>
+        </li>
+        <li class="feature">
+          <span class="icon-tile" aria-hidden="true"><svg><use href="#i-spell"/></svg></span>
+          <h3 data-i18n="f18.t">Commonly misheard words</h3>
+          <p data-i18n="f18.d">Teach dictation the words it keeps getting wrong: each correct word with what gets written by mistake. The list lives on your PC, so it works on every connected device from your next dictation.</p>
         </li>
         <li class="feature soon">
           <div class="feature-head">
-            <span class="icon-tile" aria-hidden="true"><svg><use href="#i-orchestra"/></svg></span>
+            <span class="icon-tile" aria-hidden="true"><svg><use href="#i-push"/></svg></span>
             <span class="tag-soon" data-i18n="soon">Coming soon</span>
           </div>
-          <h3 data-i18n="f11.t">Multi-agent orchestration</h3>
-          <p data-i18n="f11.d">Coordinate several sessions on one task through an optional orchestrator session.</p>
-        </li>
-        <li class="feature soon">
-          <div class="feature-head">
-            <span class="icon-tile" aria-hidden="true"><svg><use href="#i-globe"/></svg></span>
-            <span class="tag-soon" data-i18n="soon">Coming soon</span>
-          </div>
-          <h3 data-i18n="f12.t">DNSPilot connectivity</h3>
-          <p data-i18n="f12.d">Reach your machine through DNSPilot, by tunnel or peer-to-peer, as one more optional provider.</p>
+          <h3 data-i18n="f15.t">Phone alerts while the app is closed</h3>
+          <p data-i18n="f15.d">Planned, not in this release. Today, phones show alerts while the VCA app is open, and desktops show system notifications in the background.</p>
         </li>
       </ul>
+    </div>
+  </section>
+
+  <!-- Conductor -->
+  <section class="section section-navy on-navy" id="conductor" aria-labelledby="conductor-title">
+    <div class="container conductor">
+      <div class="conductor-copy">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="c.eyebrow">New in phase 1</p>
+          <h2 id="conductor-title" data-i18n="c.title">A conductor for all your agents.</h2>
+          <p data-i18n="c.intro">Turn on an optional conductor session and ask it “which sessions need me?” or “tell the api session to run the tests”. It answers from what VCA sees and acts through VCA’s MCP tools, only after you allow it.</p>
+        </div>
+        <ul class="c-rules">
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="c.l1">Every message to another session waits for your Allow or Deny.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="c.l2">It never answers permission prompts. Those stay with you.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="c.l3">Actions are capped per hour, 20 by default.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="c.l4">A kill switch stops it and denies every pending request.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="c.l5">Every action is written to the audit log.</span></li>
+        </ul>
+        <p class="c-runs" data-i18n="c.runs">Runs on</p>
+        <ul class="c-agents">
+          <li>Claude Code</li>
+          <li>Codex CLI</li>
+          <li>Gemini CLI</li>
+          <li data-i18n="c.builtin">Built-in, with your own LLM</li>
+        </ul>
+        <p class="c-note"><span data-i18n="c.note">Off by default, and turned on only in the desktop app on the PC itself.</span> <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/conductor.md"><span data-i18n="c.link">How the conductor works</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
+      </div>
+
+      <!-- Illustration of the Command view: a send request waiting for the user's answer -->
+      <div class="c-panel" role="img" aria-label="Illustration of the Command view: the conductor asks to send a message to the api-server session and waits for Allow or Deny." data-i18n-attr="aria-label:c.alt">
+        <div class="c-top" aria-hidden="true">
+          <span class="c-name"><svg><use href="#i-orchestra"/></svg><span data-i18n="c.p.title">Command</span></span>
+          <span class="c-state" data-i18n="c.p.state">Waiting for you</span>
+        </div>
+        <div class="c-chat" aria-hidden="true">
+          <p class="c-you" data-i18n="c.p.you">Tell api-server to run the integration tests.</p>
+          <div class="c-req">
+            <p class="c-req-head" data-i18n="c.p.req">The conductor wants to send this to <strong>api-server</strong>:</p>
+            <p class="c-req-msg" data-i18n="c.p.msg">Run the integration tests and summarize the failures.</p>
+            <div class="c-actions">
+              <span class="c-allow" data-i18n="c.p.allow">Allow</span>
+              <span class="c-deny" data-i18n="c.p.deny">Deny</span>
+            </div>
+            <p class="c-timer" data-i18n="c.p.timer">Denied automatically after 2 minutes without an answer</p>
+          </div>
+        </div>
+        <div class="c-foot" aria-hidden="true">
+          <span class="c-cap"><span data-i18n="c.p.cap">Actions this hour</span> <strong>3 / 20</strong></span>
+          <span class="c-kill" data-i18n="c.p.kill">Kill switch</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -312,7 +427,7 @@
       <figure class="diagram">
         <!-- Wide layout (tablet and desktop) -->
         <svg class="d-wide" viewBox="0 28 1040 442" role="img" aria-labelledby="dw-title">
-          <title id="dw-title" data-i18n="d.alt">Architecture: the VCA app on your phone or desktop connects over an end-to-end encrypted channel to the VCA server on your machine, which manages agents such as Claude Code, Codex, Gemini CLI, Antigravity and Grok, and can use an optional speech server.</title>
+          <title id="dw-title" data-i18n="d.alt">Architecture: the VCA app on your phone or desktop connects over an end-to-end encrypted channel to the VCA server on your machine, which manages agents such as Claude Code, Codex, Gemini CLI, Antigravity and Grok, and can use your own optional speech-to-text, LLM and text-to-speech engines.</title>
           <defs>
             <marker id="aw-end" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0361F7"/></marker>
             <linearGradient id="dGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00CFE8"/><stop offset="1" stop-color="#0361F7"/></linearGradient>
@@ -322,7 +437,7 @@
           <rect x="24" y="132" width="34" height="34" rx="9" fill="#101B35"/>
           <path d="M35 142v14M41 139v20M47 144v10" stroke="url(#dGrad)" stroke-width="3" stroke-linecap="round"/>
           <text class="d-title" x="70" y="148" data-i18n="d.app">VCA app</text>
-          <text class="d-sub" x="70" y="166" data-i18n="d.appSub">iPhone · desktop</text>
+          <text class="d-sub" x="70" y="166" data-i18n="d.appSub">Phone · desktop</text>
           <g class="d-item">
             <circle cx="30" cy="207" r="3" fill="#0361F7"/><text x="42" y="212" data-i18n="d.app1">Session cards</text>
             <circle cx="30" cy="239" r="3" fill="#0361F7"/><text x="42" y="244" data-i18n="d.app2">Voice dictation</text>
@@ -336,8 +451,8 @@
           <path d="M315 207v-3.5a5 5 0 0 1 10 0V207" fill="none" stroke="#FFFFFF" stroke-width="2"/>
           <text class="d-label" x="320" y="164" text-anchor="middle" data-i18n="d.e2e">End-to-end encrypted</text>
           <text class="d-sub" x="320" y="182" text-anchor="middle" data-i18n="d.noise">Noise protocol</text>
-          <text class="d-sub" x="320" y="256" text-anchor="middle" data-i18n="d.via1">LAN · Tailscale</text>
-          <text class="d-sub" x="320" y="275" text-anchor="middle" data-i18n="d.via2">Cloudflare · custom</text>
+          <text class="d-sub" x="320" y="256" text-anchor="middle" data-i18n="d.via1">LAN · Tailscale · Cloudflare</text>
+          <text class="d-sub" x="320" y="275" text-anchor="middle" data-i18n="d.via2">DNSPilot · custom</text>
           <!-- Server -->
           <rect x="420" y="60" width="300" height="300" rx="18" fill="#101B35"/>
           <text class="d-title-inv" x="446" y="102" data-i18n="d.server">VCA server</text>
@@ -379,13 +494,13 @@
           <!-- Optional speech server -->
           <line x1="570" y1="360" x2="570" y2="398" stroke="#B7C6E3" stroke-width="1.5" stroke-dasharray="4 4"/>
           <rect x="440" y="398" width="260" height="62" rx="12" fill="#FFFFFF" stroke="#B7C6E3" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <text class="d-item" x="570" y="424" text-anchor="middle" font-weight="600" data-i18n="d.stt">Speech server (optional)</text>
-          <text class="d-sub" x="570" y="445" text-anchor="middle" data-i18n="d.sttSub">any OpenAI-compatible service</text>
+          <text class="d-item" x="570" y="424" text-anchor="middle" font-weight="600" data-i18n="d.stt">Your speech engines (optional)</text>
+          <text class="d-sub" x="570" y="445" text-anchor="middle" data-i18n="d.sttSub">STT · LLM · TTS, OpenAI-compatible</text>
         </svg>
 
         <!-- Tall layout (phones) -->
         <svg class="d-tall" viewBox="0 0 360 900" role="img" aria-labelledby="dt-title">
-          <title id="dt-title" data-i18n="d.alt">Architecture: the VCA app on your phone or desktop connects over an end-to-end encrypted channel to the VCA server on your machine, which manages agents such as Claude Code, Codex, Gemini CLI, Antigravity and Grok, and can use an optional speech server.</title>
+          <title id="dt-title" data-i18n="d.alt">Architecture: the VCA app on your phone or desktop connects over an end-to-end encrypted channel to the VCA server on your machine, which manages agents such as Claude Code, Codex, Gemini CLI, Antigravity and Grok, and can use your own optional speech-to-text, LLM and text-to-speech engines.</title>
           <defs>
             <marker id="at-end" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0361F7"/></marker>
             <linearGradient id="dGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00CFE8"/><stop offset="1" stop-color="#0361F7"/></linearGradient>
@@ -395,7 +510,7 @@
           <rect x="22" y="22" width="34" height="34" rx="9" fill="#101B35"/>
           <path d="M33 32v14M39 29v20M45 34v10" stroke="url(#dGrad2)" stroke-width="3" stroke-linecap="round"/>
           <text class="d-title" x="68" y="38" data-i18n="d.app">VCA app</text>
-          <text class="d-sub" x="68" y="56" data-i18n="d.appSub">iPhone · desktop</text>
+          <text class="d-sub" x="68" y="56" data-i18n="d.appSub">Phone · desktop</text>
           <g class="d-item">
             <circle cx="28" cy="88" r="3" fill="#0361F7"/><text x="40" y="93" data-i18n="d.app1">Session cards</text>
             <circle cx="28" cy="114" r="3" fill="#0361F7"/><text x="40" y="119" data-i18n="d.app2">Voice dictation</text>
@@ -409,8 +524,8 @@
           <path d="M55 231v-3.5a5 5 0 0 1 10 0V231" fill="none" stroke="#FFFFFF" stroke-width="2"/>
           <text class="d-label" x="98" y="212" data-i18n="d.e2e">End-to-end encrypted</text>
           <text class="d-sub" x="98" y="231" data-i18n="d.noise">Noise protocol</text>
-          <text class="d-sub" x="98" y="254" data-i18n="d.via1">LAN · Tailscale</text>
-          <text class="d-sub" x="98" y="273" data-i18n="d.via2">Cloudflare · custom</text>
+          <text class="d-sub" x="98" y="254" data-i18n="d.via1">LAN · Tailscale · Cloudflare</text>
+          <text class="d-sub" x="98" y="273" data-i18n="d.via2">DNSPilot · custom</text>
           <!-- Server -->
           <rect x="1" y="308" width="358" height="282" rx="18" fill="#101B35"/>
           <text class="d-title-inv" x="24" y="348" data-i18n="d.server">VCA server</text>
@@ -439,8 +554,8 @@
           </g>
           <!-- Optional speech server -->
           <rect x="1" y="814" width="358" height="62" rx="12" fill="#FFFFFF" stroke="#B7C6E3" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <text class="d-item" x="180" y="840" text-anchor="middle" font-weight="600" data-i18n="d.stt">Speech server (optional)</text>
-          <text class="d-sub" x="180" y="861" text-anchor="middle" data-i18n="d.sttSub">any OpenAI-compatible service</text>
+          <text class="d-item" x="180" y="840" text-anchor="middle" font-weight="600" data-i18n="d.stt">Your speech engines (optional)</text>
+          <text class="d-sub" x="180" y="861" text-anchor="middle" data-i18n="d.sttSub">STT · LLM · TTS, OpenAI-compatible</text>
         </svg>
         <figcaption data-i18n="d.caption">Blue outlines mark agents with dedicated adapters. The others use the generic adapter.</figcaption>
       </figure>
@@ -496,7 +611,8 @@
         <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="m.c3">Admission control with real cargo builds</span></li>
         <li><svg aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="m.c4">iPhone voice input to transcript</span></li>
       </ul>
-      <p class="measured-note" data-i18n="m.note">Not yet run in M0: Cloudflare Tunnel and DNSPilot connections, Android builds and cloud agent APIs. <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/docs/m0-report.md">Read the M0 report</a></p>
+      <p class="measured-note" data-i18n="m.note">Not yet run in M0: Cloudflare Tunnel and DNSPilot connections, Android builds and cloud agent APIs. <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/history/m0-report.md">Read the M0 report</a></p>
+      <p class="measured-note" data-i18n="m.tts">Text-to-speech engines were compared separately: seven open-source engines, the same phrases in Korean, English, Japanese and Spanish. <a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/tts-benchmark.md">Read the TTS benchmark</a></p>
     </div>
   </section>
 
@@ -526,39 +642,56 @@
         </div>
         <div>
           <h3 data-i18n="p.platTitle">Platforms</h3>
-          <p data-i18n="p.platBody">The server runs on your development machine. The app runs on your desktop and phone.</p>
+          <p data-i18n="p.platBody">The server runs on your development machine; the app runs on your desktop and phone. Desktop installers are on GitHub Releases, and the phone apps are coming to the App Store and Google Play.</p>
           <ul class="platforms">
-            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>Windows<span class="platform-kind" data-i18n="p.kindDesk">Server and desktop app</span></span></span><span class="pill pill-ok" data-i18n="p.src">Build from source</span></li>
-            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>macOS<span class="platform-kind" data-i18n="p.kindDesk">Server and desktop app</span></span></span><span class="pill pill-ok" data-i18n="p.src">Build from source</span></li>
-            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>Linux<span class="platform-kind" data-i18n="p.kindDesk">Server and desktop app</span></span></span><span class="pill pill-ok" data-i18n="p.src">Build from source</span></li>
-            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-phone"/></svg><span>iPhone<span class="platform-kind" data-i18n="p.kindApp">Mobile app</span></span></span><span class="pill pill-test" data-i18n="p.internal">Internal test builds</span></li>
-            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-phone"/></svg><span>Android<span class="platform-kind" data-i18n="p.kindApp">Mobile app</span></span></span><span class="pill pill-soon" data-i18n="soon">Coming soon</span></li>
+            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>Windows<span class="platform-kind" data-i18n="p.kindWin">Server and desktop app · signed by MetaVu Co., Ltd.</span></span></span><span class="pill pill-ok" data-i18n="p.rel">GitHub Releases</span></li>
+            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>macOS<span class="platform-kind" data-i18n="p.kindMac">Server and desktop app · signed and notarized</span></span></span><span class="pill pill-ok" data-i18n="p.rel">GitHub Releases</span></li>
+            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-laptop"/></svg><span>Linux<span class="platform-kind" data-i18n="p.kindDesk">Server and desktop app</span></span></span><span class="pill pill-soon" data-i18n="soon">Coming soon</span></li>
+            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-phone"/></svg><span>iOS<span class="platform-kind" data-i18n="p.kindApp">Mobile app</span></span></span><span class="pill pill-soon" data-i18n="p.appStore">App Store · coming soon</span></li>
+            <li><span class="platform-name"><svg aria-hidden="true"><use href="#i-phone"/></svg><span>Android<span class="platform-kind" data-i18n="p.kindApp">Mobile app</span></span></span><span class="pill pill-soon" data-i18n="p.play">Google Play · coming soon</span></li>
           </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Try it -->
-  <section class="section section-white" id="try" aria-labelledby="try-title">
-    <div class="container try">
+  <!-- Download -->
+  <section class="section section-white" id="download" aria-labelledby="download-title">
+    <div class="container">
       <div class="section-head">
-        <p class="eyebrow" data-i18n="t.eyebrow">Try it</p>
-        <h2 id="try-title" data-i18n="t.title">No installers yet. Build it in a few commands.</h2>
-        <p data-i18n="t.body">Install the server and the CLI from source, start the server, and run your first agent under VCA.</p>
-        <p class="try-reqs" data-i18n="t.reqs">Requires Git and the Rust toolchain. On Windows, also the “Desktop development with C++” build tools.</p>
+        <p class="eyebrow" data-i18n="dl.eyebrow">Download</p>
+        <h2 id="download-title" data-i18n="dl.title">Get Voice Command AI 0.1.0.</h2>
+        <p data-i18n="dl.intro">Install the desktop app on the PC where your agents run. It includes the VCA server and the vca command, and updates itself from GitHub Releases; nothing is installed until you click. Then pair your phone from Settings → Connect a phone.</p>
       </div>
-      <div class="code on-navy">
-        <div class="code-bar">
-          <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <button type="button" class="copy-btn" data-copy="#quickstart" data-i18n="t.copy">Copy</button>
+      <ul class="dl-list">
+        <li class="dl-item"><svg aria-hidden="true"><use href="#i-laptop"/></svg><div><h3>Windows</h3><p data-i18n="dl.win">Installer (-setup.exe), signed by MetaVu Co., Ltd.</p></div></li>
+        <li class="dl-item"><svg aria-hidden="true"><use href="#i-laptop"/></svg><div><h3>macOS</h3><p data-i18n="dl.mac">Disk image (.dmg), signed and notarized.</p></div></li>
+        <li class="dl-item"><svg aria-hidden="true"><use href="#i-laptop"/></svg><div><h3>Linux</h3><p data-i18n="dl.linux">Coming in a later version. Until then, build it from source.</p></div></li>
+      </ul>
+      <div class="dl-actions">
+        <a class="btn btn-primary" href="https://github.com/JinsongRoh/Voice-Command-AI/releases/latest"><svg aria-hidden="true"><use href="#i-download"/></svg><span data-i18n="dl.cta">Download from GitHub Releases</span><svg class="btn-arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <span class="btn btn-store"><svg aria-hidden="true"><use href="#i-phone"/></svg><span data-i18n="p.appStore">App Store · coming soon</span></span>
+        <span class="btn btn-store"><svg aria-hidden="true"><use href="#i-phone"/></svg><span data-i18n="p.play">Google Play · coming soon</span></span>
+      </div>
+
+      <div class="try" id="try">
+        <div class="try-head">
+          <h3 data-i18n="t.title">Or build it from source.</h3>
+          <p data-i18n="t.body">Install the server and the CLI from source, start the server, and run your first agent under VCA.</p>
+          <p class="try-reqs" data-i18n="t.reqs">Requires Git and the Rust toolchain. On Windows, also the “Desktop development with C++” build tools.</p>
         </div>
-        <pre tabindex="0" aria-label="Quick start commands" data-i18n-attr="aria-label:t.codeLabel"><code id="quickstart"><span class="p">$ </span>git clone https://github.com/JinsongRoh/Voice-Command-AI.git
-<span class="p">$ </span>cd Voice-Command-AI &amp;&amp; git checkout dev/m0-foundation
+        <div class="code on-navy">
+          <div class="code-bar">
+            <span class="code-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <button type="button" class="copy-btn" data-copy="#quickstart" data-i18n="t.copy">Copy</button>
+          </div>
+          <pre tabindex="0" aria-label="Quick start commands" data-i18n-attr="aria-label:t.codeLabel"><code id="quickstart"><span class="p">$ </span>git clone https://github.com/JinsongRoh/Voice-Command-AI.git
+<span class="p">$ </span>cd Voice-Command-AI
 <span class="p">$ </span>cargo install --path crates/vca-server   <span class="c"># vcad</span>
 <span class="p">$ </span>cargo install --path crates/vca-cli      <span class="c"># vca</span>
 <span class="p">$ </span>vca daemon
 <span class="p">$ </span>vca run -- claude</code></pre>
+        </div>
       </div>
       <p class="visually-hidden" role="status" aria-live="polite" id="copy-status"></p>
     </div>
@@ -588,10 +721,18 @@
         <li class="oss-card feature-card on-navy">
           <span class="icon-tile" aria-hidden="true"><svg><use href="#i-heart"/></svg></span>
           <h3 data-i18n="o.c3.t">Supporting the project</h3>
-          <p data-i18n="o.c3.d"><a href="https://dnspilot.kr">DNSPilot</a> is developed by the team behind VCA. Once its paid plans open, subscriptions will help fund VCA’s development. It stays optional: Tailscale, Cloudflare Tunnel, LAN and custom providers are supported equally.</p>
+          <p data-i18n="o.c3.d">Every feature works without paying anyone. To help, consider <a href="https://dnspilot.kr">DNSPilot</a> for connectivity: it is built by the team behind VCA, and once its paid plans open, subscriptions will help fund VCA. It stays optional, on equal footing with Tailscale, Cloudflare Tunnel, LAN and custom providers. You can also contribute, or star the repository and share it.</p>
           <a class="more-link" href="https://github.com/JinsongRoh/Voice-Command-AI"><span data-i18n="o.c3.l">Star the repository</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
         </li>
       </ul>
+      <div class="oss-credits">
+        <span class="icon-tile" aria-hidden="true"><svg><use href="#i-book"/></svg></span>
+        <p data-i18n="o.credits">VCA is built on the work of many open-source projects. Thank you to everyone behind them.</p>
+        <ul class="oss-credit-links">
+          <li><a class="more-link" href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/open-source.md"><span data-i18n="o.creditsLink">Open-source credits</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></a></li>
+          <li><a class="more-link" href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/THIRD_PARTY_NOTICES.md"><span data-i18n="o.noticesLink">Third-party notices</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></a></li>
+        </ul>
+      </div>
     </div>
   </section>
 </main>
@@ -606,10 +747,13 @@
       <nav aria-label="Footer" data-i18n-attr="aria-label:footer.label">
         <ul class="footer-links">
           <li><a href="https://github.com/JinsongRoh/Voice-Command-AI">GitHub</a></li>
-          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/docs/user-guide.md" data-i18n="footer.guide">User guide</a></li>
-          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/docs/m0-report.md" data-i18n="footer.report">M0 report</a></li>
-          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/docs/brand/brand-definition.md" data-i18n="footer.brand">Brand guidelines</a></li>
-          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/dev/m0-foundation/LICENSE" data-i18n="footer.license">MIT License</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/user-guide.md" data-i18n="footer.guide">User guide</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/history/m0-report.md" data-i18n="footer.report">M0 report</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/brand/brand-definition.md" data-i18n="footer.brand">Brand guidelines</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/docs/open-source.md" data-i18n="footer.credits">Open-source credits</a></li>
+          <li><a href="https://github.com/JinsongRoh/Voice-Command-AI/blob/main/LICENSE" data-i18n="footer.license">MIT License</a></li>
+          <li><a href="privacy.html" data-i18n="footer.privacyLink">Privacy</a></li>
+          <li><a href="support.html" data-i18n="footer.support">Support</a></li>
         </ul>
       </nav>
     </div>

@@ -2,16 +2,76 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://vca.metavu.io/</loc>
-    <lastmod>2026-10-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
     <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
   </url>
   <url>
     <loc>https://vca.metavu.io/?lang=ko</loc>
-    <lastmod>2026-10-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
     <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/?lang=ja</loc>
+    <lastmod>2026-11-01</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/?lang=es</loc>
+    <lastmod>2026-11-01</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/?lang=zh</loc>
+    <lastmod>2026-11-01</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/?lang=ru</loc>
+    <lastmod>2026-11-01</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vca.metavu.io/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://vca.metavu.io/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://vca.metavu.io/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://vca.metavu.io/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://vca.metavu.io/?lang=zh"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://vca.metavu.io/?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vca.metavu.io/"/>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/privacy.html</loc>
+    <lastmod>2026-11-10</lastmod>
+  </url>
+  <url>
+    <loc>https://vca.metavu.io/support.html</loc>
+    <lastmod>2026-11-10</lastmod>
   </url>
 </urlset>
