@@ -46,7 +46,7 @@ fn settings(idle: u64, life: u64, step_up: u64) -> ShellSettings {
 }
 
 fn fixture(settings: ShellSettings) -> Fixture {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = short_tempdir();
     let workspace = dir.path().join("workspace");
     std::fs::create_dir_all(workspace.join("project")).unwrap();
     // The server reports canonical paths; on Windows the temp dir can come
@@ -993,7 +993,7 @@ async fn disabled_shells_refuse_everything() {
 
 #[tokio::test]
 async fn without_totp_no_shell_opens() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = short_tempdir();
     let workspace = dir.path().join("w");
     std::fs::create_dir_all(&workspace).unwrap();
     let mgr = SessionManager::new(
@@ -1276,4 +1276,15 @@ async fn a_revoked_device_loses_its_join_grant() {
         &f.shells.check_access(&laptop(), &info.id).unwrap_err()
     ));
     f.cleanup().await;
+}
+
+/// A temporary folder with a short path. The attach sockets live in it,
+/// and a Unix socket path is limited to about 100 bytes: macOS's own
+/// temporary folder (`/var/folders/...`) is already too long for one.
+fn short_tempdir() -> tempfile::TempDir {
+    if cfg!(unix) {
+        tempfile::tempdir_in("/tmp").unwrap()
+    } else {
+        tempfile::tempdir().unwrap()
+    }
 }
