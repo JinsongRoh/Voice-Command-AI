@@ -179,6 +179,26 @@ To keep the key off the build machine, build with
 `.AppImage`, `.deb` and `.rpm` to the machine with the key and sign each with
 `npx tauri signer sign -f <key file> <file>`, as for macOS.
 
+**On GitHub Actions.** The **Release build (Linux)** workflow
+(`.github/workflows/release-linux.yml`) does the unsigned build for both
+architectures on GitHub-hosted runners. It runs only when started by hand
+(Actions → Release build (Linux) → Run workflow, from the default branch)
+and uses no secrets. It builds the `.deb` and the `.rpm`; the AppImage is
+not part of the current releases. Each run uploads, per architecture, the
+`.deb`, the `.rpm` and a `SHA256SUMS` file as workflow artifacts named
+`voice-command-ai-<version>-linux-<x86_64|aarch64>-<deb|rpm|sha256>`, and
+prints the checksums in the run summary. Download them, check the
+checksums, then sign each package with the key as above. The workflow fails
+if the version fields disagree, if a package lacks the app, `vcad` or
+`vca`, or if any `.sig` appears.
+
+The workflow builds on Ubuntu 22.04 by default, the oldest GitHub-hosted
+runner image for both architectures, because the binaries only run on
+systems with the same or a newer glibc than they were linked against. Its
+summary prints the newest glibc version each binary needs. Choose Ubuntu
+24.04 (glibc 2.39) only when the 22.04 runners are retired, and say so in
+the release notes.
+
 ## 3. Write `latest.json`
 
 Collect the artifacts with their `.sig` files (for example under

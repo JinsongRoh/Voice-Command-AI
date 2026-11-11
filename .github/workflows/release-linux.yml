@@ -1,0 +1,183 @@
+# Linux release packages of the desktop app (.deb and .rpm) for x86_64 and
+# ARM64, built on GitHub-hosted runners and uploaded as workflow
+# artifacts. Run it by hand (Actions → Release build (Linux) → Run workflow);
+# it never runs on push and publishes nothing.
+#
+# The bundles are UNSIGNED for the updater: `createUpdaterArtifacts` is off,
+# so no `.sig` is made and no signing key is needed or used here. The release
+# team signs the downloaded files with the updater key on its own machine
+# (`npx tauri signer sign`) and writes `latest.json` with
+# tools/release/make-latest-json.py. See docs/releasing.md.
+#
+# Compatibility: the binaries run only on systems whose glibc is at least as
+# new as the symbols they were linked against, so an older build system
+# reaches more systems. Ubuntu 22.04 (glibc 2.35) is the oldest release with
+# GitHub-hosted runners for both architectures, so it is the default; choose
+# Ubuntu 24.04 (glibc 2.39) only when 22.04 runners are retired. The "glibc
+# floor" step prints the newest glibc symbol each binary actually needs.
+# The packages also need WebKitGTK 4.1 from the system (Ubuntu 22.04,
+# Debian 12, Fedora 36 or newer).
+name: Release build (Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ubuntu:
+        description: Ubuntu release to build on (older = the packages run on more systems)
+        type: choice
+        options: ["22.04", "24.04"]
+        default: "22.04"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-linux-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bundle:
+    name: Linux ${{ matrix.arch }} (Ubuntu ${{ inputs.ubuntu }})
+    runs-on: ubuntu-${{ inputs.ubuntu }}${{ matrix.runner-suffix }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner-suffix: ""
+          - arch: aarch64
+            runner-suffix: "-arm"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config curl file \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev \
+            libssl-dev libasound2-dev libdbus-1-dev \
+            rpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/ui/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            apps/ui/pnpm-lock.yaml
+            apps/desktop/pnpm-lock.yaml
+
+      - name: Version
+        id: version
+        run: |
+          # The app version (apps/Cargo.toml); the server/CLI version
+          # (Cargo.toml) and the desktop package must match it.
+          app=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' apps/Cargo.toml)
+          core=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          desktop=$(node -p "require('./apps/desktop/package.json').version")
+          echo "apps/Cargo.toml=$app Cargo.toml=$core apps/desktop/package.json=$desktop"
+          if [ -z "$app" ] || [ "$app" != "$core" ] || [ "$app" != "$desktop" ]; then
+            echo "::error::version fields disagree (see docs/releasing.md)"
+            exit 1
+          fi
+          echo "version=$app" >> "$GITHUB_OUTPUT"
+
+      - name: Install JavaScript dependencies
+        run: |
+          pnpm --dir apps/ui install --frozen-lockfile
+          pnpm --dir apps/desktop install --frozen-lockfile
+
+      # The UI itself is built by `tauri build` (beforeBuildCommand).
+      - name: Build the sidecars (vcad, vca)
+        working-directory: apps/desktop
+        run: node scripts/build-vcad.mjs
+
+      - name: Build the bundles
+        working-directory: apps/desktop
+        run: >-
+          pnpm tauri build --bundles deb,rpm
+          --config src-tauri/tauri.vcad.conf.json
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Collect the bundles
+        id: collect
+        run: |
+          set -euo pipefail
+          bundle=apps/target/release/bundle
+          if [ -n "$(find "$bundle" -name '*.sig')" ]; then
+            echo "::error::updater signatures found; this workflow must not sign"
+            exit 1
+          fi
+          mkdir -p out/deb out/rpm
+          cp "$bundle"/deb/*.deb out/deb/
+          cp "$bundle"/rpm/*.rpm out/rpm/
+          # File names only, so `sha256sum -c` works next to the downloads.
+          for kind in deb rpm; do (cd "out/$kind" && sha256sum -- *); done | tee out/SHA256SUMS
+          {
+            echo "### Linux ${{ matrix.arch }} bundles, ${{ steps.version.outputs.version }} (Ubuntu ${{ inputs.ubuntu }})"
+            echo '```'
+            cat out/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the bundles
+        run: |
+          set -euo pipefail
+          deb=$(ls out/deb/*.deb)
+          rpm=$(ls out/rpm/*.rpm)
+          dpkg-deb --info "$deb"
+          deb_files=$(dpkg-deb --contents "$deb")
+          echo "$deb_files"
+          rpm -qpi "$rpm"
+          rpm -qp --requires "$rpm"
+          rpm_files=$(rpm -qpl "$rpm")
+          # The app and its sidecars (vcad, vca) must be in every package.
+          for bin in vca-desktop vcad vca; do
+            grep -Eq " \.?/?usr/bin/$bin\$" <<<"$deb_files" || { echo "::error::$bin missing from the .deb"; exit 1; }
+            grep -q "^/usr/bin/$bin\$" <<<"$rpm_files" || { echo "::error::$bin missing from the .rpm"; exit 1; }
+          done
+
+      # The newest glibc symbol the packaged binaries need: the oldest glibc
+      # the packages run on.
+      - name: glibc floor
+        run: |
+          set -euo pipefail
+          # objdump fails on files that are not ELF; only its output counts.
+          versions() { grep -o 'GLIBC_[0-9][0-9.]*' | sort -uV | tail -1; }
+          for bin in apps/target/release/vca-desktop target/release/vcad target/release/vca; do
+            echo "$bin needs $( (objdump -T "$bin" || true) | versions)" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+
+
+      - name: Upload the .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-command-ai-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}-deb
+          path: out/deb/*
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload the .rpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-command-ai-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}-rpm
+          path: out/rpm/*
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload the checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-command-ai-${{ steps.version.outputs.version }}-linux-${{ matrix.arch }}-sha256
+          path: out/SHA256SUMS
+          if-no-files-found: error
