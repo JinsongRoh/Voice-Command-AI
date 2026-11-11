@@ -51,7 +51,7 @@ name = "vcad"
 path = "src/main.rs"
 
 [target."cfg(unix)".dependencies]
-nix = { version = "0.31.3", features = ["user", "fs"] }
+nix = { version = "0.31.3", features = ["user", "fs", "socket"] }
 
 [target."cfg(windows)".dependencies]
 widestring = "1.2.1"

@@ -508,6 +508,32 @@ async fn mark_instruction_caller(
     }
 }
 
+/// The peer's process id on macOS, read with `LOCAL_PEERPID` (the kernel
+/// records it at connect time). The stream is taken apart to reach its
+/// socket and put back together; `None` when that fails, which drops the
+/// connection.
+#[cfg(target_os = "macos")]
+fn macos_peer_pid(stream: Stream, known: Option<u32>) -> Option<(Stream, Option<u32>)> {
+    use interprocess::os::unix::uds_local_socket::tokio::Stream as UdStream;
+    use nix::sys::socket::{getsockopt, sockopt::LocalPeerPid};
+    use std::os::fd::OwnedFd;
+
+    let Stream::UdSocket(inner) = stream;
+    let fd = OwnedFd::try_from(inner)
+        .map_err(|e| tracing::debug!("control socket: {e}"))
+        .ok()?;
+    let pid = known.or_else(|| {
+        getsockopt(&fd, LocalPeerPid)
+            .ok()
+            .and_then(|pid| u32::try_from(pid).ok())
+            .filter(|pid| *pid != 0)
+    });
+    let inner = UdStream::try_from(fd)
+        .map_err(|e| tracing::debug!("control socket: {e}"))
+        .ok()?;
+    Some((Stream::from(inner), pid))
+}
+
 async fn serve(stream: Stream, api: Api, remote: RemoteSlot) {
     // The process on the other end, where the operating system can name it.
     // The id is signed on Unix.
@@ -517,6 +543,11 @@ async fn serve(stream: Stream, api: Api, remote: RemoteSlot) {
         .ok()
         .and_then(|creds| creds.pid())
         .and_then(|pid| u32::try_from(pid).ok());
+    // macOS peer credentials carry no process id; ask the socket for it.
+    #[cfg(target_os = "macos")]
+    let Some((stream, peer_pid)) = macos_peer_pid(stream, peer_pid) else {
+        return;
+    };
     let (recv, mut send) = split_stream(stream);
     let mut recv = BufReader::new(recv);
     let (client, mut outbound) = api.connect("local");
