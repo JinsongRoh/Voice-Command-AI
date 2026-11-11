@@ -19,7 +19,7 @@
 
 Voice Command AI (VCA) is an open-source, cross-platform tool. It lets you watch, command and orchestrate AI coding agents running on your development machine. Supported agents include Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, Grok and more. You can reach them from anywhere, without fighting for keyboard focus and without letting runaway builds bring your machine down.
 
-> **Status:** Version 0.1.0, the first public release (November 11, 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) and updates itself; the Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile), and the iPhone app is in review at the App Store. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
+> **Status:** Version 0.1.1 (November 2026) adds the Linux desktop app. The desktop app for Windows, macOS and Linux is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) and updates itself; the Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile), and the iPhone app is in review at the App Store. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
 
 ---
 
@@ -37,14 +37,15 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 
 | Platform | Get it | Notes |
 |---|---|---|
-| Windows 10/11 (x64) | [Installer (.exe)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64-setup.exe) | Signed by MetaVu Co., Ltd. Includes the server. |
-| macOS (Apple silicon) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_aarch64.dmg) | Developer ID signed and notarized. Includes the server. |
-| macOS (Intel) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) | Developer ID signed and notarized. Includes the server. |
-| Linux | Coming in a later version. Until then, [build from source](docs/user-guide.md#build-from-source). | The server also runs on Linux when built from source. |
+| Windows 10/11 (x64) | [Installer (.exe)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_x64-setup.exe) | Signed by MetaVu Co., Ltd. Includes the server. |
+| macOS (Apple silicon) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_aarch64.dmg) | Developer ID signed and notarized. Includes the server. |
+| macOS (Intel) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_x64.dmg) | Developer ID signed and notarized. Includes the server. |
+| Linux (x86_64) | [.deb](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_amd64.deb) · [.rpm](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI-0.1.1-1.x86_64.rpm) | Ubuntu 22.04, Debian 12, Fedora 36 or newer. Includes the server. See [Linux notes](docs/user-guide.md#linux). |
+| Linux (ARM64) | [.deb](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_arm64.deb) · [.rpm](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI-0.1.1-1.aarch64.rpm) | Same as x86_64. |
 | iPhone, iPad | App Store: *in review, coming soon* | iOS 15 or later. Includes a demo mode. |
 | Android | [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile) | Android 8.0 or later. Includes a demo mode. |
 
-All files, release notes and update signatures are on the [v0.1.0 release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0).
+All files, release notes and update signatures are on the [v0.1.1 release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.1).
 
 Install the desktop app on the PC where your agents run, then pair your phone: one QR code from **Settings › Connection & security › Connect a phone** pairs it (and registers it for remote access when you use DNSPilot). The [user guide](docs/user-guide.md#2-install-vca) has the steps for each platform, and how to build everything from source. Before you open VCA to other devices, read [Security setup](docs/security-setup.md); the [privacy policy](docs/privacy.md) explains what stays on your machine and what leaves it.
 

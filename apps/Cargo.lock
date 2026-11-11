@@ -5274,7 +5274,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vca-mic"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "tauri",
@@ -5283,7 +5283,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vca-push"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "tauri",
@@ -5292,7 +5292,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vca-share"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "tauri",
@@ -5927,7 +5927,7 @@ dependencies = [
 
 [[package]]
 name = "vca-adapters"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5948,7 +5948,7 @@ dependencies = [
 
 [[package]]
 name = "vca-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rcgen",
  "rmp-serde",
@@ -5968,7 +5968,7 @@ dependencies = [
 
 [[package]]
 name = "vca-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -5978,7 +5978,7 @@ dependencies = [
 
 [[package]]
 name = "vca-desktop"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde_json",
  "tauri",
@@ -5990,7 +5990,7 @@ dependencies = [
 
 [[package]]
 name = "vca-mobile"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "block2",
  "objc2",
@@ -6013,7 +6013,7 @@ dependencies = [
 
 [[package]]
 name = "vca-net"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.23.1",
  "data-encoding",
@@ -6045,7 +6045,7 @@ dependencies = [
 
 [[package]]
 name = "vca-providers"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -6069,7 +6069,7 @@ dependencies = [
 
 [[package]]
 name = "vca-shell"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "block2",
  "cpal",

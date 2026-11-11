@@ -3598,7 +3598,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vca-adapters"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3620,7 +3620,7 @@ dependencies = [
 
 [[package]]
 name = "vca-broker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "futures",
  "interprocess",
@@ -3641,7 +3641,7 @@ dependencies = [
 
 [[package]]
 name = "vca-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -3661,7 +3661,7 @@ dependencies = [
 
 [[package]]
 name = "vca-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "data-encoding",
  "rcgen",
@@ -3688,7 +3688,7 @@ dependencies = [
 
 [[package]]
 name = "vca-cloud"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3706,7 +3706,7 @@ dependencies = [
 
 [[package]]
 name = "vca-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rmp-serde",
  "serde",
@@ -3718,7 +3718,7 @@ dependencies = [
 
 [[package]]
 name = "vca-fake-agent"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "crossterm",
@@ -3729,7 +3729,7 @@ dependencies = [
 
 [[package]]
 name = "vca-net"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.23.1",
  "data-encoding",
@@ -3762,7 +3762,7 @@ dependencies = [
 
 [[package]]
 name = "vca-providers"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3788,7 +3788,7 @@ dependencies = [
 
 [[package]]
 name = "vca-pty"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3807,7 +3807,7 @@ dependencies = [
 
 [[package]]
 name = "vca-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3855,7 +3855,7 @@ dependencies = [
 
 [[package]]
 name = "vca-speech"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",

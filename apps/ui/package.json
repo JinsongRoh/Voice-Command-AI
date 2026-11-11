@@ -1,7 +1,7 @@
 {
   "name": "@vca/ui",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared front-end for Voice Command AI (embedded later in the Tauri desktop and mobile apps).",
   "license": "SEE LICENSE IN ../../LICENSE",
   "type": "module",

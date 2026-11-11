@@ -5,6 +5,23 @@ All notable changes to Voice Command AI are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-11
+
+The desktop app now also runs on Linux. Windows and macOS get the same version with the fixes below; installed 0.1.0 apps offer the update in Settings.
+
+**Linux desktop app**
+
+- The desktop app for Linux, x86_64 and ARM64, as a `.deb` (Debian, Ubuntu) and an `.rpm` (Fedora). Like the Windows and macOS apps it includes the VCA server (`vcad`) and the `vca` command, and updates itself from GitHub Releases. The packages need Ubuntu 22.04, Debian 12, Fedora 36 or newer.
+- A manual GitHub Actions workflow (`release-linux.yml`) that builds the unsigned Linux packages for both architectures; the updater signatures are added afterwards by the release team. See [Releasing](docs/releasing.md).
+
+**Fixed**
+
+- macOS: pairing a phone from the `vca` command could not finish, because the server could not tell which local program was asking (macOS reports no process id in the socket credentials). It now reads it the macOS way.
+- Closing the chat search right after starting **Search earlier messages** now always stops loading earlier pages.
+- Linux: the folder that holds the app's keys when no Secret Service is available is now readable only by your user (it was created with the default permissions).
+- Linux: session discovery now also finds agents whose executable name is longer than 15 characters (Linux reports only the first 15).
+- Linux packages: the `.deb` and `.rpm` declare the ALSA library the microphone needs, and the app ships 64×64 and 512×512 icons.
+
 ## [0.1.0] - 2026-11-11
 
 The first public release. The desktop app for Windows 10/11 x64 (NSIS installer signed by MetaVu Co., Ltd.) and macOS (Apple silicon and Intel, Developer ID signed and notarized) is on GitHub Releases, with in-app updates; Linux packages come in a later version. The iPhone/iPad app and the Android app are in App Store and Google Play review. Walkthrough video: https://youtu.be/y1nxSgDrQi8.

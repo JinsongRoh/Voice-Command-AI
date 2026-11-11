@@ -2,7 +2,7 @@
 
 This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside your network.
 
-> **Status (version 0.1.0, released November 11, 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) (Linux packages come in a later version; build from source until then). The Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile); the iPhone/iPad app is in review at the App Store. Items marked *coming soon* are not available yet.
+> **Status (version 0.1.1, November 2026):** The desktop app for Windows, macOS and Linux (`.deb` and `.rpm`; see [Linux](#linux)) is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest). The Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile); the iPhone/iPad app is in review at the App Store. Items marked *coming soon* are not available yet.
 >
 > **Watch first:** a [2-minute walkthrough video](https://youtu.be/y1nxSgDrQi8) ([Korean version](https://youtu.be/I3vdZhCmwQg)).
 
@@ -23,9 +23,11 @@ Install the **desktop app on the PC where your agents run**: it includes the ser
 
 | Platform | Download |
 |---|---|
-| Windows 10/11 (x64) | [Voice.Command.AI_0.1.0_x64-setup.exe](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64-setup.exe) |
-| macOS, Apple silicon (M1 or later) | [Voice.Command.AI_0.1.0_aarch64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_aarch64.dmg) |
-| macOS, Intel | [Voice.Command.AI_0.1.0_x64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) |
+| Windows 10/11 (x64) | [Voice.Command.AI_0.1.1_x64-setup.exe](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_x64-setup.exe) |
+| macOS, Apple silicon (M1 or later) | [Voice.Command.AI_0.1.1_aarch64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_aarch64.dmg) |
+| macOS, Intel | [Voice.Command.AI_0.1.1_x64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_x64.dmg) |
+| Linux x86_64 | [.deb](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_amd64.deb), [.rpm](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI-0.1.1-1.x86_64.rpm) |
+| Linux ARM64 | [.deb](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.1_arm64.deb), [.rpm](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI-0.1.1-1.aarch64.rpm) |
 | iPhone, iPad | App Store: *in review, coming soon* |
 | Android | [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile) |
 
@@ -41,12 +43,19 @@ Download the `.dmg` for your Mac (`aarch64` for Apple silicon, `x64` for Intel; 
 
 ### Linux
 
-Linux packages (AppImage, `.deb`, `.rpm`) come in a later version. Until then, build the app from source (section 4). Once they are released:
+The desktop app is built for x86_64 (`amd64`) and ARM64 (`aarch64`/`arm64`) as a `.deb` and an `.rpm`. It needs Ubuntu 22.04, Debian 12, Fedora 36 or a newer release of a compatible distribution (glibc 2.35 or later, and WebKitGTK 4.1, which the package manager installs with the app). Like the other desktop apps, it includes `vcad` and `vca` and starts the server when it opens.
 
-- **AppImage:** make it executable (`chmod +x Voice*.AppImage`) and run it. It updates itself.
-- **`.deb`** (Debian, Ubuntu): `sudo apt install ./Voice*.deb`. **`.rpm`** (Fedora, openSUSE): `sudo dnf install ./Voice*.rpm`. The in-app updater installs a newer package of the same type and asks for your password.
+- **`.deb`** (Debian, Ubuntu and their derivatives): `sudo apt install ./Voice*.deb`. The app, `vcad` and `vca` are installed in `/usr/bin`, so `vca` also works in your own terminal.
+- **`.rpm`** (Fedora and other RPM-based systems): `sudo dnf install ./Voice*.rpm`.
 
-The app keeps its keys in the Secret Service (GNOME Keyring or KWallet) when one runs.
+The in-app updater installs a newer package of the same type (`.deb` or `.rpm`); the system asks for your password through `pkexec`.
+
+Good to know on Linux:
+
+- **Keys.** The app keeps its keys in the Secret Service (GNOME Keyring or KWallet) when one runs. Without one, they are stored as files that only your user can read, in the app's data folder (`~/.local/share/io.metavu.voicecommandai.desktop`).
+- **Microphone.** Dictation in the app records from the system's default ALSA device. On PipeWire or PulseAudio desktops this goes through their ALSA plugin (`pipewire-alsa` or the PulseAudio ALSA plugin), which standard desktop installs include.
+- **Start at sign-in** adds an entry to `~/.config/autostart`.
+- **Windows menu (section 10), X11 and Wayland.** Restored windows open in GNOME Terminal, Konsole or kitty (or in tmux when none of them is installed). Moving and arranging windows needs an X11 session with `wmctrl` or `xdotool` installed (`sudo apt install wmctrl`). On Wayland the windows are reopened but not moved, and the app says so. **Bring to front** works on Windows only for now.
 
 ### Android
 
@@ -814,7 +823,7 @@ Decisions and questions the agent shows in its own prompt stay in the Alerts tab
 - **Restart to update** installs it. Before anything happens, the app asks for confirmation and tells you what it affects: it stops the VCA server it started, so **sessions VCA started may end**. Sessions you started yourself in a terminal, which VCA only observes, keep running. The app then installs the new version and opens again (on Windows a small installer window shows the progress).
 - **Check for updates automatically** (on by default) checks 30 seconds after the app starts and then once a day. When it finds a new version you only see a small notice, **New version X is available**, with a button that opens Settings. Nothing is downloaded or installed until you click.
 
-Problems are shown in plain words, for example when the PC is offline or a download's signature is invalid; **Try again** repeats the step. On Linux, an AppImage replaces itself, and a `.deb` or `.rpm` install is updated as the same kind of package (the system asks for your password). If a release has no package of your install's kind, the app shows the release page so you can download it yourself.
+Problems are shown in plain words, for example when the PC is offline or a download's signature is invalid; **Try again** repeats the step. On Linux, a `.deb` or `.rpm` install is updated as the same kind of package (the system asks for your password). If a release has no package of your install's kind, the app shows the release page so you can download it yourself.
 
 A server you started yourself (`vca daemon`) is never stopped by the app; update it like you installed it.
 

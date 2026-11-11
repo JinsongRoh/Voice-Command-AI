@@ -5,7 +5,7 @@ resolver = "3"
 members = ["shell", "plugins/vca-mic", "plugins/vca-share", "desktop/src-tauri", "mobile/src-tauri"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
