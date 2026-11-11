@@ -1207,6 +1207,9 @@ main:focus, main:focus-visible { box-shadow: none; }
 .dl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--s-5); }
 .btn-store { background: var(--white); color: var(--ink-muted); border: 1px dashed #B7C6E3; cursor: default; }
 .btn-store:hover, .btn-store:active { transform: none; }
+a.btn-store { color: var(--ink); border-style: solid; cursor: pointer; }
+a.btn-store:hover { border-color: currentColor; }
+a.pill { text-decoration: none; }
 .dl-more { margin-top: var(--s-4); }
 .dl-more .more-link { display: inline-flex; align-items: center; gap: var(--s-1); font-weight: 600; text-decoration: none; }
 .dl-more .more-link:hover { text-decoration: underline; }
