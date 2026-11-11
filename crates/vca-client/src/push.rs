@@ -993,7 +993,8 @@ mod tests {
         PushPayload {
             v: PAYLOAD_VERSION,
             m: "0123456789abcdef".into(),
-            s: "s1".into(),
+            // Long enough that random ciphertext never contains it by chance.
+            s: "session-plaintext-marker".into(),
             d: "d1".into(),
         }
     }
@@ -1005,7 +1006,7 @@ mod tests {
         assert_eq!(phone_public_key(&phone).unwrap(), public);
 
         let sealed = seal(&public, &payload()).unwrap();
-        assert!(!String::from_utf8_lossy(&sealed).contains("s1"));
+        assert!(!String::from_utf8_lossy(&sealed).contains("session-plaintext-marker"));
         let text = vca_providers::dnspilot::push::encode_base64(&sealed);
         assert_eq!(open_sealed(&phone, &text), Some(payload()));
 

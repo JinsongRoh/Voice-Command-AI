@@ -85,12 +85,26 @@ pub struct AgentHooksStatus {
 }
 
 /// The `vca` CLI bundled next to the app's executable, when present.
+///
+/// `None` inside a Linux AppImage: its files live in a temporary mount
+/// (`APPDIR`, e.g. `/tmp/.mount_XXXX`) whose path changes on every launch
+/// and disappears when the app quits, so hooks pointing there would break.
+/// The app then offers `vca hooks install` like a build without the CLI.
 pub fn bundled_cli() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
+    if cfg!(target_os = "linux") && in_appimage_mount(&exe, std::env::var_os("APPDIR").as_deref()) {
+        return None;
+    }
     let path = exe
         .parent()?
         .join(format!("vca{}", std::env::consts::EXE_SUFFIX));
     path.is_file().then_some(path)
+}
+
+/// True when `exe` runs from an AppImage's mount (`appdir`, the `APPDIR`
+/// the AppImage runtime sets).
+fn in_appimage_mount(exe: &Path, appdir: Option<&std::ffi::OsStr>) -> bool {
+    appdir.is_some_and(|dir| !dir.is_empty() && exe.starts_with(dir))
 }
 
 /// Where the hooks go and which program they run.
@@ -467,6 +481,27 @@ mod tests {
         assert_eq!(err.code, "not_bundled");
         assert!(!dir.path().join("claude").exists());
         assert_eq!(t.status().cli_path, None);
+    }
+
+    #[test]
+    fn appimage_mount_is_not_a_hook_path() {
+        use std::ffi::OsStr;
+        let exe = Path::new("/tmp/.mount_VoiceCa1b2/usr/bin/voice-command-ai");
+        assert!(in_appimage_mount(
+            exe,
+            Some(OsStr::new("/tmp/.mount_VoiceCa1b2"))
+        ));
+        // Not an AppImage, or another AppImage's mount.
+        assert!(!in_appimage_mount(exe, None));
+        assert!(!in_appimage_mount(exe, Some(OsStr::new(""))));
+        assert!(!in_appimage_mount(
+            Path::new("/usr/bin/voice-command-ai"),
+            Some(OsStr::new("/tmp/.mount_VoiceCa1b2"))
+        ));
+        assert!(!in_appimage_mount(
+            exe,
+            Some(OsStr::new("/tmp/.mount_Voice"))
+        ));
     }
 
     #[test]

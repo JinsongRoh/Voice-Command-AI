@@ -69,6 +69,10 @@ export function ChatSearch({
 
   const close = () => {
     setText('');
+    // The query may not have reached the parent yet (debounced), so clearing
+    // it need not change anything there: stop a running earlier-messages
+    // search outright.
+    onStopSearchOlder?.();
     onQueryRef.current('');
     if (onClosed) onClosed();
     else setOpen(false);

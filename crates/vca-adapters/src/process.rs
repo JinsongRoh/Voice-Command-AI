@@ -300,17 +300,17 @@ impl ProcessScanner {
 
     fn is_candidate(&self, name: &str) -> bool {
         let base = normalized_basename(name);
-        DETAIL_NAMES.contains(&base.as_str())
+        DETAIL_NAMES.iter().any(|known| name_is(&base, known))
             || is_interpreter(&base)
-            || self.extra_names.contains(&base)
+            || self.extra_names.iter().any(|known| name_is(&base, known))
     }
 
     /// Agents and interpreters, whose host chain is looked at.
     fn is_agent_like(&self, name: &str) -> bool {
         let base = normalized_basename(name);
         is_interpreter(&base)
-            || self.extra_names.contains(&base)
-            || AGENT_NAMES.contains(&base.as_str())
+            || self.extra_names.iter().any(|known| name_is(&base, known))
+            || AGENT_NAMES.iter().any(|known| name_is(&base, known))
     }
 
     /// Processes whose command line and working directory were read so far
@@ -598,6 +598,16 @@ impl ProcessMatcher {
     }
 }
 
+/// Linux lists a process under its `comm` name, cut to 15 bytes.
+const COMM_LEN: usize = 15;
+
+/// Whether the listed name `base` is the known name `known`, also when the
+/// OS cut the listed name short (Linux).
+fn name_is(base: &str, known: &str) -> bool {
+    base == known
+        || (cfg!(target_os = "linux") && base.len() == COMM_LEN && known.starts_with(base))
+}
+
 fn normalized_basename(raw: &str) -> String {
     let base = raw
         .rsplit(['/', '\\'])
@@ -761,6 +771,23 @@ mod tests {
         scanner.watch_names(["my-agent"]);
         assert!(scanner.is_candidate("my-agent.exe"));
         assert!(scanner.is_agent_like("my-agent"));
+    }
+
+    #[test]
+    fn names_cut_short_by_linux_still_match() {
+        // Only Linux cuts names; elsewhere a short name is another program.
+        assert_eq!(
+            name_is("my-long-agent-n", "my-long-agent-name"),
+            cfg!(target_os = "linux")
+        );
+        assert!(name_is("my-long-agent-name", "my-long-agent-name"));
+        assert!(!name_is("my-long-agent", "my-long-agent-name"));
+        assert!(!name_is("other-long-name", "my-long-agent-name"));
+        if cfg!(target_os = "linux") {
+            let mut scanner = ProcessScanner::new();
+            scanner.watch_names(["my-long-agent-name"]);
+            assert!(scanner.is_candidate("my-long-agent-n"));
+        }
     }
 
     #[test]

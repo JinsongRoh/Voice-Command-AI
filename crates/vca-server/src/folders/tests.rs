@@ -161,7 +161,8 @@ fn lists_folders_inside_the_roots() {
     mkdir(&root.join("beta/inner"));
     std::fs::write(root.join("notes.txt"), "never listed").unwrap();
     let f = folders(&root);
-    let sessions = [session("s1", &root.join("zeta"), 1)];
+    // As the server reports it: canonical (no Windows 8.3 short names).
+    let sessions = [session("s1", Path::new(&canon(&root.join("zeta"))), 1)];
     let msg = f
         .list_folder(root.to_str().unwrap(), false, &sessions)
         .unwrap();

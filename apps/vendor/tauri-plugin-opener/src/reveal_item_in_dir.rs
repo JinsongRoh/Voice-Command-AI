@@ -32,7 +32,11 @@ pub fn reveal_item_in_dir<P: AsRef<Path>>(path: P) -> crate::Result<()> {
         target_os = "netbsd",
         target_os = "openbsd"
     )))]
-    Err(crate::Error::UnsupportedPlatform)
+    {
+        // Mobile has no file explorer; the path is only checked.
+        let _ = path;
+        Err(crate::Error::UnsupportedPlatform)
+    }
 }
 
 /// Reveal multiple paths in the system's default explorer.
@@ -286,6 +290,8 @@ mod imp {
     use objc2_foundation::{NSArray, NSString, NSURL};
     use std::path::PathBuf;
 
+    // Newer objc2 bindings mark these calls safe; keep the block for older ones.
+    #[allow(unused_unsafe)]
     pub fn reveal_items_in_dir(paths: &[PathBuf]) -> crate::Result<()> {
         unsafe {
             let mut urls = Vec::new();

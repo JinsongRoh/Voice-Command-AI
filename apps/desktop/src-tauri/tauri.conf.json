@@ -45,7 +45,9 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/64x64.png",
+      "icons/icon.png"
     ],
     "resources": {
       "../../../LICENSE": "LICENSE",
@@ -53,6 +55,14 @@
     },
     "macOS": {
       "entitlements": "entitlements.plist"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libasound2"]
+      },
+      "rpm": {
+        "depends": ["libasound.so.2()(64bit)"]
+      }
     },
     "createUpdaterArtifacts": true
   },

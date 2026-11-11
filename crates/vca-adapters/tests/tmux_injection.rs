@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use vca_adapters::ProcessTable;
+use vca_adapters::ProcessScanner;
 use vca_adapters::terminal::{self, TerminalTarget, tmux};
 
 struct Server {
@@ -77,15 +77,31 @@ async fn detects_pane_and_injects_text_without_focus() {
     // Detection from the process environment (TMUX / TMUX_PANE). Until the
     // pane's child has exec'd, /proc/<pid>/environ still shows the tmux
     // server's environment, so retry briefly on slow machines.
+    // Only candidate processes have their environment read. The pane runs
+    // `cat` (or a shell around it), so the scanner is told to watch whatever
+    // the pane's process is called, like an adapter's binary.
+    let mut scanner = ProcessScanner::new();
     let deadline = Instant::now() + Duration::from_secs(10);
     let detected = loop {
-        let procs = tokio::task::spawn_blocking(ProcessTable::snapshot)
-            .await
-            .unwrap();
+        let (back, procs) = tokio::task::spawn_blocking(move || {
+            let first = scanner.snapshot();
+            if let Some(info) = first.get(pane.pane_pid) {
+                scanner.watch_names([info.name.clone()]);
+            }
+            let procs = scanner.snapshot();
+            (scanner, procs)
+        })
+        .await
+        .unwrap();
+        scanner = back;
         if let Some(target) = terminal::detect(pane.pane_pid, &procs).await {
             break target;
         }
-        assert!(Instant::now() < deadline, "pane not detected");
+        assert!(
+            Instant::now() < deadline,
+            "pane not detected; pane process: {:?}",
+            procs.get(pane.pane_pid)
+        );
         tokio::time::sleep(Duration::from_millis(100)).await;
     };
     assert_eq!(

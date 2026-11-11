@@ -25,8 +25,38 @@ pub fn open(data_dir: &Path) -> Result<Arc<dyn KeyStore>, Box<dyn std::error::Er
         }
     }
     let dir = data_dir.join("secrets");
-    std::fs::create_dir_all(&dir)?;
+    create_secrets_dir(&dir)?;
     Ok(Arc::new(FileKeyStore::new(dir)))
+}
+
+/// The fallback secrets directory. On Linux it is owner-only (0700), also
+/// when an earlier version created it with the default umask, so the names
+/// of the stored keys are not listable by other users.
+fn create_secrets_dir(dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn secrets_dir_is_owner_only() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("secrets");
+        // An existing directory with the usual umask is tightened too.
+        std::fs::create_dir(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        super::create_secrets_dir(&dir).unwrap();
+        let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o700);
+    }
 }
 
 /// Round-trips a throwaway secret so a broken keychain is detected at start

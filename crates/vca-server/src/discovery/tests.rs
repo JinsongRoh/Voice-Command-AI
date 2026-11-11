@@ -300,7 +300,13 @@ async fn reports_every_status_and_imports_terminal_sessions_only() {
     assert!(claude.session_id.is_some());
     assert_eq!(claude.terminal.as_deref(), Some("Windows Terminal"));
     assert_eq!(claude.project_dir.as_deref(), Some("D:\\shop"));
-    assert_eq!(claude.title.as_deref(), Some("shop · Claude Code"));
+    // The title names the folder as this platform splits the path: the
+    // fixture's Windows path is one plain name elsewhere.
+    let folder = if cfg!(windows) { "shop" } else { "D:\\shop" };
+    assert_eq!(
+        claude.title.as_deref(),
+        Some(format!("{folder} · Claude Code").as_str())
+    );
 
     let gemini = row(&found, GEMINI);
     assert_eq!(gemini.agent, AgentKind::GeminiCli);

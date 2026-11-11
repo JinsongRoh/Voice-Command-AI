@@ -183,4 +183,25 @@ describe('ChatSearch in paged history', () => {
     );
     expect(screen.queryByRole('button', { name: 'Search earlier messages' })).toBeNull();
   });
+
+  it('stops a running search of earlier messages when it closes', async () => {
+    const onStopSearchOlder = vi.fn();
+    renderWithApp(
+      <ChatSearch
+        count={0}
+        index={0}
+        onQuery={() => {}}
+        onIndex={() => {}}
+        canSearchOlder
+        searchingOlder
+        onSearchOlder={() => {}}
+        onStopSearchOlder={onStopSearchOlder}
+        initialOpen
+      />,
+    );
+    await userEvent.type(screen.getByRole('searchbox'), 'zzz');
+    // Possibly within the debounce, before the parent ever saw the query.
+    await userEvent.click(screen.getByRole('button', { name: 'Close search' }));
+    expect(onStopSearchOlder).toHaveBeenCalledTimes(1);
+  });
 });

@@ -854,8 +854,14 @@ mod local_agent {
                 st.token_calls += 1;
                 return json_resp(json!({"token": format!("dpl_tok-{}", st.token_calls)}));
             }
-            // The first Unix token is "stale": force one refresh.
-            if req.header("authorization") != Some("Bearer dpl_tok-2") {
+            // The first Unix token is "stale": force one refresh. Later
+            // tokens (another client asks for its own) are all good.
+            let good = req
+                .header("authorization")
+                .and_then(|h| h.strip_prefix("Bearer dpl_tok-"))
+                .and_then(|n| n.parse::<u32>().ok())
+                .is_some_and(|n| n >= 2);
+            if !good {
                 return (401, "application/json", r#"{"error":"bad token"}"#.into());
             }
             match (req.method.as_str(), req.path.as_str()) {

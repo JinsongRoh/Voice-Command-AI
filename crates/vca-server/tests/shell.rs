@@ -709,7 +709,7 @@ async fn a_running_session_cannot_be_dismissed_and_keep_alive_needs_admin() {
     assert_eq!(shell.shell, TEST_SHELL);
     assert_eq!(
         shell.project_dir,
-        dir.path().join("workspace").join("project")
+        dunce_canonical(&dir.path().join("workspace").join("project"))
     );
     let dismiss = ClientMsg::DismissSession {
         session_id: session.id.clone(),
@@ -1104,5 +1104,17 @@ async fn test_step_up(
     {
         vca_server::security::SecurityReply::StepUp { token, .. } => Some(token),
         other => panic!("step-up failed: {other:?}"),
+    }
+}
+
+/// Canonical path without the `\\?\` prefix Windows adds, so that it can
+/// be compared with paths the server returns (Windows temp folders may use
+/// short 8.3 names such as `RUNNER~1`).
+fn dunce_canonical(p: &Path) -> PathBuf {
+    let c = std::fs::canonicalize(p).unwrap();
+    let s = c.to_string_lossy();
+    match s.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC") => PathBuf::from(rest),
+        _ => c,
     }
 }

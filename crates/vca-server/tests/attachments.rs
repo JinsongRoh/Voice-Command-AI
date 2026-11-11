@@ -137,45 +137,36 @@ async fn connect(server: &Server) -> ControlClient {
     client
 }
 
-/// Reads pushes until `pred` returns a value.
-async fn wait_push<T>(
-    client: &mut ControlClient,
-    what: &str,
-    mut pred: impl FnMut(&ServerMsg) -> Option<T>,
-) -> T {
-    let result = tokio::time::timeout(TIMEOUT, async {
+/// Collects session output until it contains `needle`. On a timeout the
+/// output seen so far is part of the failure message.
+async fn wait_output(client: &mut ControlClient, sid: &SessionId, needle: &str) -> String {
+    let mut text = String::new();
+    let found = tokio::time::timeout(TIMEOUT, async {
         loop {
             match client.recv().await.unwrap() {
-                Some(LocalResponse::Api { body, .. }) => {
-                    if let Some(v) = pred(&body) {
-                        return v;
+                Some(LocalResponse::Api {
+                    body:
+                        ServerMsg::Event {
+                            session_id,
+                            event: SessionEvent::Output { data, .. },
+                        },
+                    ..
+                }) if &session_id == sid => {
+                    text.push_str(&String::from_utf8_lossy(&data));
+                    if text.contains(needle) {
+                        return;
                     }
                 }
                 Some(_) => {}
-                None => panic!("vcad closed the connection while waiting for {what}"),
+                None => panic!("vcad closed the connection while waiting for {needle}"),
             }
         }
     })
     .await;
-    result.unwrap_or_else(|_| panic!("timed out waiting for {what}"))
-}
-
-/// Collects session output until it contains `needle`.
-async fn wait_output(client: &mut ControlClient, sid: &SessionId, needle: &str) -> String {
-    let mut text = String::new();
-    wait_push(client, needle, |msg| {
-        if let ServerMsg::Event {
-            session_id,
-            event: SessionEvent::Output { data, .. },
-        } = msg
-        {
-            if session_id == sid {
-                text.push_str(&String::from_utf8_lossy(data));
-            }
-        }
-        text.contains(needle).then_some(())
-    })
-    .await;
+    assert!(
+        found.is_ok(),
+        "timed out waiting for {needle}; output so far: {text:?}"
+    );
     text
 }
 
