@@ -19,7 +19,7 @@
 
 Voice Command AI (VCA) is an open-source, cross-platform tool. It lets you watch, command and orchestrate AI coding agents running on your development machine. Supported agents include Claude Code, OpenAI Codex, Gemini CLI, Google Antigravity, Grok and more. You can reach them from anywhere, without fighting for keyboard focus and without letting runaway builds bring your machine down.
 
-> **Status:** Version 0.1.0, the first public release (November 11, 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) and updates itself; the iPhone and Android apps are in review at the App Store and Google Play. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
+> **Status:** Version 0.1.0, the first public release (November 11, 2026). The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) and updates itself; the Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile), and the iPhone app is in review at the App Store. See [Download](#download), the [user guide](docs/user-guide.md) and the [changelog](CHANGELOG.md).
 
 ---
 
@@ -42,7 +42,7 @@ VCA fixes this by putting a lightweight server on your machine. That server owns
 | macOS (Intel) | [Disk image (.dmg)](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) | Developer ID signed and notarized. Includes the server. |
 | Linux | Coming in a later version. Until then, [build from source](docs/user-guide.md#build-from-source). | The server also runs on Linux when built from source. |
 | iPhone, iPad | App Store: *in review, coming soon* | iOS 15 or later. Includes a demo mode. |
-| Android | Google Play: *in review, coming soon* | Android 8.0 or later. Includes a demo mode. |
+| Android | [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile) | Android 8.0 or later. Includes a demo mode. |
 
 All files, release notes and update signatures are on the [v0.1.0 release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0).
 

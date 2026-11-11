@@ -2,7 +2,7 @@
 
 This guide covers setting up Voice Command AI (VCA) on your own PC, pairing the phone or desktop app, talking to your agents, and reaching your PC from outside your network.
 
-> **Status (version 0.1.0, released November 11, 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) (Linux packages come in a later version; build from source until then). The iPhone/iPad and Android apps are in review at the App Store and Google Play. Items marked *coming soon* are not available yet.
+> **Status (version 0.1.0, released November 11, 2026):** This is VCA's first public release. The desktop app for Windows and macOS is on [GitHub Releases](https://github.com/JinsongRoh/Voice-Command-AI/releases/tag/v0.1.0) (Linux packages come in a later version; build from source until then). The Android app is on [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile); the iPhone/iPad app is in review at the App Store. Items marked *coming soon* are not available yet.
 >
 > **Watch first:** a [2-minute walkthrough video](https://youtu.be/y1nxSgDrQi8) ([Korean version](https://youtu.be/I3vdZhCmwQg)).
 
@@ -27,7 +27,7 @@ Install the **desktop app on the PC where your agents run**: it includes the ser
 | macOS, Apple silicon (M1 or later) | [Voice.Command.AI_0.1.0_aarch64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_aarch64.dmg) |
 | macOS, Intel | [Voice.Command.AI_0.1.0_x64.dmg](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest/download/Voice.Command.AI_0.1.0_x64.dmg) |
 | iPhone, iPad | App Store: *in review, coming soon* |
-| Android | Google Play: *in review, coming soon* |
+| Android | [Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile) |
 
 These links always fetch the files of the latest release. All files and the release notes are on the [release page](https://github.com/JinsongRoh/Voice-Command-AI/releases/latest) (GitHub shows the spaces of the file names as dots).
 
@@ -50,7 +50,7 @@ The app keeps its keys in the Secret Service (GNOME Keyring or KWallet) when one
 
 ### Android
 
-**Google Play:** *in review, coming soon* (the store listing is not live yet). Android 8.0 or later. Until then, you can build the app from source (below).
+**Google Play:** [Voice Command AI on Google Play](https://play.google.com/store/apps/details?id=io.metavu.voicecommandai.mobile). Android 8.0 or later. You can also build the app from source (below).
 
 ### iPhone and iPad
 
@@ -820,4 +820,4 @@ A server you started yourself (`vca daemon`) is never stopped by the app; update
 
 **iPhone and iPad.** Through the App Store, once the app is published there (*in review, coming soon*). A build from source is updated by installing a new build from Xcode.
 
-**Android.** Through Google Play, once the app is published there (*in review, coming soon*). A build from source is updated by installing the new APK (`adb install -r`, or open the APK on the phone); your pairings are kept.
+**Android.** Through Google Play. A build from source is updated by installing the new APK (`adb install -r`, or open the APK on the phone); your pairings are kept.
