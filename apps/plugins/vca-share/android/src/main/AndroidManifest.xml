@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into the app manifest: the content URIs of the share sheet. Not
+     exported; a share target gets a one-time read grant for one file. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider
+            android:name="io.metavu.voicecommandai.share.ShareFileProvider"
+            android:authorities="${applicationId}.vcashare"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/vca_share_paths" />
+        </provider>
+    </application>
+</manifest>

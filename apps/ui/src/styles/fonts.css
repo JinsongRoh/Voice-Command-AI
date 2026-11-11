@@ -1,0 +1,98 @@
+/*
+ * Brand typefaces, bundled locally (the WebView CSP allows fonts from 'self'
+ * and data: only, so nothing may come from a CDN). Vite resolves the package
+ * paths and emits the woff2 files next to the bundle.
+ *
+ * Only the subsets the UI needs are declared, so the build stays small:
+ * - Inter (variable, wght 100–900): Latin + Latin Extended (en, es).
+ * - Pretendard (static KS X 1001 subset, 2,350 Hangul syllables): Regular
+ *   400, Medium 500 and SemiBold 600, restricted to Hangul code points so it
+ *   only loads for Korean text. Rare syllables fall back to the system font.
+ * - JetBrains Mono (variable): Latin + Latin Extended, for code and the
+ *   terminal. Box drawing falls back to the system monospace / xterm glyphs.
+ * Japanese uses the platform font (Hiragino / Yu Gothic / Noto Sans JP).
+ *
+ * Licenses: all three are SIL Open Font License 1.1.
+ */
+
+/* Inter: Latin */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Inter: Latin Extended */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* Pretendard: Hangul only (Jamo, compatibility Jamo, Jamo Extended, syllables) */
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('pretendard/dist/web/static/woff2-subset/Pretendard-Regular.subset.woff2')
+    format('woff2');
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('pretendard/dist/web/static/woff2-subset/Pretendard-Medium.subset.woff2') format('woff2');
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600 900;
+  src: url('pretendard/dist/web/static/woff2-subset/Pretendard-SemiBold.subset.woff2')
+    format('woff2');
+  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
+}
+
+/* JetBrains Mono: Latin */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* JetBrains Mono: Latin Extended */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}

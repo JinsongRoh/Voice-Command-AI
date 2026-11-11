@@ -1,0 +1,46 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.zoom {
+  display: inline-flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+.terminal {
+  flex: 1;
+  height: 100%;
+  min-height: 200px;
+  padding: 8px;
+  background: var(--term-bg);
+  /* The screen keeps the PTY's size; a pane too small for it scrolls. */
+  overflow: auto;
+}
+/* Phones: the PTY's columns and rows are kept; a zoomed screen larger than
+   the phone scrolls (one finger), two fingers zoom. */
+.terminal[data-fit-width] {
+  min-height: 120px;
+  padding: 4px;
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+@media (pointer: coarse) {
+  .toolbar :global(.btn) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

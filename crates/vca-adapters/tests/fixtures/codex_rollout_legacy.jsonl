@@ -1,0 +1,4 @@
+{"id":"5973b6c0-94b8-487b-a530-2aeb6098ae0e","timestamp":"2025-05-07T17:24:21.123Z","instructions":null}
+{"record_type":"state"}
+{"type":"message","id":null,"role":"user","content":[{"type":"input_text","text":"explain this repo"}]}
+{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"output_text","text":"It is a CLI."}]}

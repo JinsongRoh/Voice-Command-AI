@@ -1,0 +1,19 @@
+.hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.problem {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+/* Reset sits apart from Cancel/Save, at the start of the footer. */
+.reset {
+  margin-inline-end: auto;
+  padding-inline: 6px;
+  color: var(--accent-ink);
+  /* Lets the long label wrap on narrow phones instead of overflowing. */
+  white-space: normal;
+  text-align: start;
+}

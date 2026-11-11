@@ -1,0 +1,30 @@
+# Korean radio-style voice words of hands-free mode: the wake word, the send
+# word and the app's reply. They are sent to the speech engine as hints so a
+# short "보코" is not heard as "보고". Format: see lexicon/README.md.
+language = "ko"
+category = "voice"
+tags = ["voice"]
+
+[[entry]]
+term = "보코"
+variants = ["보꼬", "뽀코"]
+weight = 2.0
+
+[[entry]]
+term = "보내줘 오버"
+weight = 2.0
+
+[[entry]]
+term = "오버"
+weight = 2.0
+
+[[entry]]
+term = "로저"
+weight = 2.0
+
+# "승인" (approve) is often heard as "성인" by Korean speech engines. In a
+# voice-command tool "성인" (adult) is rare, so it is corrected to "승인".
+[[entry]]
+term = "승인"
+variants = ["성인", "승인해", "슝인"]
+weight = 2.0

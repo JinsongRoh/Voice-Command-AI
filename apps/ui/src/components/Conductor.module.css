@@ -1,0 +1,223 @@
+/* Command Center ("Command" in the menu), conductor requests and the conductor settings. */
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 760px;
+}
+.title {
+  margin: 0;
+  font-size: 20px;
+}
+.intro,
+.note,
+.help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.section h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+  font-weight: var(--fw-semibold);
+  font-size: 13px;
+}
+.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.status[data-status='ready']::before,
+.status[data-status='running']::before,
+.status[data-status='starting']::before {
+  background: var(--success, #2e9d5b);
+}
+.status[data-status='waiting_for_you']::before {
+  background: var(--warning, #d08a00);
+}
+.status[data-status='revoked']::before {
+  background: var(--danger, #d33);
+}
+.meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.meta dt {
+  color: var(--text-muted);
+}
+.meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.error {
+  margin: 0;
+  color: var(--danger, #d33);
+  font-size: 13px;
+}
+.requests {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--warning, #d08a00);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.requestTitle {
+  margin: 0;
+  font-weight: var(--fw-semibold);
+  font-size: 14px;
+}
+.requestText {
+  margin: 0;
+  padding: 8px;
+  max-height: 160px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--code-bg, rgba(127, 127, 127, 0.12));
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.turn {
+  max-width: 92%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.1));
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.turn[data-role='user'] {
+  align-self: flex-end;
+  background: var(--accent-soft, rgba(80, 120, 255, 0.15));
+}
+.turn[data-role='event'] {
+  align-self: center;
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.who {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+}
+.compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.compose textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  resize: vertical;
+}
+.allowlist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+.allowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.allowForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.allowForm select {
+  max-width: 100%;
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.actions li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+.actions time {
+  color: var(--text-muted);
+}
+.agents {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tag {
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+}

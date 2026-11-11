@@ -1,0 +1,283 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* Hero: the brand's signature combination, a Deep Navy plate with the
+   cyan-to-blue symbol and the white wordmark (dark-gradient lockup). */
+.hero {
+  --logo-wordmark: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgb(3 97 247 / 22%) 0%, transparent 60%), var(--brand-navy);
+  color: var(--brand-cloud);
+  text-align: center;
+}
+.heroLogo {
+  display: block;
+  width: min(240px, 64vw);
+  height: auto;
+  /* 2760 × 1416: fixed ratio, never stretched. */
+  aspect-ratio: 2760 / 1416;
+}
+.slogan {
+  margin: 0;
+  max-width: 36ch;
+  text-wrap: balance;
+  font-size: 17px;
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  color: #dce6f7;
+}
+@media (min-width: 640px) {
+  .hero {
+    padding: var(--space-8) var(--space-6);
+  }
+  .slogan {
+    font-size: 19px;
+  }
+}
+
+.pairing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--space-5) var(--space-4);
+}
+.qr {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 160px;
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.steps {
+  margin: 0;
+  padding-inline-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.note {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.form {
+  align-self: stretch;
+}
+.help {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.error {
+  margin: 0 0 12px;
+  color: var(--danger);
+}
+/* The raw error code, for support. */
+.errorCode {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.success {
+  margin: 0 0 12px;
+  font-weight: var(--fw-semibold);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* Pairing as one card of steps: pending (muted), active, done (check),
+   error (on the step it belongs to). */
+.stepper {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+.step[data-state='active'] {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.step[data-state='error'] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.step[data-state='pending'] .stepTitle {
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+}
+.stepMark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.step[data-state='active'] .stepMark {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.step[data-state='done'] .stepMark {
+  border-color: var(--st-done);
+  background: var(--st-done);
+  color: var(--surface);
+}
+.step[data-state='error'] .stepMark {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--danger-text);
+}
+.stepBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stepBody > * {
+  margin: 0;
+}
+.stepTitle {
+  margin: 0;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  font-weight: var(--fw-semibold);
+}
+.step[data-state='done'] .stepTitle {
+  color: var(--st-done);
+}
+.stepAction {
+  align-self: flex-start;
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.confirmLine {
+  margin: 0;
+}
+.confirmCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: var(--fw-semibold);
+  min-height: 44px;
+}
+.confirmCheck input {
+  width: 22px;
+  height: 22px;
+}
+.paste summary,
+.advanced summary {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.paste[open] summary {
+  margin-bottom: 8px;
+}
+/* Fallbacks the one-QR flow no longer needs: collapsed by default. */
+.advanced {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.advanced[open] > * + * {
+  margin-top: 8px;
+}
+.advanced h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.notice {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+}
+.cameraSettings {
+  margin: 0 0 12px;
+}
+
+/* QR scanning (phone apps). The camera is drawn natively *behind* the
+   webview, so while it runs the page is made transparent and hidden; only
+   this overlay (viewfinder, hint, Cancel) stays visible. */
+:global(html.vca-scanning),
+:global(html.vca-scanning body),
+:global(html.vca-scanning #root) {
+  background: transparent !important;
+}
+:global(html.vca-scanning #root) {
+  visibility: hidden;
+}
+.scanOverlay {
+  visibility: visible;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: max(env(safe-area-inset-top), var(--space-6)) var(--space-4)
+    max(env(safe-area-inset-bottom), var(--space-6));
+  color: #ffffff;
+  text-align: center;
+}
+.scanFrame {
+  width: min(70vw, 280px);
+  aspect-ratio: 1;
+  border: 3px solid #ffffff;
+  border-radius: var(--radius-lg);
+  /* Dims the camera picture around the viewfinder. */
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 45%);
+}
+.scanHint {
+  position: relative;
+  margin: 0;
+  max-width: 32ch;
+  font-weight: var(--fw-semibold);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
+}
+.scanOverlay > button {
+  position: relative;
+}

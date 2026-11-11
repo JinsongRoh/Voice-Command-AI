@@ -1,0 +1,95 @@
+/* A Settings panel like its neighbours. */
+.section {
+  min-width: 0;
+  padding: 14px 16px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.help {
+  margin: 4px 0 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.error {
+  color: var(--danger);
+}
+.scroll {
+  max-height: 420px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  position: sticky;
+  top: 0;
+  padding: 6px 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: var(--fw-semibold);
+  text-align: start;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 7px 8px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.table tr[data-alert] td {
+  background: var(--danger-soft);
+}
+.event {
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.event[data-event='step_up_failed'] {
+  color: var(--danger);
+}
+.detail {
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Phones: each entry is a small card with labelled lines. */
+@media (max-width: 640px) {
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+  }
+  .table tr {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .table td {
+    display: flex;
+    gap: 10px;
+    padding: 2px 4px;
+    border: 0;
+  }
+  .table td::before {
+    content: attr(data-label);
+    flex: none;
+    width: 6.5em;
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 12px;
+  }
+}

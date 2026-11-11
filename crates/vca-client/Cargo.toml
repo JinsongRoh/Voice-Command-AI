@@ -1,0 +1,47 @@
+[package]
+name = "vca-client"
+description = "Device-side connection manager: pairing, secure storage and supervised connections to VCA servers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+vca-core.workspace = true
+vca-net = { workspace = true, features = ["client-tls"] }
+# DNSPilot console API (OAuth device flow, app-mode tunnels).
+vca-providers.workspace = true
+# The per-install P-256 client certificate for DNSPilot app-mode tunnels.
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "pem", "ring"] }
+rmp-serde.workspace = true
+# TLS for `wss://` endpoints: the `ring` provider is installed explicitly so the
+# client also works when another crate in the final binary enables a second
+# rustls provider.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde.workspace = true
+serde_json.workspace = true
+# Seals push payloads to a phone's key; the same crate and primitives as vca-net.
+snow = { version = "0.10.0", default-features = false, features = ["default-resolver", "use-chacha20poly1305", "use-sha2", "use-curve25519", "use-getrandom"] }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+zeroize = "1.9.1"
+
+[features]
+default = []
+# Store device keys and tokens in the OS keychain (`vca_net::KeychainKeyStore`).
+keychain = ["vca-net/keychain"]
+
+[dev-dependencies]
+data-encoding = "2.11.1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+wiremock = "0.6.5"
+tempfile = "3.27.0"
+tracing-subscriber.workspace = true
+vca-broker.workspace = true
+vca-server = { path = "../vca-server" }
+
+[lints]
+workspace = true

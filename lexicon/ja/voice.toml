@@ -1,0 +1,23 @@
+# Japanese radio-style voice words of hands-free mode: the wake word, the send
+# word and the app's reply. They are sent to the speech engine as hints.
+# Format: see lexicon/README.md.
+language = "ja"
+category = "voice"
+tags = ["voice"]
+
+[[entry]]
+term = "ボコ"
+variants = ["ヴォコ"]
+weight = 2.0
+
+[[entry]]
+term = "送信、オーバー"
+weight = 2.0
+
+[[entry]]
+term = "オーバー"
+weight = 2.0
+
+[[entry]]
+term = "ラジャー"
+weight = 2.0

@@ -1,0 +1,22 @@
+[package]
+name = "tauri-plugin-vca-push"
+description = "FCM device token and notification tap for the Voice Command AI mobile app (Android)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+# Required by tauri-plugin: exposes the Android library path to the app's
+# build script, which adds the Kotlin project to the Gradle build.
+links = "tauri-plugin-vca-push"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }
+
+[dependencies]
+serde.workspace = true
+tauri.workspace = true
+
+[lints]
+workspace = true

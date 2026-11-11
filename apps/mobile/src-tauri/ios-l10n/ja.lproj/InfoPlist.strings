@@ -1,0 +1,11 @@
+/* Permission texts shown by iOS, Japanese. Keep in sync with ../en.lproj/InfoPlist.strings. */
+
+"NSMicrophoneUsageDescription" = "Voice Command AI は、音声入力するとき、およびアプリを開いている間にハンズフリーモードまたは呼びかけ「ボコ」がオンのときにマイクを使用します。話した内容はテキストに変換するため、暗号化してペアリング済みのご自身の PC と、その PC に設定した音声認識エンジンにのみ送信されます。";
+
+"NSLocalNetworkUsageDescription" = "Voice Command AI はローカルネットワーク上のご自身の PC に接続し、その PC で実行中のコーディングセッションを操作できるようにします。";
+
+"NSCameraUsageDescription" = "Voice Command AI は、ペアリング用 QR コードを読み取るときと「写真を撮る」を選んだときにのみカメラを使用し、撮った写真を PC のセッションに送ります。";
+
+"NSPhotoLibraryUsageDescription" = "Voice Command AI は「写真ライブラリ」を選んだときにのみ写真を開き、選んだ写真だけを PC のセッションに送ります。";
+
+"NSFaceIDUsageDescription" = "Voice Command AI は、アプリのロックを解除するとき、および PC でリモートシェルを開いたり危険なコマンドを実行したりする前にご本人であることを確認するために Face ID を使用します。";

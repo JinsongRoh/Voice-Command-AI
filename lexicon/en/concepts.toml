@@ -1,0 +1,353 @@
+# English base lexicon: Programming concepts and common identifiers.
+# Format: see lexicon/README.md.
+language = "en"
+category = "concept"
+
+[[entry]]
+term = "useEffect"
+variants = ["use effect", "use affect"]
+tags = ["react"]
+weight = 1.5
+
+[[entry]]
+term = "useState"
+variants = ["use state"]
+tags = ["react"]
+weight = 1.5
+
+[[entry]]
+term = "useMemo"
+variants = ["use memo"]
+tags = ["react"]
+weight = 1.2
+
+[[entry]]
+term = "useCallback"
+variants = ["use callback", "use call back"]
+tags = ["react"]
+weight = 1.2
+
+[[entry]]
+term = "useRef"
+variants = ["use ref"]
+tags = ["react"]
+weight = 1.2
+
+[[entry]]
+term = "useContext"
+variants = ["use context"]
+tags = ["react"]
+
+[[entry]]
+term = "useReducer"
+variants = ["use reducer"]
+tags = ["react"]
+
+[[entry]]
+term = "async"
+variants = ["a sync"]
+tags = ["general"]
+weight = 1.2
+
+[[entry]]
+term = "await"
+variants = ["a wait"]
+tags = ["general"]
+
+[[entry]]
+term = "async/await"
+variants = ["async await", "a sync await"]
+tags = ["general"]
+
+[[entry]]
+term = "callback"
+variants = ["call back"]
+tags = ["general"]
+
+[[entry]]
+term = "closure"
+tags = ["general"]
+
+[[entry]]
+term = "enum"
+variants = ["e num", "ee num"]
+tags = ["general"]
+
+[[entry]]
+term = "struct"
+tags = ["general"]
+
+[[entry]]
+term = "trait"
+tags = ["rust"]
+
+[[entry]]
+term = "impl"
+variants = ["imple"]
+tags = ["rust"]
+
+[[entry]]
+term = "mut"
+tags = ["rust"]
+weight = 0.5
+
+[[entry]]
+term = "Vec"
+variants = ["vec"]
+tags = ["rust"]
+weight = 0.6
+
+[[entry]]
+term = "Option"
+tags = ["rust"]
+weight = 0.5
+
+[[entry]]
+term = "Result"
+tags = ["rust"]
+weight = 0.5
+
+[[entry]]
+term = "unwrap"
+variants = ["un wrap"]
+tags = ["rust"]
+
+[[entry]]
+term = "borrow checker"
+tags = ["rust"]
+
+[[entry]]
+term = "lifetime"
+variants = ["life time"]
+tags = ["rust"]
+
+[[entry]]
+term = "crate"
+tags = ["rust"]
+weight = 0.6
+
+[[entry]]
+term = "null"
+tags = ["general"]
+weight = 0.4
+
+[[entry]]
+term = "undefined"
+tags = ["javascript"]
+weight = 0.4
+
+[[entry]]
+term = "boolean"
+tags = ["general"]
+weight = 0.5
+
+[[entry]]
+term = "int"
+tags = ["general"]
+weight = 0.3
+
+[[entry]]
+term = "string"
+tags = ["general"]
+weight = 0.3
+
+[[entry]]
+term = "array"
+tags = ["general"]
+weight = 0.3
+
+[[entry]]
+term = "HashMap"
+variants = ["hash map"]
+tags = ["rust"]
+
+[[entry]]
+term = "linked list"
+tags = ["general"]
+
+[[entry]]
+term = "middleware"
+variants = ["middle ware"]
+tags = ["web"]
+
+[[entry]]
+term = "endpoint"
+variants = ["end point"]
+tags = ["web"]
+
+[[entry]]
+term = "backend"
+variants = ["back end"]
+tags = ["general"]
+
+[[entry]]
+term = "frontend"
+variants = ["front end"]
+tags = ["general"]
+
+[[entry]]
+term = "full-stack"
+variants = ["full stack"]
+tags = ["general"]
+
+[[entry]]
+term = "refactor"
+variants = ["re factor"]
+tags = ["general"]
+weight = 1.2
+
+[[entry]]
+term = "linter"
+variants = ["lint er"]
+tags = ["general"]
+
+[[entry]]
+term = "lint"
+tags = ["general"]
+weight = 0.6
+
+[[entry]]
+term = "unit test"
+tags = ["testing"]
+
+[[entry]]
+term = "e2e test"
+variants = ["e to e test", "e two e test"]
+tags = ["testing"]
+
+[[entry]]
+term = "TDD"
+variants = ["t d d"]
+tags = ["testing"]
+
+[[entry]]
+term = "mock"
+tags = ["testing"]
+weight = 0.4
+
+[[entry]]
+term = "fixture"
+tags = ["testing"]
+weight = 0.5
+
+[[entry]]
+term = "snapshot test"
+tags = ["testing"]
+
+[[entry]]
+term = "regression"
+tags = ["testing"]
+weight = 0.4
+
+[[entry]]
+term = "stack trace"
+variants = ["stack trace"]
+tags = ["debugging"]
+
+[[entry]]
+term = "segfault"
+variants = ["seg fault"]
+tags = ["debugging"]
+
+[[entry]]
+term = "race condition"
+tags = ["debugging"]
+
+[[entry]]
+term = "deadlock"
+variants = ["dead lock"]
+tags = ["debugging"]
+
+[[entry]]
+term = "memory leak"
+tags = ["debugging"]
+
+[[entry]]
+term = "OOM"
+variants = ["o o m"]
+tags = ["debugging"]
+
+[[entry]]
+term = "PID"
+variants = ["p i d"]
+tags = ["linux"]
+
+[[entry]]
+term = "TTY"
+variants = ["t t y"]
+tags = ["terminal"]
+
+[[entry]]
+term = "PTY"
+variants = ["p t y"]
+tags = ["terminal"]
+
+[[entry]]
+term = "SIGINT"
+variants = ["sig int"]
+tags = ["linux"]
+
+[[entry]]
+term = "SIGTERM"
+variants = ["sig term"]
+tags = ["linux"]
+
+[[entry]]
+term = "Ctrl+C"
+variants = ["control c", "ctrl c"]
+tags = ["terminal"]
+weight = 1.2
+
+[[entry]]
+term = "Ctrl+D"
+variants = ["control d", "ctrl d"]
+tags = ["terminal"]
+
+[[entry]]
+term = "Esc"
+tags = ["terminal"]
+
+[[entry]]
+term = "TODO"
+variants = ["todo"]
+tags = ["general"]
+weight = 0.8
+
+[[entry]]
+term = "FIXME"
+tags = ["general"]
+
+[[entry]]
+term = "null pointer"
+tags = ["debugging"]
+
+[[entry]]
+term = "diff"
+tags = ["git"]
+weight = 0.6
+
+[[entry]]
+term = "patch"
+tags = ["git"]
+weight = 0.4
+
+[[entry]]
+term = "build"
+tags = ["general"]
+weight = 0.3
+
+[[entry]]
+term = "deploy"
+variants = ["de ploy"]
+tags = ["devops"]
+weight = 0.6
+
+[[entry]]
+term = "staging"
+tags = ["devops"]
+weight = 0.6
+
+[[entry]]
+term = "production"
+tags = ["devops"]
+weight = 0.6

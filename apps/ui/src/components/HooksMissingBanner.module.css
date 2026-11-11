@@ -1,0 +1,35 @@
+/* "The Claude connection is missing" above the chat (phones and desktop). */
+.banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin: var(--space-1, 4px) var(--space-3, 12px) 0;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--st-input-bg, var(--surface-2));
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.banner[data-state='done'] {
+  background: var(--st-done-bg, var(--surface-2));
+}
+.banner > :global(svg) {
+  flex: none;
+}
+.text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.hint {
+  color: var(--text-muted);
+}
+.error {
+  color: var(--danger);
+}
+.close {
+  flex: none;
+  margin-inline-start: auto;
+}

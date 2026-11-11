@@ -1,0 +1,51 @@
+.bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.text {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+.text :global(svg) {
+  flex: none;
+  margin-top: 3px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger, #c62828);
+}
+.closing {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--warn, #b26a00);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warn, #b26a00) 12%, var(--surface));
+}
+.closing .text {
+  flex: 1 1 200px;
+}

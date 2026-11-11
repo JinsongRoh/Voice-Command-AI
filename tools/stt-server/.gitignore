@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+# Runtime data: never commit tokens, logs, model caches or local settings.
+tokens.json
+tokens.json.tmp
+*.log
+*.log.*
+hf/
+data/
+stt.env
+server.pid

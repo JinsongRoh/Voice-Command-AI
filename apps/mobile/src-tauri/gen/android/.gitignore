@@ -1,0 +1,28 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+key.properties
+keystore.properties
+
+/.tauri
+/tauri.settings.gradle
+
+# Kotlin compiler caches and error logs
+.kotlin
+# Signing material and Firebase config are supplied by the release team
+*.jks
+*.keystore
+*.p12
+google-services.json

@@ -1,0 +1,11 @@
+/* Permission texts shown by iOS, English. Keep in sync with ../../Info.plist. */
+
+"NSMicrophoneUsageDescription" = "Voice Command AI uses the microphone when you dictate, and while hands-free mode or the Voco wake word is on and the app is open. Your speech is sent encrypted only to your own paired PC and the speech recognition engine you set up there, to turn it into text.";
+
+"NSLocalNetworkUsageDescription" = "Voice Command AI connects to your own PC on your local network so you can control the coding sessions running on it.";
+
+"NSCameraUsageDescription" = "Voice Command AI uses the camera only while you scan a pairing QR code or when you choose Take photo, to send that photo to a session on your PC.";
+
+"NSPhotoLibraryUsageDescription" = "Voice Command AI opens your photos only when you choose Photo library, and sends just the photos you pick to a session on your PC.";
+
+"NSFaceIDUsageDescription" = "Voice Command AI uses Face ID to unlock the app and to confirm it is you before it opens a remote shell on your PC or runs a risky command there.";

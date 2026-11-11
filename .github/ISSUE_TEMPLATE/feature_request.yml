@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest an idea or an improvement for Voice Command AI.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please check the existing issues first; adding a reaction to an existing request helps too.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your proposal
+      description: How you would like it to work. Screens, commands or examples help.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Session cards and live view
+        - Voice and speech engines
+        - Alerts and spoken alerts
+        - The conductor
+        - To-do list
+        - Window restore
+        - Agent adapters
+        - Connectivity and pairing
+        - Desktop app
+        - Phone app
+        - Documentation
+        - Other
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself.
