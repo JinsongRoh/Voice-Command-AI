@@ -225,9 +225,17 @@ mod tests {
 
     #[test]
     fn old_vcad_targets_are_recognized() {
-        assert!(targets_vcad(Path::new("C:\\VCA\\vcad.exe")));
-        assert!(targets_vcad(Path::new("C:\\VCA\\VCAD.EXE")));
-        assert!(!targets_vcad(Path::new("C:\\VCA\\vca-desktop.exe")));
+        // Shortcuts are a Windows feature; backslashes separate folders only there.
+        let path = |p: &str| {
+            if cfg!(windows) {
+                PathBuf::from(p)
+            } else {
+                PathBuf::from(p.replace('\\', "/"))
+            }
+        };
+        assert!(targets_vcad(&path("C:\\VCA\\vcad.exe")));
+        assert!(targets_vcad(&path("C:\\VCA\\VCAD.EXE")));
+        assert!(!targets_vcad(&path("C:\\VCA\\vca-desktop.exe")));
         let dir = tempfile::tempdir().unwrap();
         let vcad = dir.path().join("vcad.exe");
         assert_eq!(desktop_app_next_to(&vcad), None);
